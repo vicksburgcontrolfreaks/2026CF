@@ -6,6 +6,7 @@ package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
 
 /**
@@ -17,6 +18,40 @@ import edu.wpi.first.math.util.Units;
  * constants are needed, to reduce verbosity.
  */
 public final class Constants {
+  public static final class NeoVortexMotorConstants {
+    public static final double kFreeSpeedRpm = 6784;
+  }
+
+  public static final class NeoMotorConstants {
+    public static final double kFreeSpeedRpm = 5676;
+  }
+
+  public static final class ModuleConstants {
+    // The MAXSwerve module can be configured with one of three pinion gears: 12T,
+    // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
+    // more teeth will result in a robot that drives faster).
+    public static final int kDrivingMotorPinionTeeth = 14;
+
+    // Calculations required for driving motor conversion factors and feed forward
+    // public static final double kDrivingMotorFreeSpeedRps =
+    // NeoMotorConstants.kFreeSpeedRpm / 60;
+    public static final double kDrivingMotorFreeSpeedRps = NeoVortexMotorConstants.kFreeSpeedRpm / 60;
+
+    public static final double kWheelDiameterMeters = 0.0762; // 3in
+    public static final double kWheelCircumferenceMeters = kWheelDiameterMeters * Math.PI;
+    // 45 teeth on the wheel's bevel gear, 22 teeth on the first-stage spur gear, 15
+    // teeth on the bevel pinion
+    public static final double kDrivingMotorReduction = (45.0 * 22) / (kDrivingMotorPinionTeeth * 15);
+    public static final double kDriveWheelFreeSpeedRps = (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters)
+        / kDrivingMotorReduction;
+  }
+
+  public static final class OIConstants {
+    public static final int kDriverControllerPort = 0;
+    public static final double kDriveDeadband = 0.05;
+    public static final int kMechanismControllerPort = 1;
+  }
+
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
 
@@ -97,12 +132,8 @@ public final class Constants {
     public static final double kMaxSpeedMetersPerSecond = 4.5; // Theoretical max ~4.8 m/s for NEO
     public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI * 2; // 1 rotation per second
 
-    // Module offsets (in rotations, 0-1)
-    // These need to be calibrated! See calibration instructions below
-    public static final double kFrontLeftOffset = 0.0;
-    public static final double kFrontRightOffset = 0.0;
-    public static final double kBackLeftOffset = 0.0;
-    public static final double kBackRightOffset = 0.0;
+    // Module offsets are configured directly on SparkMax controllers via REV Hardware Client
+    // No software offset constants needed
   }
 
   public static class VisionConstants {
@@ -120,6 +151,29 @@ public final class Constants {
   }
 
   public static class AutoConstants {
+    public static final double kMaxSpeedMetersPerSecond = 6.0; // 4.0
+    public static final double kMaxAccelerationMetersPerSecondSquared = 1.0; // 1.0
+    public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI;
+    public static final double kMaxAngularSpeedRadiansPerSecondSquared = 2 * Math.PI;
+
+    public static final double kPXController = 1.2; // 1.0
+    public static final double kPYController = 1.2; // 1.0
+    public static final double kPThetaController = 1.2; // 1.0
+
+    // Constraint for the motion profiled robot angle controller
+    public static final TrapezoidProfile.Constraints kThetaControllerConstraints = new TrapezoidProfile.Constraints(
+        kMaxAngularSpeedRadiansPerSecond, kMaxAngularSpeedRadiansPerSecondSquared);
+
+    // PID gains for forward (distance) and lateral control (tuning these is
+    // necessary).
+    public static final double kPForward = 1.0; // Example value; adjust by testing
+    public static final double kPLateral = 1.5; // Example value; adjust by testing
+
+    // APRIL TAG: Tolerances to determine when alignment is good enough.
+
+    public static final double kForwardTolerance = Units.inchesToMeters(1.0); // ~0.1524 m
+    public static final double kLateralTolerance = 1.0; // Acceptable error in tx (in degrees)
+
     // PathPlanner PID constants
     public static final double kPTranslation = 5.0;
     public static final double kITranslation = 0.0;
