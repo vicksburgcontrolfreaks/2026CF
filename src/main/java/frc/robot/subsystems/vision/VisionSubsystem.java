@@ -7,42 +7,48 @@ package frc.robot.subsystems.vision;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
+import frc.robot.LimelightHelpers;
+import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.subsystems.swerve.SwerveDrive;
 
+/**
+ * VisionSubsystem using Limelight 4 with MegaTag2 for AprilTag-based localization.
+ * MegaTag2 provides multi-tag pose estimation for improved accuracy and robustness.
+ */
 public class VisionSubsystem extends SubsystemBase {
-  private final NetworkTable m_limelightTable;
   private final SwerveDrive m_swerveDrive;
+  private final String m_limelightName;
 
+  private PoseEstimate m_lastEstimate;
   private boolean m_hasTarget = false;
-  private double m_latency = 0.0;
-  private Pose3d m_botPose3d = new Pose3d();
-  private double m_tagCount = 0;
-  private double m_tagSpan = 0;
-  private double m_avgTagDist = 0;
-  private double m_avgTagArea = 0;
 
   public VisionSubsystem(SwerveDrive swerveDrive) {
+    this(swerveDrive, VisionConstants.kLimelightName);
+  }
+
+  public VisionSubsystem(SwerveDrive swerveDrive, String limelightName) {
     m_swerveDrive = swerveDrive;
-    m_limelightTable = NetworkTableInstance.getDefault().getTable(VisionConstants.kLimelightName);
+    m_limelightName = limelightName;
   }
 
   @Override
   public void periodic() {
-    updateVisionData();
+    // Get MegaTag2 pose estimate using LimelightHelpers
+    // botpose_wpiblue returns pose in WPILib blue alliance coordinate system
+    m_lastEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(m_limelightName);
 
-    // Update pose estimation if we have a valid target
+    // Check if we have a valid target
+    m_hasTarget = LimelightHelpers.getTV(m_limelightName);
+
+    // Update pose estimation if we have a valid measurement
     if (m_hasTarget && shouldAcceptVisionMeasurement()) {
-      Pose2d visionPose2d = m_botPose3d.toPose2d();
-      double timestamp = Timer.getFPGATimestamp() - (m_latency / 1000.0);
+      Pose2d visionPose2d = m_lastEstimate.pose;
+      double timestamp = m_lastEstimate.timestampSeconds;
 
-      // Add vision measurement with custom standard deviations based on distance and tag count
+      // Add vision measurement with dynamic standard deviations
       m_swerveDrive.addVisionMeasurement(
         visionPose2d,
         timestamp,
@@ -51,106 +57,156 @@ public class VisionSubsystem extends SubsystemBase {
     }
 
     // Publish telemetry
-    SmartDashboard.putBoolean("Vision/Has Target", m_hasTarget);
-    SmartDashboard.putNumber("Vision/Tag Count", m_tagCount);
-    SmartDashboard.putNumber("Vision/Avg Distance", m_avgTagDist);
-    SmartDashboard.putNumber("Vision/Latency", m_latency);
-    SmartDashboard.putString("Vision/Bot Pose", m_botPose3d.toString());
+    updateTelemetry();
   }
 
-  private void updateVisionData() {
-    // Read botpose data from Limelight
-    double[] botPoseArray = m_limelightTable.getEntry("botpose_wpiblue").getDoubleArray(new double[7]);
-
-    if (botPoseArray.length >= 7) {
-      m_botPose3d = new Pose3d(
-        botPoseArray[0],
-        botPoseArray[1],
-        botPoseArray[2],
-        new edu.wpi.first.math.geometry.Rotation3d(
-          Math.toRadians(botPoseArray[3]),
-          Math.toRadians(botPoseArray[4]),
-          Math.toRadians(botPoseArray[5])
-        )
-      );
-      m_latency = botPoseArray[6];
+  /**
+   * Determines whether to accept the current vision measurement based on quality metrics.
+   * MegaTag2 provides robust filtering, but we add additional checks for safety.
+   */
+  private boolean shouldAcceptVisionMeasurement() {
+    if (m_lastEstimate == null) {
+      return false;
     }
 
-    // Read additional data
-    m_hasTarget = m_limelightTable.getEntry("tv").getDouble(0) > 0.5;
-    m_tagCount = m_limelightTable.getEntry("botpose_tagcount").getDouble(0);
-    m_tagSpan = m_limelightTable.getEntry("botpose_span").getDouble(0);
-    m_avgTagDist = m_limelightTable.getEntry("botpose_avgdist").getDouble(0);
-    m_avgTagArea = m_limelightTable.getEntry("botpose_avgarea").getDouble(0);
-  }
-
-  private boolean shouldAcceptVisionMeasurement() {
     // Don't accept if we don't have any tags
-    if (m_tagCount < 1) {
+    if (m_lastEstimate.tagCount < 1) {
       return false;
     }
 
     // Don't accept if tags are too far away
-    if (m_avgTagDist > VisionConstants.kMaxDistanceMeters) {
+    if (m_lastEstimate.avgTagDist > VisionConstants.kMaxDistanceMeters) {
       return false;
     }
 
-    // Don't accept if pose ambiguity is too high (when available)
-    // Note: Limelight v4 provides this via botpose_ambiguity
-    double ambiguity = m_limelightTable.getEntry("botpose_ambiguity").getDouble(0);
-    if (ambiguity > VisionConstants.kMaxPoseAmbiguity) {
+    // Don't accept if average tag area is too small (tags are far or small in frame)
+    if (m_lastEstimate.avgTagArea < VisionConstants.kMinTagArea) {
       return false;
     }
+
+    // MegaTag2 handles ambiguity internally and provides robust filtering
+    // The pose estimate already accounts for multi-tag geometry and outlier rejection
 
     return true;
   }
 
+  /**
+   * Calculate dynamic standard deviations based on distance and number of tags.
+   * More tags and closer distances = higher confidence (lower std dev).
+   * This is key for MegaTag2 to work well with pose estimation.
+   */
   private edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1> getEstimationStdDevs() {
-    // Adjust trust based on number of tags and distance
-    // More tags and closer distance = more trust (lower std dev)
-
-    double xyStdDev = VisionConstants.kVisionStdDevs[0];
-    double rotStdDev = VisionConstants.kVisionStdDevs[2];
-
-    // Increase standard deviation based on distance
-    if (m_avgTagDist > 2.0) {
-      xyStdDev *= (m_avgTagDist / 2.0);
+    if (m_lastEstimate == null) {
+      return VecBuilder.fill(
+        VisionConstants.kVisionStdDevs[0],
+        VisionConstants.kVisionStdDevs[1],
+        VisionConstants.kVisionStdDevs[2]
+      );
     }
 
-    // Decrease standard deviation if we see multiple tags
-    if (m_tagCount >= 2) {
-      xyStdDev /= Math.sqrt(m_tagCount);
+    double xyStdDev = VisionConstants.kSingleTagStdDevs[0];
+    double rotStdDev = VisionConstants.kSingleTagStdDevs[2];
+
+    // Multi-tag measurements are much more reliable
+    if (m_lastEstimate.tagCount >= 2) {
+      xyStdDev = VisionConstants.kMultiTagStdDevs[0];
+      rotStdDev = VisionConstants.kMultiTagStdDevs[2];
+    }
+
+    // Increase standard deviation based on average distance to tags
+    // Further tags = less confidence
+    double avgDist = m_lastEstimate.avgTagDist;
+    if (avgDist > 2.0) {
+      double distanceFactor = avgDist / 2.0;
+      xyStdDev *= distanceFactor;
+      rotStdDev *= distanceFactor;
+    }
+
+    // MegaTag2 specific: use tag span and area to further refine confidence
+    // Larger tag span (tags spread across frame) = better geometry = more confidence
+    if (m_lastEstimate.tagCount >= 2) {
+      double tagSpan = m_lastEstimate.tagSpan;
+      if (tagSpan < VisionConstants.kMinTagSpan) {
+        // Tags too close together, increase uncertainty
+        xyStdDev *= 2.0;
+      }
     }
 
     return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
   }
 
+  private void updateTelemetry() {
+    SmartDashboard.putBoolean("Vision/Has Target", m_hasTarget);
+
+    if (m_lastEstimate != null) {
+      SmartDashboard.putNumber("Vision/Tag Count", m_lastEstimate.tagCount);
+      SmartDashboard.putNumber("Vision/Avg Distance", m_lastEstimate.avgTagDist);
+      SmartDashboard.putNumber("Vision/Avg Area", m_lastEstimate.avgTagArea);
+      SmartDashboard.putNumber("Vision/Tag Span", m_lastEstimate.tagSpan);
+      SmartDashboard.putNumber("Vision/Latency", m_lastEstimate.latency);
+      SmartDashboard.putString("Vision/Bot Pose", m_lastEstimate.pose.toString());
+
+      // Useful for debugging
+      SmartDashboard.putNumber("Vision/Raw FID Count", m_lastEstimate.rawFiducials.length);
+    }
+  }
+
+  // Public getters for commands/other subsystems
+
   public boolean hasTarget() {
     return m_hasTarget;
   }
 
-  public Pose3d getBotPose3d() {
-    return m_botPose3d;
+  public PoseEstimate getLastEstimate() {
+    return m_lastEstimate;
   }
 
   public Pose2d getBotPose2d() {
-    return m_botPose3d.toPose2d();
+    return m_lastEstimate != null ? m_lastEstimate.pose : new Pose2d();
   }
 
   public double getTagCount() {
-    return m_tagCount;
+    return m_lastEstimate != null ? m_lastEstimate.tagCount : 0;
   }
 
   public double getAverageTagDistance() {
-    return m_avgTagDist;
+    return m_lastEstimate != null ? m_lastEstimate.avgTagDist : 0.0;
   }
 
+  /**
+   * Set LED mode on the Limelight.
+   * @param mode 0 = pipeline default, 1 = off, 2 = blink, 3 = on
+   */
   public void setLEDMode(int mode) {
-    // 0 = default, 1 = off, 2 = blink, 3 = on
-    m_limelightTable.getEntry("ledMode").setNumber(mode);
+    LimelightHelpers.setLEDMode_ForceOff(m_limelightName);
+    if (mode == 3) {
+      LimelightHelpers.setLEDMode_ForceOn(m_limelightName);
+    } else if (mode == 2) {
+      LimelightHelpers.setLEDMode_ForceBlink(m_limelightName);
+    } else if (mode == 0) {
+      LimelightHelpers.setLEDMode_PipelineControl(m_limelightName);
+    }
   }
 
+  /**
+   * Switch to a different pipeline.
+   * @param pipeline Pipeline index (0-9)
+   */
   public void setPipeline(int pipeline) {
-    m_limelightTable.getEntry("pipeline").setNumber(pipeline);
+    LimelightHelpers.setPipelineIndex(m_limelightName, pipeline);
+  }
+
+  /**
+   * Get the currently active pipeline index.
+   */
+  public int getPipeline() {
+    return (int) LimelightHelpers.getCurrentPipelineIndex(m_limelightName);
+  }
+
+  /**
+   * Take a snapshot with the current timestamp.
+   */
+  public void takeSnapshot() {
+    LimelightHelpers.takeSnapshot(m_limelightName, "snapshot");
   }
 }

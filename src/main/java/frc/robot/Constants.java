@@ -139,15 +139,33 @@ public final class Constants {
   public static class VisionConstants {
     public static final String kLimelightName = "limelight";
 
-    // Standard deviations for pose estimation (increase = trust vision less)
+    // MegaTag2 Standard Deviations for Pose Estimation
+    // Lower values = trust vision more, higher values = trust vision less
     // [x, y, rotation] in meters and radians
+
+    // Single tag standard deviations - less confident
+    public static final double[] kSingleTagStdDevs = {1.0, 1.0, 2.0};
+
+    // Multi-tag (MegaTag2) standard deviations - more confident
+    public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
+
+    // Fallback vision standard deviations (used if estimate is null)
     public static final double[] kVisionStdDevs = {0.7, 0.7, 999999}; // Don't trust rotation from vision
 
-    // Maximum pose ambiguity to accept vision measurements (lower = more strict)
+    // Filtering thresholds for vision measurements
+    // Maximum ambiguity to accept vision measurements (0.0-1.0, lower = more strict)
     public static final double kMaxPoseAmbiguity = 0.2;
 
     // Maximum distance to accept AprilTag measurements (meters)
     public static final double kMaxDistanceMeters = 4.0;
+
+    // Minimum tag area to accept measurements (percentage of image)
+    // Tags too small in frame are likely far away or at extreme angles
+    public static final double kMinTagArea = 0.01; // 1% of image area
+
+    // Minimum tag span for multi-tag measurements (pixels)
+    // Tags too close together provide poor geometry for pose estimation
+    public static final double kMinTagSpan = 10.0; // pixels between tags
   }
 
   public static class AutoConstants {

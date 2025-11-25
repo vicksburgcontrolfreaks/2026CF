@@ -32,31 +32,32 @@ public class SwerveDrive extends SubsystemBase {
 
   public SwerveDrive() {
     // Initialize swerve modules
+    // Note: Offsets are 0.0 because REV MAXSwerve modules store calibration on SparkMax
     m_frontLeft = new SwerveModule(
       SwerveConstants.kFrontLeftDriveMotorId,
       SwerveConstants.kFrontLeftSteerMotorId,
-      SwerveConstants.kFrontLeftOffset,
+      0.0, // Offset handled by SparkMax
       "Front Left"
     );
 
     m_frontRight = new SwerveModule(
       SwerveConstants.kFrontRightDriveMotorId,
       SwerveConstants.kFrontRightSteerMotorId,
-      SwerveConstants.kFrontRightOffset,
+      0.0, // Offset handled by SparkMax
       "Front Right"
     );
 
     m_backLeft = new SwerveModule(
       SwerveConstants.kBackLeftDriveMotorId,
       SwerveConstants.kBackLeftSteerMotorId,
-      SwerveConstants.kBackLeftOffset,
+      0.0, // Offset handled by SparkMax
       "Back Left"
     );
 
     m_backRight = new SwerveModule(
       SwerveConstants.kBackRightDriveMotorId,
       SwerveConstants.kBackRightSteerMotorId,
-      SwerveConstants.kBackRightOffset,
+      0.0, // Offset handled by SparkMax
       "Back Right"
     );
 

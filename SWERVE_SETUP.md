@@ -4,17 +4,21 @@
 This swerve drive implementation includes:
 - **Field-oriented drive** with gyro integration
 - **Odometry tracking** for autonomous positioning
-- **Vision pose estimation** using Limelight v4
+- **Vision pose estimation** using Limelight 4 with MegaTag2
 - **PathPlanner integration** for autonomous paths
-- **REV SparkMax** motor controllers with NEO motors
+- **REV MAXSwerve modules** with SparkMax controllers and NEO Vortex motors
 - **ADIS16470 IMU** for gyroscope (Analog Devices IMU via SPI)
+- **LimelightHelpers** library for advanced vision integration
 
 ## Hardware Configuration
 
-### Motors per Module
-- **Drive Motor**: NEO Brushless (SparkMax)
+### REV MAXSwerve Module Configuration
+- **Drive Motor**: NEO Vortex Brushless (SparkMax)
 - **Steer Motor**: NEO 550 Brushless (SparkMax)
 - **Steer Encoder**: SparkMax integrated absolute encoder
+- **Pinion Gear**: 14T (configurable: 12T, 13T, or 14T)
+- **Wheel Size**: 3 inches (0.0762m)
+- **Gear Reduction**: Calculated from MAXSwerve internal gearing
 
 ### CAN IDs (Update in Constants.java)
 Current configuration in `Constants.SwerveConstants`:
@@ -36,12 +40,12 @@ Edit `src/main/java/frc/robot/Constants.java`:
 - **kWheelBaseMeters**: Distance from front to back wheels (center to center)
 - **kWheelDiameterMeters**: Already set to 3 inches
 
-#### Determine Gear Ratios
-- **kDriveGearRatio**: Currently set to 6.75:1 (SDS Mk4i L2)
-  - Measure: Drive motor rotations per wheel rotation
-  - Common values: L1=8.14, L2=6.75, L3=6.12
-- **kSteerGearRatio**: Currently set to 150/7 = 21.43:1
-  - Measure: Steer motor rotations per module rotation
+#### REV MAXSwerve Gear Ratios (Configured in ModuleConstants)
+- **kDrivingMotorPinionTeeth**: 14T (adjust if using 12T or 13T pinion)
+- **kDrivingMotorReduction**: Automatically calculated from MAXSwerve internal gearing
+  - Formula: `(45.0 * 22) / (kDrivingMotorPinionTeeth * 15)`
+  - 14T pinion = ~4.71:1 reduction
+- **kDrivingMotorFreeSpeedRps**: Uses NEO Vortex free speed (6784 RPM)
 
 #### Motor Inversions
 Test and adjust these if modules spin backward:
@@ -60,35 +64,34 @@ This will download:
 - PathPlanner (autonomous paths)
 - ADIS16470 IMU support is included in WPILib
 
-### 3. Module Offset Calibration
+### 3. Module Offset Calibration (REV MAXSwerve with SparkMax)
 
-**IMPORTANT**: This step is critical for proper swerve operation!
+**IMPORTANT**: For REV MAXSwerve modules with SparkMax controllers, offset calibration is done **directly on the SparkMax** using REV Hardware Client, NOT in software!
 
 #### Calibration Process:
 
-1. **Manually align all modules**:
+1. **Install REV Hardware Client**:
+   - Download from: https://docs.revrobotics.com/rev-hardware-client/
+   - Connect to robot via USB or WiFi
+
+2. **Manually align all modules**:
    - Turn all wheels to point straight forward (parallel to robot)
    - Make sure bevel gears face the same direction (typically right)
 
-2. **Read absolute encoder positions**:
-   - Deploy code to robot
-   - Open SmartDashboard or Shuffleboard
-   - Look for values like "FL Absolute Encoder", "FR Absolute Encoder", etc.
-   - Record these values (they will be in rotations, 0.0 to 1.0)
-
-3. **Update offsets in Constants.java**:
-   ```java
-   public static final double kFrontLeftOffset = 0.234;  // Your recorded value
-   public static final double kFrontRightOffset = 0.567;
-   public static final double kBackLeftOffset = 0.891;
-   public static final double kBackRightOffset = 0.123;
-   ```
+3. **Zero each module using REV Hardware Client**:
+   - Open REV Hardware Client
+   - Select each SparkMax steer controller one at a time
+   - Go to the "Absolute Encoder" tab
+   - With the wheel aligned straight forward, click **"Set Position to Absolute"** or **"Burn Flash"**
+   - Repeat for all four modules
 
 4. **Verify**:
-   - Redeploy code
+   - Deploy code to robot
    - Enable robot
    - Modules should stay pointing forward when enabled
    - When you command forward movement, all modules should point forward
+
+**Note**: No offset constants needed in Constants.java! The calibration is stored directly on the SparkMax controllers and persists across power cycles and code deploys.
 
 ### 4. PID Tuning
 
@@ -153,11 +156,49 @@ When enabled (default), the robot moves relative to the field:
 When disabled (robot-oriented):
 - Push stick forward → robot moves in direction it's facing
 
-### Vision Pose Estimation
-The Limelight v4 provides AprilTag-based pose correction:
-- Automatically updates robot position when AprilTags are visible
-- Trust is adjusted based on distance and number of tags
-- Configure camera name in `VisionConstants.kLimelightName`
+### Vision Pose Estimation with MegaTag2
+The Limelight 4 with MegaTag2 provides advanced AprilTag-based localization:
+- **MegaTag2**: Uses multiple AprilTags simultaneously for improved accuracy
+- **Automatic outlier rejection**: Filters bad measurements internally
+- **Dynamic trust scaling**: Trust increases with more tags and closer distances
+- **Robust geometry**: Works even with partial tag views and extreme angles
+
+#### MegaTag2 Configuration:
+1. Access Limelight web interface at http://limelight.local:5801
+2. Set pipeline to **AprilTag mode**
+3. Enable **MegaTag2** in AprilTag settings
+4. Select **2025 Reefscape** field layout
+5. Configure camera mount position and angle
+6. Configure camera name in `VisionConstants.kLimelightName`
+
+#### Using Glass for MegaTag2 Visualization:
+Glass provides superior visualization for pose estimation and AprilTag tracking:
+
+1. **Launch Glass**:
+   - Open WPILib Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
+   - Type "Start Tool" and select "Glass"
+   - Or run `gradlew glass` from terminal
+
+2. **Connect to Robot**:
+   - Glass automatically connects via NetworkTables
+   - Ensure robot code is running and NetworkTables is active
+
+3. **Key Glass Features for MegaTag2**:
+   - **Field2d Widget**: Shows robot pose, vision estimates, and AprilTag locations
+   - **NetworkTables Viewer**: Monitor vision data in real-time:
+     - `Vision/Has Target` - Whether tags are detected
+     - `Vision/Tag Count` - Number of tags being tracked by MegaTag2
+     - `Vision/Avg Distance` - Average distance to visible tags
+     - `Vision/Tag Span` - Geometry quality indicator
+     - `Vision/Bot Pose` - Current vision-estimated pose
+   - **Pose History**: Track how vision updates correct odometry drift
+   - **3D Field View**: Visualize robot and tag positions in 3D
+
+4. **Tuning with Glass**:
+   - Watch pose jumps to identify bad vision measurements
+   - Monitor tag count to optimize camera positioning
+   - Observe how multi-tag vs single-tag affects pose quality
+   - Adjust standard deviations based on observed accuracy
 
 ### PathPlanner Integration
 To use PathPlanner for autonomous:
@@ -192,10 +233,14 @@ To use PathPlanner for autonomous:
 - If excessive, check encoder offsets
 
 ### Vision Not Working
-- Verify Limelight is on network (http://limelight.local)
-- Check NetworkTables connection
-- Ensure AprilTag pipeline is selected
-- Verify team number matches in code and Limelight config
+- Verify Limelight is on network (http://limelight.local:5801)
+- Check NetworkTables connection in Driver Station
+- Ensure **MegaTag2 is enabled** in AprilTag pipeline settings
+- Verify **2025 Reefscape** field layout is selected
+- Check camera mount position and angle are configured correctly
+- Ensure team number matches in code and Limelight config
+- Look for "Vision/Has Target" on SmartDashboard to verify tag detection
+- Check "Vision/Tag Count" to see how many tags are being tracked
 
 ### Gyro Drifting
 - ADIS16470 IMU calibrates on startup (robot MUST be stationary)
@@ -206,14 +251,16 @@ To use PathPlanner for autonomous:
 ## Testing Checklist
 
 - [ ] All motors respond on SmartDashboard/Shuffleboard
-- [ ] Absolute encoders show values between 0.0 and 1.0
-- [ ] Module offsets calibrated (wheels point forward when enabled)
+- [ ] Module offsets calibrated in REV Hardware Client (wheels point forward when enabled)
 - [ ] Drive motors spin in correct direction
 - [ ] Steer motors turn to commanded angles
 - [ ] Gyro reads 0° when robot facing forward
 - [ ] Field-oriented drive works correctly
-- [ ] Vision shows "Has Target" when AprilTag visible
-- [ ] Robot pose updates on Field2d widget
+- [ ] **Glass is running and connected to robot**
+- [ ] **Field2d widget shows robot pose in Glass**
+- [ ] Vision shows "Has Target" when AprilTag visible (check Glass NetworkTables)
+- [ ] **Tag Count increases when multiple tags visible (MegaTag2 working)**
+- [ ] **Pose updates smoothly in Glass when tags are visible**
 - [ ] Controller inputs match expected movement
 
 ## Next Steps
@@ -227,10 +274,13 @@ To use PathPlanner for autonomous:
 ## Support Resources
 
 - WPILib Documentation: https://docs.wpilib.org/
+- Glass Documentation: https://docs.wpilib.org/en/stable/docs/software/dashboards/glass/index.html
 - ADIS16470 IMU Docs: https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-hardware.html
 - PathPlanner Docs: https://pathplanner.dev/home.html
 - REVLib Documentation: https://docs.revrobotics.com/
+- REV Hardware Client: https://docs.revrobotics.com/rev-hardware-client/
 - Limelight Docs: https://docs.limelightvision.io/
+- Limelight MegaTag2 Docs: https://docs.limelightvision.io/docs/docs-limelight/apis/tracking-data-fiducials#megatag2
 
 ## Advanced Configuration
 
@@ -244,9 +294,26 @@ Adjust if motors are:
 - Browning out: Decrease current limits
 - Underperforming: Increase current limits (within breaker ratings)
 
-### Vision Standard Deviations
-In `VisionConstants.kVisionStdDevs`:
-- Increase values: Trust vision less (useful if seeing bad tags)
-- Decrease values: Trust vision more (useful with good field setup)
+### MegaTag2 Vision Standard Deviations
+The code uses dynamic standard deviations that automatically adjust based on measurement quality:
 
-Default: `{0.7, 0.7, 999999}` (don't trust rotation from vision)
+**Single Tag Mode** (`VisionConstants.kSingleTagStdDevs`):
+- Default: `{1.0, 1.0, 2.0}` - Less confident when seeing only one tag
+- Increase: Trust single tags less
+- Decrease: Trust single tags more (only if very confident in setup)
+
+**Multi-Tag Mode** (`VisionConstants.kMultiTagStdDevs`):
+- Default: `{0.5, 0.5, 1.0}` - More confident with multiple tags
+- Increase: Trust MegaTag2 less
+- Decrease: Trust MegaTag2 more (typical range: 0.3-0.7)
+
+**Additional Filtering**:
+- `kMaxDistanceMeters`: Maximum distance to trust tags (default: 4.0m)
+- `kMinTagArea`: Minimum tag size in frame (default: 0.01 = 1%)
+- `kMinTagSpan`: Minimum spacing between tags for multi-tag (default: 10 pixels)
+
+The system automatically scales confidence based on:
+- Number of tags visible
+- Average distance to tags
+- Tag spread in frame (geometry quality)
+- Tag size in image
