@@ -4,7 +4,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
@@ -134,6 +137,58 @@ public final class Constants {
 
     // Module offsets are configured directly on SparkMax controllers via REV Hardware Client
     // No software offset constants needed
+  }
+
+  public static class PhotonVisionConstants {
+    // Camera names (must match names configured in PhotonVision web UI)
+    public static final String kCameraFrontName = "camera-front";
+    public static final String kCameraBackName = "camera-back";
+    public static final String kCameraLeftName = "camera-left";
+    public static final String kCameraRightName = "camera-right";
+
+    // Camera transforms relative to robot center (robot-to-camera)
+    // TODO: Measure and update these values for your robot!
+    // Positive X = forward, Positive Y = left, Positive Z = up
+    // Rotations: Roll (X), Pitch (Y), Yaw (Z) in radians
+
+    // Front camera: mounted on front bumper, facing forward
+    public static final Transform3d kRobotToFrontCamera = new Transform3d(
+      new Translation3d(Units.inchesToMeters(12.0), 0.0, Units.inchesToMeters(10.0)), // 12" forward, 10" up
+      new Rotation3d(0, Math.toRadians(-15), 0) // Pitched down 15°
+    );
+
+    // Back camera: mounted on back bumper, facing backward
+    public static final Transform3d kRobotToBackCamera = new Transform3d(
+      new Translation3d(Units.inchesToMeters(-12.0), 0.0, Units.inchesToMeters(10.0)), // 12" back, 10" up
+      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(180)) // Pitched down 15°, facing back
+    );
+
+    // Left camera: mounted on left side, facing left
+    public static final Transform3d kRobotToLeftCamera = new Transform3d(
+      new Translation3d(0.0, Units.inchesToMeters(12.0), Units.inchesToMeters(10.0)), // 12" left, 10" up
+      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(90)) // Pitched down 15°, facing left
+    );
+
+    // Right camera: mounted on right side, facing right
+    public static final Transform3d kRobotToRightCamera = new Transform3d(
+      new Translation3d(0.0, Units.inchesToMeters(-12.0), Units.inchesToMeters(10.0)), // 12" right, 10" up
+      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-90)) // Pitched down 15°, facing right
+    );
+
+    // Standard deviations for multi-camera pose estimation
+    // Lower = trust more, higher = trust less
+    // [x, y, rotation] in meters and radians
+
+    // Single tag standard deviations
+    public static final double[] kSingleTagStdDevs = {1.5, 1.5, 3.0};
+
+    // Multi-tag standard deviations (when multiple tags visible)
+    public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
+
+    // Filtering thresholds
+    public static final double kMaxAmbiguity = 0.2; // Maximum pose ambiguity
+    public static final double kMaxTagDistance = 5.0; // Maximum distance to trust tags (meters)
+    public static final int kMinTagsForHighConfidence = 2; // Minimum tags for high confidence
   }
 
   public static class VisionConstants {

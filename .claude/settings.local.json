@@ -8,7 +8,9 @@
       "Bash(./gradlew build:*)",
       "Bash(curl:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(./gradlew clean build:*)"
     ],
     "deny": [],
     "ask": []
