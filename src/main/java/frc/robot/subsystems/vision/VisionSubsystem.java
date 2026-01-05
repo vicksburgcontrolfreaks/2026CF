@@ -6,8 +6,11 @@ package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
@@ -25,6 +28,17 @@ public class VisionSubsystem extends SubsystemBase {
   private PoseEstimate m_lastEstimate;
   private boolean m_hasTarget = false;
 
+  // Elastic (NetworkTables) publishers for telemetry
+  private final NetworkTable m_telemetryTable;
+  private final BooleanPublisher m_hasTargetPub;
+  private final DoublePublisher m_tagCountPub;
+  private final DoublePublisher m_avgDistancePub;
+  private final DoublePublisher m_avgAreaPub;
+  private final DoublePublisher m_tagSpanPub;
+  private final DoublePublisher m_latencyPub;
+  private final StringPublisher m_botPosePub;
+  private final DoublePublisher m_rawFidCountPub;
+
   public VisionSubsystem(SwerveDrive swerveDrive) {
     this(swerveDrive, VisionConstants.kLimelightName);
   }
@@ -32,6 +46,17 @@ public class VisionSubsystem extends SubsystemBase {
   public VisionSubsystem(SwerveDrive swerveDrive, String limelightName) {
     m_swerveDrive = swerveDrive;
     m_limelightName = limelightName;
+
+    // Initialize Elastic (NetworkTables) publishers
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Vision");
+    m_hasTargetPub = m_telemetryTable.getBooleanTopic("Has Target").publish();
+    m_tagCountPub = m_telemetryTable.getDoubleTopic("Tag Count").publish();
+    m_avgDistancePub = m_telemetryTable.getDoubleTopic("Avg Distance").publish();
+    m_avgAreaPub = m_telemetryTable.getDoubleTopic("Avg Area").publish();
+    m_tagSpanPub = m_telemetryTable.getDoubleTopic("Tag Span").publish();
+    m_latencyPub = m_telemetryTable.getDoubleTopic("Latency").publish();
+    m_botPosePub = m_telemetryTable.getStringTopic("Bot Pose").publish();
+    m_rawFidCountPub = m_telemetryTable.getDoubleTopic("Raw FID Count").publish();
   }
 
   @Override
@@ -136,18 +161,18 @@ public class VisionSubsystem extends SubsystemBase {
   }
 
   private void updateTelemetry() {
-    SmartDashboard.putBoolean("Vision/Has Target", m_hasTarget);
+    m_hasTargetPub.set(m_hasTarget);
 
     if (m_lastEstimate != null) {
-      SmartDashboard.putNumber("Vision/Tag Count", m_lastEstimate.tagCount);
-      SmartDashboard.putNumber("Vision/Avg Distance", m_lastEstimate.avgTagDist);
-      SmartDashboard.putNumber("Vision/Avg Area", m_lastEstimate.avgTagArea);
-      SmartDashboard.putNumber("Vision/Tag Span", m_lastEstimate.tagSpan);
-      SmartDashboard.putNumber("Vision/Latency", m_lastEstimate.latency);
-      SmartDashboard.putString("Vision/Bot Pose", m_lastEstimate.pose.toString());
+      m_tagCountPub.set(m_lastEstimate.tagCount);
+      m_avgDistancePub.set(m_lastEstimate.avgTagDist);
+      m_avgAreaPub.set(m_lastEstimate.avgTagArea);
+      m_tagSpanPub.set(m_lastEstimate.tagSpan);
+      m_latencyPub.set(m_lastEstimate.latency);
+      m_botPosePub.set(m_lastEstimate.pose.toString());
 
       // Useful for debugging
-      SmartDashboard.putNumber("Vision/Raw FID Count", m_lastEstimate.rawFiducials.length);
+      m_rawFidCountPub.set(m_lastEstimate.rawFiducials.length);
     }
   }
 

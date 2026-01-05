@@ -78,7 +78,10 @@ public final class Constants {
     public static final int kBackRightDriveMotorId = 7;
     public static final int kBackRightSteerMotorId = 8;
 
-    // ADIS16470 IMU is connected via SPI (onboard port), no CAN ID needed
+    // ADIS16470 IMU Configuration
+    // Connected via SPI (onboard port), no CAN ID needed
+    // Using 4-second calibration time for improved accuracy (robot must be stationary during init)
+    public static final int kGyroCalibrationTimeSec = 4;
 
     // Physical constants
     public static final double kWheelDiameterMeters = Units.inchesToMeters(3.0);
