@@ -33,8 +33,6 @@ public final class Constants {
     public static final int kDrivingMotorPinionTeeth = 14;
 
     // Calculations required for driving motor conversion factors and feed forward
-    // public static final double kDrivingMotorFreeSpeedRps =
-    // NeoMotorConstants.kFreeSpeedRpm / 60;
     public static final double kDrivingMotorFreeSpeedRps = NeoVortexMotorConstants.kFreeSpeedRpm / 60;
 
     public static final double kWheelDiameterMeters = 0.0762; // 3in
@@ -46,14 +44,10 @@ public final class Constants {
         / kDrivingMotorReduction;
   }
 
-  public static final class OIConstants {
-    public static final int kDriverControllerPort = 0;
-    public static final double kDriveDeadband = 0.05;
-    public static final int kMechanismControllerPort = 1;
-  }
-
   public static class OperatorConstants {
+    // Controller ports
     public static final int kDriverControllerPort = 0;
+    public static final int kMechanismControllerPort = 1;
 
     // Joystick deadband
     public static final double kDeadband = 0.1;
@@ -78,7 +72,10 @@ public final class Constants {
     public static final int kBackRightDriveMotorId = 7;
     public static final int kBackRightSteerMotorId = 8;
 
-    // ADIS16470 IMU is connected via SPI (onboard port), no CAN ID needed
+    // ADIS16470 IMU Configuration
+    // Connected via SPI (onboard port), no CAN ID needed
+    // Using 2-second calibration time for good accuracy with faster startup (robot must be stationary during init)
+    public static final int kGyroCalibrationTimeSec = 2;
 
     // Physical constants
     public static final double kWheelDiameterMeters = Units.inchesToMeters(3.0);
