@@ -6,8 +6,13 @@ package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
@@ -25,6 +30,19 @@ public class VisionSubsystem extends SubsystemBase {
   private PoseEstimate m_lastEstimate;
   private boolean m_hasTarget = false;
 
+  // Elastic (NetworkTables) publishers for telemetry
+  private final NetworkTable m_telemetryTable;
+  private final BooleanPublisher m_hasTargetPub;
+  private final DoublePublisher m_tagCountPub;
+  private final DoublePublisher m_avgDistancePub;
+  private final DoublePublisher m_avgAreaPub;
+  private final DoublePublisher m_tagSpanPub;
+  private final DoublePublisher m_latencyPub;
+  private final StringPublisher m_botPosePub;
+  private final DoublePublisher m_rawFidCountPub;
+  private final StringPublisher m_rejectionReasonPub;
+  private final BooleanPublisher m_measurementAcceptedPub;
+
   public VisionSubsystem(SwerveDrive swerveDrive) {
     this(swerveDrive, VisionConstants.kLimelightName);
   }
@@ -32,6 +50,19 @@ public class VisionSubsystem extends SubsystemBase {
   public VisionSubsystem(SwerveDrive swerveDrive, String limelightName) {
     m_swerveDrive = swerveDrive;
     m_limelightName = limelightName;
+
+    // Initialize Elastic (NetworkTables) publishers
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Vision");
+    m_hasTargetPub = m_telemetryTable.getBooleanTopic("Has Target").publish();
+    m_tagCountPub = m_telemetryTable.getDoubleTopic("Tag Count").publish();
+    m_avgDistancePub = m_telemetryTable.getDoubleTopic("Avg Distance").publish();
+    m_avgAreaPub = m_telemetryTable.getDoubleTopic("Avg Area").publish();
+    m_tagSpanPub = m_telemetryTable.getDoubleTopic("Tag Span").publish();
+    m_latencyPub = m_telemetryTable.getDoubleTopic("Latency").publish();
+    m_botPosePub = m_telemetryTable.getStringTopic("Bot Pose").publish();
+    m_rawFidCountPub = m_telemetryTable.getDoubleTopic("Raw FID Count").publish();
+    m_rejectionReasonPub = m_telemetryTable.getStringTopic("Rejection Reason").publish();
+    m_measurementAcceptedPub = m_telemetryTable.getBooleanTopic("Measurement Accepted").publish();
   }
 
   @Override
@@ -43,8 +74,12 @@ public class VisionSubsystem extends SubsystemBase {
     // Check if we have a valid target
     m_hasTarget = LimelightHelpers.getTV(m_limelightName);
 
+    // Check if we should accept the vision measurement
+    String rejectionReason = getVisionRejectionReason();
+    boolean accepted = m_hasTarget && rejectionReason == null;
+
     // Update pose estimation if we have a valid measurement
-    if (m_hasTarget && shouldAcceptVisionMeasurement()) {
+    if (accepted) {
       Pose2d visionPose2d = m_lastEstimate.pose;
       double timestamp = m_lastEstimate.timestampSeconds;
 
@@ -54,7 +89,15 @@ public class VisionSubsystem extends SubsystemBase {
         timestamp,
         getEstimationStdDevs()
       );
+
+      m_rejectionReasonPub.set("None - Accepted");
+    } else if (rejectionReason != null) {
+      m_rejectionReasonPub.set(rejectionReason);
+    } else {
+      m_rejectionReasonPub.set("No Target");
     }
+
+    m_measurementAcceptedPub.set(accepted);
 
     // Publish telemetry
     updateTelemetry();
@@ -62,32 +105,49 @@ public class VisionSubsystem extends SubsystemBase {
 
   /**
    * Determines whether to accept the current vision measurement based on quality metrics.
+   * Returns null if measurement should be accepted, or a rejection reason string if it should be rejected.
    * MegaTag2 provides robust filtering, but we add additional checks for safety.
    */
-  private boolean shouldAcceptVisionMeasurement() {
+  private String getVisionRejectionReason() {
     if (m_lastEstimate == null) {
-      return false;
+      return "Null estimate";
     }
 
     // Don't accept if we don't have any tags
     if (m_lastEstimate.tagCount < 1) {
-      return false;
+      return "No tags detected";
     }
 
     // Don't accept if tags are too far away
     if (m_lastEstimate.avgTagDist > VisionConstants.kMaxDistanceMeters) {
-      return false;
+      return String.format("Tags too far (%.2fm > %.2fm)",
+        m_lastEstimate.avgTagDist, VisionConstants.kMaxDistanceMeters);
     }
 
     // Don't accept if average tag area is too small (tags are far or small in frame)
     if (m_lastEstimate.avgTagArea < VisionConstants.kMinTagArea) {
-      return false;
+      return String.format("Tag area too small (%.4f < %.4f)",
+        m_lastEstimate.avgTagArea, VisionConstants.kMinTagArea);
+    }
+
+    // Alliance color validation - ensure pose is reasonable for our alliance
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isPresent()) {
+      double poseX = m_lastEstimate.pose.getX();
+
+      // FRC field is ~16.54m long. Blue alliance starts at X=0, Red alliance at X=16.54
+      // Reject if robot appears to be on wrong side of field
+      if (alliance.get() == Alliance.Blue && poseX > 12.0) {
+        return String.format("Blue alliance robot detected on red side (X=%.2fm)", poseX);
+      } else if (alliance.get() == Alliance.Red && poseX < 4.54) {
+        return String.format("Red alliance robot detected on blue side (X=%.2fm)", poseX);
+      }
     }
 
     // MegaTag2 handles ambiguity internally and provides robust filtering
     // The pose estimate already accounts for multi-tag geometry and outlier rejection
 
-    return true;
+    return null; // Accept measurement
   }
 
   /**
@@ -136,18 +196,18 @@ public class VisionSubsystem extends SubsystemBase {
   }
 
   private void updateTelemetry() {
-    SmartDashboard.putBoolean("Vision/Has Target", m_hasTarget);
+    m_hasTargetPub.set(m_hasTarget);
 
     if (m_lastEstimate != null) {
-      SmartDashboard.putNumber("Vision/Tag Count", m_lastEstimate.tagCount);
-      SmartDashboard.putNumber("Vision/Avg Distance", m_lastEstimate.avgTagDist);
-      SmartDashboard.putNumber("Vision/Avg Area", m_lastEstimate.avgTagArea);
-      SmartDashboard.putNumber("Vision/Tag Span", m_lastEstimate.tagSpan);
-      SmartDashboard.putNumber("Vision/Latency", m_lastEstimate.latency);
-      SmartDashboard.putString("Vision/Bot Pose", m_lastEstimate.pose.toString());
+      m_tagCountPub.set(m_lastEstimate.tagCount);
+      m_avgDistancePub.set(m_lastEstimate.avgTagDist);
+      m_avgAreaPub.set(m_lastEstimate.avgTagArea);
+      m_tagSpanPub.set(m_lastEstimate.tagSpan);
+      m_latencyPub.set(m_lastEstimate.latency);
+      m_botPosePub.set(m_lastEstimate.pose.toString());
 
       // Useful for debugging
-      SmartDashboard.putNumber("Vision/Raw FID Count", m_lastEstimate.rawFiducials.length);
+      m_rawFidCountPub.set(m_lastEstimate.rawFiducials.length);
     }
   }
 

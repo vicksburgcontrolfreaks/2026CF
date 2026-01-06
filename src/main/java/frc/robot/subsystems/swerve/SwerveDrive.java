@@ -5,6 +5,9 @@
 package frc.robot.subsystems.swerve;
 
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
+import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import edu.wpi.first.wpilibj.ADIS16470_IMU.CalibrationTime;
+import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -14,6 +17,11 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.SwerveConstants;
 
@@ -29,6 +37,28 @@ public class SwerveDrive extends SubsystemBase {
   private final Field2d m_field;
 
   private boolean m_fieldOriented = true;
+
+  // Elastic (NetworkTables) publishers for telemetry
+  private final NetworkTable m_telemetryTable;
+  private final DoublePublisher m_gyroAnglePub;
+  private final StringPublisher m_robotPosePub;
+  private final BooleanPublisher m_fieldOrientedPub;
+  private final DoublePublisher m_flVelocityPub;
+  private final DoublePublisher m_frVelocityPub;
+  private final DoublePublisher m_blVelocityPub;
+  private final DoublePublisher m_brVelocityPub;
+  private final DoublePublisher m_flAnglePub;
+  private final DoublePublisher m_frAnglePub;
+  private final DoublePublisher m_blAnglePub;
+  private final DoublePublisher m_brAnglePub;
+  private final DoublePublisher m_flAbsEncoderPub;
+  private final DoublePublisher m_frAbsEncoderPub;
+  private final DoublePublisher m_blAbsEncoderPub;
+  private final DoublePublisher m_brAbsEncoderPub;
+
+  // Telemetry update counter for reduced frequency publishing
+  private int m_telemetryCounter = 0;
+  private static final int TELEMETRY_UPDATE_PERIOD = 5; // Publish detailed telemetry every 5 cycles (100ms)
 
   public SwerveDrive() {
     // Initialize swerve modules
@@ -61,13 +91,29 @@ public class SwerveDrive extends SubsystemBase {
       "Back Right"
     );
 
-    // Initialize ADIS16470 IMU
-    // Using default SPI port (onboard SPI) and Z-axis (yaw)
-    m_gyro = new ADIS16470_IMU();
-    m_gyro.reset();
+    // Initialize ADIS16470 IMU with explicit axis configuration
+    // Yaw = Z-axis, Pitch = X-axis, Roll = Y-axis (standard FRC orientation)
+    // Using 4-second calibration for improved accuracy
+    // CRITICAL: Robot MUST remain stationary during calibration!
+    System.out.println("==============================================");
+    System.out.println("GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT");
+    System.out.println("Calibration time: 4 seconds");
+    System.out.println("==============================================");
 
-    // Calibrate the gyro (robot must be stationary)
-    m_gyro.calibrate();
+    m_gyro = new ADIS16470_IMU(
+      IMUAxis.kZ,  // Yaw axis
+      IMUAxis.kX,  // Pitch axis
+      IMUAxis.kY,  // Roll axis
+      SPI.Port.kOnboardCS0,  // Onboard SPI port
+      CalibrationTime._4s    // 4-second calibration for better accuracy
+    );
+
+    System.out.println("==============================================");
+    System.out.println("GYRO CALIBRATION COMPLETE");
+    System.out.println("==============================================");
+
+    // Reset gyro to zero heading
+    m_gyro.reset();
 
     // Initialize pose estimator
     m_poseEstimator = new SwerveDrivePoseEstimator(
@@ -77,9 +123,27 @@ public class SwerveDrive extends SubsystemBase {
       new Pose2d()
     );
 
-    // Initialize field visualization
+    // Initialize field visualization and publish to Elastic
     m_field = new Field2d();
     SmartDashboard.putData("Field", m_field);
+
+    // Initialize Elastic (NetworkTables) publishers
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("SwerveDrive");
+    m_gyroAnglePub = m_telemetryTable.getDoubleTopic("Gyro Angle").publish();
+    m_robotPosePub = m_telemetryTable.getStringTopic("Robot Pose").publish();
+    m_fieldOrientedPub = m_telemetryTable.getBooleanTopic("Field Oriented").publish();
+    m_flVelocityPub = m_telemetryTable.getDoubleTopic("FL Velocity").publish();
+    m_frVelocityPub = m_telemetryTable.getDoubleTopic("FR Velocity").publish();
+    m_blVelocityPub = m_telemetryTable.getDoubleTopic("BL Velocity").publish();
+    m_brVelocityPub = m_telemetryTable.getDoubleTopic("BR Velocity").publish();
+    m_flAnglePub = m_telemetryTable.getDoubleTopic("FL Angle").publish();
+    m_frAnglePub = m_telemetryTable.getDoubleTopic("FR Angle").publish();
+    m_blAnglePub = m_telemetryTable.getDoubleTopic("BL Angle").publish();
+    m_brAnglePub = m_telemetryTable.getDoubleTopic("BR Angle").publish();
+    m_flAbsEncoderPub = m_telemetryTable.getDoubleTopic("FL Absolute Encoder").publish();
+    m_frAbsEncoderPub = m_telemetryTable.getDoubleTopic("FR Absolute Encoder").publish();
+    m_blAbsEncoderPub = m_telemetryTable.getDoubleTopic("BL Absolute Encoder").publish();
+    m_brAbsEncoderPub = m_telemetryTable.getDoubleTopic("BR Absolute Encoder").publish();
   }
 
   @Override
@@ -90,26 +154,34 @@ public class SwerveDrive extends SubsystemBase {
     // Update field visualization
     m_field.setRobotPose(getPose());
 
-    // Publish telemetry to SmartDashboard
-    SmartDashboard.putNumber("Gyro Angle", getHeading());
-    SmartDashboard.putString("Robot Pose", getPose().toString());
-    SmartDashboard.putBoolean("Field Oriented", m_fieldOriented);
+    // Publish critical telemetry every cycle
+    m_gyroAnglePub.set(getHeading());
+    m_robotPosePub.set(getPose().toString());
+    m_fieldOrientedPub.set(m_fieldOriented);
 
-    SmartDashboard.putNumber("FL Velocity", m_frontLeft.getDriveVelocity());
-    SmartDashboard.putNumber("FR Velocity", m_frontRight.getDriveVelocity());
-    SmartDashboard.putNumber("BL Velocity", m_backLeft.getDriveVelocity());
-    SmartDashboard.putNumber("BR Velocity", m_backRight.getDriveVelocity());
+    // Increment counter and check if we should publish detailed telemetry
+    m_telemetryCounter++;
+    if (m_telemetryCounter >= TELEMETRY_UPDATE_PERIOD) {
+      m_telemetryCounter = 0;
 
-    SmartDashboard.putNumber("FL Angle", Math.toDegrees(m_frontLeft.getSteerPosition()));
-    SmartDashboard.putNumber("FR Angle", Math.toDegrees(m_frontRight.getSteerPosition()));
-    SmartDashboard.putNumber("BL Angle", Math.toDegrees(m_backLeft.getSteerPosition()));
-    SmartDashboard.putNumber("BR Angle", Math.toDegrees(m_backRight.getSteerPosition()));
+      // Publish module velocities at reduced rate
+      m_flVelocityPub.set(m_frontLeft.getDriveVelocity());
+      m_frVelocityPub.set(m_frontRight.getDriveVelocity());
+      m_blVelocityPub.set(m_backLeft.getDriveVelocity());
+      m_brVelocityPub.set(m_backRight.getDriveVelocity());
 
-    // Publish raw absolute encoder values for calibration
-    SmartDashboard.putNumber("FL Absolute Encoder", m_frontLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
-    SmartDashboard.putNumber("FR Absolute Encoder", m_frontRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
-    SmartDashboard.putNumber("BL Absolute Encoder", m_backLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
-    SmartDashboard.putNumber("BR Absolute Encoder", m_backRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      // Publish module angles at reduced rate
+      m_flAnglePub.set(Math.toDegrees(m_frontLeft.getSteerPosition()));
+      m_frAnglePub.set(Math.toDegrees(m_frontRight.getSteerPosition()));
+      m_blAnglePub.set(Math.toDegrees(m_backLeft.getSteerPosition()));
+      m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
+
+      // Publish raw absolute encoder values for calibration (useful for setup only)
+      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+    }
   }
 
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
@@ -181,7 +253,9 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public double getHeading() {
-    // ADIS16470 getAngle returns counter-clockwise positive, negate for standard convention
+    // ADIS16470_IMU getAngle() returns counter-clockwise positive (Z-axis yaw)
+    // Negate for standard FRC convention (clockwise positive)
+    // Use IEEEremainder to keep angle in [-180, 180] range
     return Math.IEEEremainder(-m_gyro.getAngle(), 360);
   }
 
