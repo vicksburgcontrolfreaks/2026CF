@@ -93,11 +93,11 @@ public class SwerveDrive extends SubsystemBase {
 
     // Initialize ADIS16470 IMU with explicit axis configuration
     // Yaw = Z-axis, Pitch = X-axis, Roll = Y-axis (standard FRC orientation)
-    // Using 4-second calibration for improved accuracy
+    // Using 2-second calibration for good accuracy with faster startup
     // CRITICAL: Robot MUST remain stationary during calibration!
     System.out.println("==============================================");
     System.out.println("GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT");
-    System.out.println("Calibration time: 4 seconds");
+    System.out.println("Calibration time: 2 seconds");
     System.out.println("==============================================");
 
     m_gyro = new ADIS16470_IMU(
@@ -105,7 +105,7 @@ public class SwerveDrive extends SubsystemBase {
       IMUAxis.kX,  // Pitch axis
       IMUAxis.kY,  // Roll axis
       SPI.Port.kOnboardCS0,  // Onboard SPI port
-      CalibrationTime._4s    // 4-second calibration for better accuracy
+      CalibrationTime._2s    // 2-second calibration for good accuracy with faster startup
     );
 
     System.out.println("==============================================");
