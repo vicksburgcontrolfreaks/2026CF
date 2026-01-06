@@ -77,8 +77,8 @@ public final class Constants {
 
     // ADIS16470 IMU Configuration
     // Connected via SPI (onboard port), no CAN ID needed
-    // Using 4-second calibration time for improved accuracy (robot must be stationary during init)
-    public static final int kGyroCalibrationTimeSec = 4;
+    // Using 2-second calibration time for good accuracy with faster startup (robot must be stationary during init)
+    public static final int kGyroCalibrationTimeSec = 2;
 
     // Physical constants
     public static final double kWheelDiameterMeters = Units.inchesToMeters(3.0);

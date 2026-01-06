@@ -3,14 +3,10 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(dir:*)",
-      "Bash(.gradlew.bat build:*)",
-      "Bash(gradlew.bat build:*)",
       "Bash(./gradlew build:*)",
       "Bash(curl:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git checkout:*)",
-      "Bash(./gradlew clean build:*)"
+      "Bash(where:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -161,13 +161,13 @@ Modern web-based dashboard with NetworkTables:
 
 ### Gyro Calibration
 
-⚠️ **CRITICAL:** Robot MUST remain stationary for 4 seconds after power-on!
+⚠️ **CRITICAL:** Robot MUST remain stationary for 2 seconds after power-on!
 
 The ADIS16470 IMU calibrates on startup. You'll see console messages:
 ```
 ==============================================
 GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT
-Calibration time: 4 seconds
+Calibration time: 2 seconds
 ==============================================
 ```
 
@@ -267,7 +267,7 @@ Watch `Vision/Rejection Reason` to tune filtering thresholds.
 |---------|----------|
 | Modules turn wrong direction | Re-calibrate in REV Hardware Client |
 | Robot drives backward | Flip `kDriveMotorInverted` |
-| Gyro drifting | Keep stationary during 4s calibration |
+| Gyro drifting | Keep stationary during 2s calibration |
 | PathPlanner config failed | Open GUI, configure robot, click Save |
 | Vision not working | Check Limelight config, enable MegaTag2 |
 | No telemetry in Elastic | Verify NetworkTables connection |

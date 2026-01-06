@@ -259,13 +259,13 @@ public static final int kSteerMotorCurrentLimit = 20; // Amps
 
 ### 8.1 Gyro Calibration
 
-**CRITICAL:** Robot MUST remain stationary during the first 4 seconds after power-on!
+**CRITICAL:** Robot MUST remain stationary during the first 2 seconds after power-on!
 
 The gyro automatically calibrates on startup. You'll see:
 ```
 ==============================================
 GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT
-Calibration time: 4 seconds
+Calibration time: 2 seconds
 ==============================================
 ```
 
@@ -350,7 +350,7 @@ Check these NetworkTables topics exist:
 - Ensure camera position/angle configured
 
 ### Gyro Drifting
-- Keep robot stationary during 4-second calibration
+- Keep robot stationary during 2-second calibration
 - Don't move robot immediately after power-on
 - Power cycle if drift occurs
 - Vision will correct drift automatically
