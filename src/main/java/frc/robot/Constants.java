@@ -33,8 +33,6 @@ public final class Constants {
     public static final int kDrivingMotorPinionTeeth = 14;
 
     // Calculations required for driving motor conversion factors and feed forward
-    // public static final double kDrivingMotorFreeSpeedRps =
-    // NeoMotorConstants.kFreeSpeedRpm / 60;
     public static final double kDrivingMotorFreeSpeedRps = NeoVortexMotorConstants.kFreeSpeedRpm / 60;
 
     public static final double kWheelDiameterMeters = 0.0762; // 3in
@@ -46,14 +44,10 @@ public final class Constants {
         / kDrivingMotorReduction;
   }
 
-  public static final class OIConstants {
-    public static final int kDriverControllerPort = 0;
-    public static final double kDriveDeadband = 0.05;
-    public static final int kMechanismControllerPort = 1;
-  }
-
   public static class OperatorConstants {
+    // Controller ports
     public static final int kDriverControllerPort = 0;
+    public static final int kMechanismControllerPort = 1;
 
     // Joystick deadband
     public static final double kDeadband = 0.1;

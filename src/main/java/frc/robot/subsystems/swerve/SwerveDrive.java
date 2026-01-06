@@ -16,6 +16,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -55,6 +56,10 @@ public class SwerveDrive extends SubsystemBase {
   private final DoublePublisher m_blAbsEncoderPub;
   private final DoublePublisher m_brAbsEncoderPub;
 
+  // Telemetry update counter for reduced frequency publishing
+  private int m_telemetryCounter = 0;
+  private static final int TELEMETRY_UPDATE_PERIOD = 5; // Publish detailed telemetry every 5 cycles (100ms)
+
   public SwerveDrive() {
     // Initialize swerve modules
     // Note: Offsets are 0.0 because REV MAXSwerve modules store calibration on SparkMax
@@ -89,6 +94,12 @@ public class SwerveDrive extends SubsystemBase {
     // Initialize ADIS16470 IMU with explicit axis configuration
     // Yaw = Z-axis, Pitch = X-axis, Roll = Y-axis (standard FRC orientation)
     // Using 4-second calibration for improved accuracy
+    // CRITICAL: Robot MUST remain stationary during calibration!
+    System.out.println("==============================================");
+    System.out.println("GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT");
+    System.out.println("Calibration time: 4 seconds");
+    System.out.println("==============================================");
+
     m_gyro = new ADIS16470_IMU(
       IMUAxis.kZ,  // Yaw axis
       IMUAxis.kX,  // Pitch axis
@@ -96,6 +107,10 @@ public class SwerveDrive extends SubsystemBase {
       SPI.Port.kOnboardCS0,  // Onboard SPI port
       CalibrationTime._4s    // 4-second calibration for better accuracy
     );
+
+    System.out.println("==============================================");
+    System.out.println("GYRO CALIBRATION COMPLETE");
+    System.out.println("==============================================");
 
     // Reset gyro to zero heading
     m_gyro.reset();
@@ -108,8 +123,9 @@ public class SwerveDrive extends SubsystemBase {
       new Pose2d()
     );
 
-    // Initialize field visualization
+    // Initialize field visualization and publish to Elastic
     m_field = new Field2d();
+    SmartDashboard.putData("Field", m_field);
 
     // Initialize Elastic (NetworkTables) publishers
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("SwerveDrive");
@@ -138,26 +154,34 @@ public class SwerveDrive extends SubsystemBase {
     // Update field visualization
     m_field.setRobotPose(getPose());
 
-    // Publish telemetry to Elastic (NetworkTables)
+    // Publish critical telemetry every cycle
     m_gyroAnglePub.set(getHeading());
     m_robotPosePub.set(getPose().toString());
     m_fieldOrientedPub.set(m_fieldOriented);
 
-    m_flVelocityPub.set(m_frontLeft.getDriveVelocity());
-    m_frVelocityPub.set(m_frontRight.getDriveVelocity());
-    m_blVelocityPub.set(m_backLeft.getDriveVelocity());
-    m_brVelocityPub.set(m_backRight.getDriveVelocity());
+    // Increment counter and check if we should publish detailed telemetry
+    m_telemetryCounter++;
+    if (m_telemetryCounter >= TELEMETRY_UPDATE_PERIOD) {
+      m_telemetryCounter = 0;
 
-    m_flAnglePub.set(Math.toDegrees(m_frontLeft.getSteerPosition()));
-    m_frAnglePub.set(Math.toDegrees(m_frontRight.getSteerPosition()));
-    m_blAnglePub.set(Math.toDegrees(m_backLeft.getSteerPosition()));
-    m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
+      // Publish module velocities at reduced rate
+      m_flVelocityPub.set(m_frontLeft.getDriveVelocity());
+      m_frVelocityPub.set(m_frontRight.getDriveVelocity());
+      m_blVelocityPub.set(m_backLeft.getDriveVelocity());
+      m_brVelocityPub.set(m_backRight.getDriveVelocity());
 
-    // Publish raw absolute encoder values for calibration
-    m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
-    m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
-    m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
-    m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      // Publish module angles at reduced rate
+      m_flAnglePub.set(Math.toDegrees(m_frontLeft.getSteerPosition()));
+      m_frAnglePub.set(Math.toDegrees(m_frontRight.getSteerPosition()));
+      m_blAnglePub.set(Math.toDegrees(m_backLeft.getSteerPosition()));
+      m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
+
+      // Publish raw absolute encoder values for calibration (useful for setup only)
+      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+    }
   }
 
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {

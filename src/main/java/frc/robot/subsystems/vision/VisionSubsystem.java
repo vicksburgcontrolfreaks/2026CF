@@ -6,6 +6,8 @@ package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
@@ -38,6 +40,8 @@ public class VisionSubsystem extends SubsystemBase {
   private final DoublePublisher m_latencyPub;
   private final StringPublisher m_botPosePub;
   private final DoublePublisher m_rawFidCountPub;
+  private final StringPublisher m_rejectionReasonPub;
+  private final BooleanPublisher m_measurementAcceptedPub;
 
   public VisionSubsystem(SwerveDrive swerveDrive) {
     this(swerveDrive, VisionConstants.kLimelightName);
@@ -57,6 +61,8 @@ public class VisionSubsystem extends SubsystemBase {
     m_latencyPub = m_telemetryTable.getDoubleTopic("Latency").publish();
     m_botPosePub = m_telemetryTable.getStringTopic("Bot Pose").publish();
     m_rawFidCountPub = m_telemetryTable.getDoubleTopic("Raw FID Count").publish();
+    m_rejectionReasonPub = m_telemetryTable.getStringTopic("Rejection Reason").publish();
+    m_measurementAcceptedPub = m_telemetryTable.getBooleanTopic("Measurement Accepted").publish();
   }
 
   @Override
@@ -68,8 +74,12 @@ public class VisionSubsystem extends SubsystemBase {
     // Check if we have a valid target
     m_hasTarget = LimelightHelpers.getTV(m_limelightName);
 
+    // Check if we should accept the vision measurement
+    String rejectionReason = getVisionRejectionReason();
+    boolean accepted = m_hasTarget && rejectionReason == null;
+
     // Update pose estimation if we have a valid measurement
-    if (m_hasTarget && shouldAcceptVisionMeasurement()) {
+    if (accepted) {
       Pose2d visionPose2d = m_lastEstimate.pose;
       double timestamp = m_lastEstimate.timestampSeconds;
 
@@ -79,7 +89,15 @@ public class VisionSubsystem extends SubsystemBase {
         timestamp,
         getEstimationStdDevs()
       );
+
+      m_rejectionReasonPub.set("None - Accepted");
+    } else if (rejectionReason != null) {
+      m_rejectionReasonPub.set(rejectionReason);
+    } else {
+      m_rejectionReasonPub.set("No Target");
     }
+
+    m_measurementAcceptedPub.set(accepted);
 
     // Publish telemetry
     updateTelemetry();
@@ -87,32 +105,49 @@ public class VisionSubsystem extends SubsystemBase {
 
   /**
    * Determines whether to accept the current vision measurement based on quality metrics.
+   * Returns null if measurement should be accepted, or a rejection reason string if it should be rejected.
    * MegaTag2 provides robust filtering, but we add additional checks for safety.
    */
-  private boolean shouldAcceptVisionMeasurement() {
+  private String getVisionRejectionReason() {
     if (m_lastEstimate == null) {
-      return false;
+      return "Null estimate";
     }
 
     // Don't accept if we don't have any tags
     if (m_lastEstimate.tagCount < 1) {
-      return false;
+      return "No tags detected";
     }
 
     // Don't accept if tags are too far away
     if (m_lastEstimate.avgTagDist > VisionConstants.kMaxDistanceMeters) {
-      return false;
+      return String.format("Tags too far (%.2fm > %.2fm)",
+        m_lastEstimate.avgTagDist, VisionConstants.kMaxDistanceMeters);
     }
 
     // Don't accept if average tag area is too small (tags are far or small in frame)
     if (m_lastEstimate.avgTagArea < VisionConstants.kMinTagArea) {
-      return false;
+      return String.format("Tag area too small (%.4f < %.4f)",
+        m_lastEstimate.avgTagArea, VisionConstants.kMinTagArea);
+    }
+
+    // Alliance color validation - ensure pose is reasonable for our alliance
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isPresent()) {
+      double poseX = m_lastEstimate.pose.getX();
+
+      // FRC field is ~16.54m long. Blue alliance starts at X=0, Red alliance at X=16.54
+      // Reject if robot appears to be on wrong side of field
+      if (alliance.get() == Alliance.Blue && poseX > 12.0) {
+        return String.format("Blue alliance robot detected on red side (X=%.2fm)", poseX);
+      } else if (alliance.get() == Alliance.Red && poseX < 4.54) {
+        return String.format("Red alliance robot detected on blue side (X=%.2fm)", poseX);
+      }
     }
 
     // MegaTag2 handles ambiguity internally and provides robust filtering
     // The pose estimate already accounts for multi-tag geometry and outlier rejection
 
-    return true;
+    return null; // Accept measurement
   }
 
   /**

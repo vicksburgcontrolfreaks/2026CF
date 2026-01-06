@@ -10,9 +10,11 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
@@ -39,10 +41,13 @@ public class RobotContainer {
   // Autonomous chooser
   private final SendableChooser<Command> m_autoChooser;
 
+  // PathPlanner configuration status
+  private boolean m_pathPlannerConfigured = false;
+
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     // Configure PathPlanner AutoBuilder
-    configurePathPlanner();
+    m_pathPlannerConfigured = configurePathPlanner();
 
     // Configure the default command for swerve drive
     configureDefaultCommands();
@@ -50,18 +55,25 @@ public class RobotContainer {
     // Configure the trigger bindings
     configureBindings();
 
-    // Build autonomous chooser from PathPlanner
-    // This automatically includes all .auto files from deploy/pathplanner/autos/
-    m_autoChooser = AutoBuilder.buildAutoChooser();
+    // Build autonomous chooser from PathPlanner only if configured successfully
+    if (m_pathPlannerConfigured) {
+      m_autoChooser = AutoBuilder.buildAutoChooser();
+      SmartDashboard.putData("Auto Chooser", m_autoChooser);
+    } else {
+      // Create a disabled auto chooser if PathPlanner failed
+      m_autoChooser = new SendableChooser<>();
+      m_autoChooser.setDefaultOption("Auto Disabled - PathPlanner Config Failed", Commands.none());
+      SmartDashboard.putData("Auto Chooser", m_autoChooser);
 
-    // Publish to SmartDashboard/Elastic for selection via dashboard
-    SmartDashboard.putData("Auto Chooser", m_autoChooser);
+      DriverStation.reportWarning("PathPlanner configuration failed! Autonomous disabled.", false);
+    }
   }
 
   /**
    * Configure PathPlanner AutoBuilder for autonomous path following
+   * @return true if configuration succeeded, false otherwise
    */
-  private void configurePathPlanner() {
+  private boolean configurePathPlanner() {
     try {
       // Load the RobotConfig from the GUI-generated file in deploy/pathplanner/
       RobotConfig config = RobotConfig.fromGUISettings();
@@ -76,24 +88,27 @@ public class RobotContainer {
           new PIDConstants(AutoConstants.kPRotation, AutoConstants.kIRotation, AutoConstants.kDRotation) // Rotation PID
         ),
         config, // Robot config
-        () -> false, // Should flip path based on alliance color (false for blue alliance)
+        () -> {
+          // Flip path based on alliance color (Red alliance needs flipped paths)
+          var alliance = DriverStation.getAlliance();
+          return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
+        },
         m_swerveDrive // Drive subsystem
       );
+
+      // Register named commands for PathPlanner
+      // These can be used in the PathPlanner GUI as event markers
+      NamedCommands.registerCommand("stopDrive", m_swerveDrive.runOnce(() -> m_swerveDrive.stop()));
+      NamedCommands.registerCommand("lockWheels", m_swerveDrive.run(() -> m_swerveDrive.setX()).withTimeout(1.0));
+
+      return true;
     } catch (Exception e) {
       // If RobotConfig file doesn't exist, PathPlanner will not work properly
       // You need to open PathPlanner GUI and configure your robot, which will generate the config file
-      System.err.println("==================================================");
-      System.err.println("Failed to load PathPlanner RobotConfig!");
-      System.err.println("Please open PathPlanner GUI and configure your robot.");
-      System.err.println("This will generate the required config file.");
-      System.err.println("==================================================");
+      DriverStation.reportError("Failed to load PathPlanner RobotConfig! Please open PathPlanner GUI and configure your robot.", false);
       e.printStackTrace();
+      return false;
     }
-
-    // Register named commands for PathPlanner
-    // These can be used in the PathPlanner GUI as event markers
-    NamedCommands.registerCommand("stopDrive", m_swerveDrive.runOnce(() -> m_swerveDrive.stop()));
-    NamedCommands.registerCommand("lockWheels", m_swerveDrive.run(() -> m_swerveDrive.setX()).withTimeout(1.0));
   }
 
   private void configureDefaultCommands() {

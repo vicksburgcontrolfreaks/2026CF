@@ -8,7 +8,12 @@
       "Bash(./gradlew build:*)",
       "Bash(curl:*)",
       "Bash(where:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(Select-Object -First 100)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"gradlew.bat build --console=plain\")",
+      "Bash(cmd /c \"del SWERVE_SETUP.md PATHPLANNER_SETUP.md PATHPLANNER_COMPLETE.md ELASTIC_MIGRATION.md TODO.md 2>nul && echo Files removed successfully\")",
+      "Bash(cmd /c 'powershell -Command \"\"Remove-Item SWERVE_SETUP.md, PATHPLANNER_SETUP.md, PATHPLANNER_COMPLETE.md, ELASTIC_MIGRATION.md, TODO.md -Force\"\"')"
     ],
     "deny": [],
     "ask": []

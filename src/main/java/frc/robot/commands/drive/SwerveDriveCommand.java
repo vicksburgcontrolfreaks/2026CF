@@ -71,7 +71,7 @@ public class SwerveDriveCommand extends Command {
       speedLimit = OperatorConstants.kNormalSpeedLimit;
     }
 
-    // Calculate speeds (negate y because controller Y is inverted)
+    // Calculate speeds and apply speed limit
     double xSpeed = xInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
     double ySpeed = -yInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
     double rot = rotInput * SwerveConstants.kMaxAngularSpeedRadiansPerSecond * speedLimit;
