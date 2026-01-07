@@ -1,15 +1,15 @@
 # FRC 2026 Testbot - Swerve Drive with Vision
 
-A comprehensive FRC robot codebase featuring swerve drive, PathPlanner autonomous, and vision-based localization using Limelight MegaTag2.
+A comprehensive FRC robot codebase featuring swerve drive, PathPlanner autonomous, and vision-based localization using PhotonVision with 4 cameras for 360° AprilTag detection.
 
 ## Features
 
 ### ✨ Core Systems
 
 - **Swerve Drive** - REV MAXSwerve modules with field-oriented control
-- **Vision Localization** - Limelight 4 with MegaTag2 for precise pose estimation
+- **Vision Localization** - PhotonVision with 4x Arducam OV9281 cameras for 360° AprilTag detection
 - **PathPlanner Integration** - GUI-based autonomous path creation and following
-- **Pose Estimation Fusion** - Combines odometry with vision for drift correction
+- **Pose Estimation Fusion** - Multi-camera vision + odometry for accurate positioning
 - **Elastic Telemetry** - Modern web-based dashboard with NetworkTables publishers
 
 ### 🎮 Driver Controls
@@ -32,7 +32,7 @@ A comprehensive FRC robot codebase featuring swerve drive, PathPlanner autonomou
 
 - **Swerve Modules**: REV MAXSwerve (NEO Vortex drive, NEO 550 steer)
 - **IMU**: ADIS16470 (via SPI)
-- **Vision**: Limelight 4 with MegaTag2
+- **Vision**: Raspberry Pi 5 + PhotonVision + 4x Arducam OV9281 Global Shutter Cameras
 - **Controller**: REV Robotics roboRIO 2.0
 - **Motor Controllers**: SparkMax (with absolute encoder calibration)
 
@@ -61,7 +61,7 @@ This guide walks you through:
 - Calibrating swerve modules with REV Hardware Client
 - Configuring PathPlanner robot settings
 - Testing and tuning PID constants
-- Setting up Limelight vision (optional)
+- Setting up PhotonVision cameras (see [PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md))
 - Troubleshooting common issues
 
 **Quick setup checklist:**
@@ -69,7 +69,7 @@ This guide walks you through:
 2. Calibrate swerve modules using REV Hardware Client
 3. Configure robot dimensions in PathPlanner GUI
 4. Test motor inversions and tune PID values
-5. Configure Limelight (optional)
+5. Set up PhotonVision (see [PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md))
 
 ### 3. Deploy to Robot
 
@@ -91,7 +91,6 @@ src/main/
 │   ├── Robot.java                    # Main robot class
 │   ├── RobotContainer.java           # Subsystems, commands, bindings
 │   ├── Constants.java                # All configuration constants
-│   ├── LimelightHelpers.java         # Vision helper library
 │   ├── commands/
 │   │   └── drive/
 │   │       └── SwerveDriveCommand.java  # Teleop swerve control
@@ -101,7 +100,7 @@ src/main/
 │       │   ├── SwerveModule.java     # Individual module control
 │       │   └── SwerveConfig.java     # Module configuration
 │       └── vision/
-│           └── VisionSubsystem.java  # MegaTag2 vision integration
+│           └── PhotonVisionSubsystem.java  # 4-camera PhotonVision integration
 ├── deploy/pathplanner/
 │   ├── autos/                        # Autonomous routines (.auto files)
 │   └── paths/                        # Path definitions (.path files)
@@ -110,22 +109,28 @@ src/main/
 
 ## Key Technologies
 
-### Vision: Limelight MegaTag2
+### Vision: PhotonVision 4-Camera System
 
-Advanced AprilTag-based localization with:
-- **Multi-tag fusion** - Uses multiple tags simultaneously
-- **Dynamic trust scaling** - Automatically adjusts confidence based on:
+Advanced AprilTag-based localization with 360° coverage:
+- **4-camera setup** - Front, back, left, right for complete field awareness
+- **Multi-tag fusion** - Uses multiple tags simultaneously across cameras
+- **Best camera selection** - Automatically chooses best pose estimate
+- **Dynamic trust scaling** - Adjusts confidence based on:
   - Number of tags visible
   - Distance to tags
-  - Tag geometry in frame
+  - Pose ambiguity
 - **Alliance validation** - Rejects poses on wrong side of field
 - **Outlier rejection** - Filters bad measurements automatically
 
 **Telemetry Topics:**
-- `Vision/Has Target` - Tag detection status
-- `Vision/Tag Count` - Number of tags tracked
-- `Vision/Rejection Reason` - Why measurements rejected
-- `Vision/Measurement Accepted` - Whether pose update applied
+- `PhotonVision/Has Target` - Any camera detecting tags
+- `PhotonVision/Total Tag Count` - Tags across all cameras
+- `PhotonVision/Active Cameras` - Cameras with targets
+- `PhotonVision/Best Camera` - Camera providing pose estimate
+- `PhotonVision/Rejection Reason` - Why measurements rejected
+- `PhotonVision/Measurement Accepted` - Whether pose update applied
+
+See [PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md) for setup instructions.
 
 ### Autonomous: PathPlanner
 
@@ -257,7 +262,7 @@ public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
 
 **Higher = Trust less | Lower = Trust more**
 
-Watch `Vision/Rejection Reason` to tune filtering thresholds.
+Watch `PhotonVision/Rejection Reason` to tune filtering thresholds.
 
 ## Troubleshooting
 
@@ -269,7 +274,7 @@ Watch `Vision/Rejection Reason` to tune filtering thresholds.
 | Robot drives backward | Flip `kDriveMotorInverted` |
 | Gyro drifting | Keep stationary during 2s calibration |
 | PathPlanner config failed | Open GUI, configure robot, click Save |
-| Vision not working | Check Limelight config, enable MegaTag2 |
+| Vision not working | Check PhotonVision setup, camera connections |
 | No telemetry in Elastic | Verify NetworkTables connection |
 
 See [SETUP.md](SETUP.md) for detailed troubleshooting.
@@ -278,19 +283,22 @@ See [SETUP.md](SETUP.md) for detailed troubleshooting.
 
 Recent improvements to the codebase:
 
+✅ **PhotonVision Migration** - Replaced Limelight with 4-camera PhotonVision system for 360° coverage
+✅ **Multi-Camera Fusion** - Intelligent best-camera selection for optimal pose estimates
 ✅ **Alliance Detection** - Automatic path flipping for red alliance
 ✅ **Auto Lockout** - Prevents crashes if PathPlanner config missing
 ✅ **Vision Filtering** - Alliance validation and rejection logging
 ✅ **Telemetry Optimization** - Reduced bandwidth usage by 80%
 ✅ **Field Visualization** - Field2d published to dashboard
 ✅ **Gyro Calibration Warning** - Clear console messages during startup
-✅ **Constants Cleanup** - Removed duplicate OIConstants
+✅ **Constants Cleanup** - Removed duplicate constants
 ✅ **Error Handling** - Better PathPlanner configuration validation
 
 ## Documentation
 
 - **[README.md](README.md)** - This file - Project overview, features, and important notes
 - **[SETUP.md](SETUP.md)** - Complete step-by-step robot configuration guide
+- **[PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md)** - PhotonVision 4-camera setup guide
 - **[WPILib-License.md](WPILib-License.md)** - Project license
 
 ## Resources
@@ -298,7 +306,7 @@ Recent improvements to the codebase:
 - **WPILib Docs**: https://docs.wpilib.org/
 - **REV Docs**: https://docs.revrobotics.com/
 - **PathPlanner**: https://pathplanner.dev/
-- **Limelight Docs**: https://docs.limelightvision.io/
+- **PhotonVision Docs**: https://docs.photonvision.org/
 - **Elastic Dashboard**: https://docs.wpilib.org/en/stable/docs/software/dashboards/elastic.html
 
 ## License
@@ -319,4 +327,4 @@ For questions or issues:
 
 ---
 
-**Built with WPILib 2025 | REV Robotics | PathPlanner | Limelight**
+**Built with WPILib 2025 | REV Robotics | PathPlanner | PhotonVision**

@@ -20,7 +20,7 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.subsystems.swerve.SwerveDrive;
-import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -32,7 +32,7 @@ public class RobotContainer {
 
   // Subsystems
   private final SwerveDrive m_swerveDrive = new SwerveDrive();
-  private final VisionSubsystem m_visionSubsystem = new VisionSubsystem(m_swerveDrive);
+  private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
 
   // Controllers
   private final CommandXboxController m_driverController =
@@ -196,7 +196,7 @@ public class RobotContainer {
   /**
    * Get the vision subsystem
    */
-  public VisionSubsystem getVisionSubsystem() {
+  public PhotonVisionSubsystem getVisionSubsystem() {
     return m_visionSubsystem;
   }
 }

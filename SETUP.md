@@ -9,7 +9,7 @@ This guide walks you through configuring this FRC robot code on your hardware.
 - PathPlanner GUI installed ([download here](https://pathplanner.dev/))
 - Robot with REV MAXSwerve modules
 - ADIS16470 IMU (included with REV Control System)
-- Limelight 4 (optional, for vision)
+- Raspberry Pi 5 + PhotonVision + 4x Arducam OV9281 cameras (for vision - see [PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md))
 
 ## Step 1: Update CAN IDs and Constants
 
@@ -128,36 +128,26 @@ Download from: https://pathplanner.dev/
 4. Drag your path from Paths panel into the auto
 5. Save (auto-saves to `deploy/pathplanner/autos/`)
 
-## Step 4: Configure Vision (Optional)
+## Step 4: Configure PhotonVision (Optional)
 
-If you have a Limelight 4:
+For complete PhotonVision setup instructions with 4 cameras, see **[PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md)**.
 
-### 4.1 Update Limelight Name
+**Quick PhotonVision checklist:**
+1. Flash PhotonVision image to Raspberry Pi 5 SD card
+2. Connect and configure all 4 cameras (front, back, left, right)
+3. Calibrate each camera using PhotonVision web UI
+4. Update camera positions in [Constants.java](src/main/java/frc/robot/Constants.java) PhotonVisionConstants section
+5. Test AprilTag detection and pose estimation
 
-Edit [Constants.java](src/main/java/frc/robot/Constants.java#L143):
+### 4.1 Tune Vision Standard Deviations
 
-```java
-public static final String kLimelightName = "limelight"; // Change if different
-```
-
-### 4.2 Configure Limelight
-
-1. Connect to Limelight web interface: http://limelight.local:5801
-2. Set pipeline to **AprilTag mode**
-3. Enable **MegaTag2** in AprilTag settings
-4. Select **2025 Reefscape** field layout (or your game year)
-5. Configure camera mount position and angle
-6. Set team number to match your robot
-
-### 4.3 Tune Vision Standard Deviations
-
-After testing, you may want to adjust [Constants.java](src/main/java/frc/robot/Constants.java#L150-L156):
+After testing, you may want to adjust PhotonVisionConstants in [Constants.java](src/main/java/frc/robot/Constants.java):
 
 ```java
 // Single tag - less confident
-public static final double[] kSingleTagStdDevs = {1.0, 1.0, 2.0};
+public static final double[] kSingleTagStdDevs = {1.5, 1.5, 3.0};
 
-// Multi-tag (MegaTag2) - more confident
+// Multi-tag - more confident
 public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
 ```
 
@@ -343,11 +333,12 @@ Check these NetworkTables topics exist:
 - Rebuild and redeploy code
 
 ### Vision Not Working
-- Ping Limelight: `ping limelight.local`
-- Access web interface: http://limelight.local:5801
-- Verify MegaTag2 is enabled
-- Check field layout matches game year
-- Ensure camera position/angle configured
+- Ping PhotonVision: `ping photonvision.local`
+- Access web interface: http://photonvision.local:5800
+- Verify all cameras are connected and detected
+- Check AprilTag pipeline is configured
+- Ensure 2025 Reefscape field layout is selected
+- Verify camera transforms in Constants.java match physical mounting
 
 ### Gyro Drifting
 - Keep robot stationary during 2-second calibration
@@ -371,7 +362,7 @@ After completing setup:
 - **REV Docs**: https://docs.revrobotics.com/
 - **REV Hardware Client**: https://docs.revrobotics.com/rev-hardware-client/
 - **PathPlanner Docs**: https://pathplanner.dev/home.html
-- **Limelight Docs**: https://docs.limelightvision.io/
+- **PhotonVision Docs**: https://docs.photonvision.org/
 - **Elastic Dashboard**: https://docs.wpilib.org/en/stable/docs/software/dashboards/elastic.html
 - **ADIS16470 IMU**: https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-hardware.html
 
