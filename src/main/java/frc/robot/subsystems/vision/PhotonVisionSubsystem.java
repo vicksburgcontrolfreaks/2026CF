@@ -5,7 +5,10 @@
 package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.networktables.BooleanPublisher;
@@ -142,11 +145,11 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     boolean hasAnyTarget = false;
     int totalTagCount = 0;
     int activeCameras = 0;
-    String bestCamera = "None";
-    double bestConfidence = 0.0;
-    EstimatedRobotPose bestPose = null;
 
-    // Update all cameras and find best pose
+    // Track all valid poses for fusion
+    List<WeightedPose> validPoses = new ArrayList<>();
+
+    // Update all cameras and collect valid poses
     for (int i = 0; i < m_cameras.size(); i++) {
       CameraData camData = m_cameras.get(i);
 
@@ -160,28 +163,32 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       m_cameraHasTargetPubs.get(i).set(hasTarget);
       m_cameraTagCountPubs.get(i).set(tagCount);
 
-      if (hasTarget) {
-        hasAnyTarget = true;
-        totalTagCount += tagCount;
-        activeCameras++;
+      // OPTIMIZATION: Skip pose estimation if no tags detected
+      if (!hasTarget) {
+        continue;
+      }
 
-        // Set reference pose for the estimator (uses current odometry pose)
-        camData.poseEstimator.setReferencePose(m_swerveDrive.getPose());
+      hasAnyTarget = true;
+      totalTagCount += tagCount;
+      activeCameras++;
 
-        // Get pose estimate from this camera
-        Optional<EstimatedRobotPose> poseResult = camData.poseEstimator.update(camData.lastResult);
+      // Set reference pose for the estimator (uses current odometry pose)
+      camData.poseEstimator.setReferencePose(m_swerveDrive.getPose());
 
-        if (poseResult.isPresent()) {
-          EstimatedRobotPose pose = poseResult.get();
+      // Get pose estimate from this camera
+      Optional<EstimatedRobotPose> poseResult = camData.poseEstimator.update(camData.lastResult);
 
-          // Calculate confidence based on number of tags and ambiguity
+      if (poseResult.isPresent()) {
+        EstimatedRobotPose pose = poseResult.get();
+
+        // Check if pose passes quality filters
+        String rejectionReason = getVisionRejectionReason(pose);
+        if (rejectionReason == null) {
+          // Calculate confidence for this pose
           double confidence = calculatePoseConfidence(pose, camData.lastResult);
 
-          if (confidence > bestConfidence) {
-            bestConfidence = confidence;
-            bestPose = pose;
-            bestCamera = camData.name;
-          }
+          // Add to valid poses list for fusion
+          validPoses.add(new WeightedPose(pose, confidence, camData.name));
         }
       }
     }
@@ -190,31 +197,62 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     m_hasTargetPub.set(hasAnyTarget);
     m_totalTagCountPub.set(totalTagCount);
     m_activeCamerasPub.set(activeCameras);
-    m_bestCameraPub.set(bestCamera);
 
-    // Process best pose if available
-    if (bestPose != null) {
-      String rejectionReason = getVisionRejectionReason(bestPose);
-      boolean accepted = rejectionReason == null;
+    // MULTI-CAMERA POSE FUSION: Fuse all valid poses
+    if (!validPoses.isEmpty()) {
+      FusedPoseResult fusedResult = fusePoses(validPoses);
 
-      if (accepted) {
-        // Add vision measurement to pose estimator
-        m_swerveDrive.addVisionMeasurement(
-          bestPose.estimatedPose.toPose2d(),
-          bestPose.timestampSeconds,
-          getEstimationStdDevs(bestPose)
-        );
+      m_bestCameraPub.set(fusedResult.primaryCamera);
+      m_rejectionReasonPub.set("None - Accepted (Fused from " + validPoses.size() + " camera(s))");
+      m_measurementAcceptedPub.set(true);
+      m_latencyPub.set(fusedResult.timestamp);
 
-        m_rejectionReasonPub.set("None - Accepted");
-        m_latencyPub.set(bestPose.timestampSeconds);
-      } else {
-        m_rejectionReasonPub.set(rejectionReason);
-      }
-
-      m_measurementAcceptedPub.set(accepted);
+      // Add fused measurement to pose estimator
+      m_swerveDrive.addVisionMeasurement(
+        fusedResult.fusedPose,
+        fusedResult.timestamp,
+        fusedResult.stdDevs
+      );
     } else {
+      m_bestCameraPub.set("None");
       m_rejectionReasonPub.set(hasAnyTarget ? "No valid pose estimate" : "No targets");
       m_measurementAcceptedPub.set(false);
+    }
+  }
+
+  /**
+   * Helper class to store a pose estimate with its confidence weight and source camera
+   */
+  private static class WeightedPose {
+    public final EstimatedRobotPose pose;
+    public final double weight;
+    public final String cameraName;
+
+    public WeightedPose(EstimatedRobotPose pose, double weight, String cameraName) {
+      this.pose = pose;
+      this.weight = weight;
+      this.cameraName = cameraName;
+    }
+  }
+
+  /**
+   * Result of pose fusion containing the fused pose and metadata
+   */
+  private static class FusedPoseResult {
+    public final Pose2d fusedPose;
+    public final double timestamp;
+    public final edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1> stdDevs;
+    public final String primaryCamera;
+
+    public FusedPoseResult(
+        Pose2d fusedPose,
+        double timestamp,
+        edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1> stdDevs,
+        String primaryCamera) {
+      this.fusedPose = fusedPose;
+      this.timestamp = timestamp;
+      this.stdDevs = stdDevs;
+      this.primaryCamera = primaryCamera;
     }
   }
 
@@ -242,6 +280,101 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     }
 
     return confidence;
+  }
+
+  /**
+   * Fuse multiple camera pose estimates into a single weighted pose.
+   * Uses confidence-weighted averaging for position and heading.
+   *
+   * @param poses List of weighted poses from different cameras
+   * @return Fused pose result with combined position, timestamp, and trust
+   */
+  private FusedPoseResult fusePoses(List<WeightedPose> poses) {
+    if (poses.isEmpty()) {
+      throw new IllegalArgumentException("Cannot fuse empty pose list");
+    }
+
+    // If only one pose, return it directly (optimized path)
+    if (poses.size() == 1) {
+      WeightedPose single = poses.get(0);
+      return new FusedPoseResult(
+        single.pose.estimatedPose.toPose2d(),
+        single.pose.timestampSeconds,
+        getEstimationStdDevs(single.pose),
+        single.cameraName
+      );
+    }
+
+    // Calculate total weight for normalization
+    double totalWeight = 0.0;
+    for (WeightedPose wp : poses) {
+      totalWeight += wp.weight;
+    }
+
+    // Weighted average of X and Y positions
+    double fusedX = 0.0;
+    double fusedY = 0.0;
+
+    // For rotation, we need to handle angle wrapping properly
+    // Convert to unit vectors and average
+    double cosSum = 0.0;
+    double sinSum = 0.0;
+
+    // Track highest confidence pose for reference
+    WeightedPose bestPose = poses.get(0);
+    double bestWeight = poses.get(0).weight;
+
+    // Track latest timestamp
+    double latestTimestamp = poses.get(0).pose.timestampSeconds;
+
+    for (WeightedPose wp : poses) {
+      double normalizedWeight = wp.weight / totalWeight;
+
+      // Weighted position
+      Pose2d pose2d = wp.pose.estimatedPose.toPose2d();
+      fusedX += pose2d.getX() * normalizedWeight;
+      fusedY += pose2d.getY() * normalizedWeight;
+
+      // Weighted rotation (using vector averaging to handle wrapping)
+      double angle = pose2d.getRotation().getRadians();
+      cosSum += Math.cos(angle) * normalizedWeight;
+      sinSum += Math.sin(angle) * normalizedWeight;
+
+      // Track best pose
+      if (wp.weight > bestWeight) {
+        bestWeight = wp.weight;
+        bestPose = wp;
+      }
+
+      // Use latest timestamp
+      if (wp.pose.timestampSeconds > latestTimestamp) {
+        latestTimestamp = wp.pose.timestampSeconds;
+      }
+    }
+
+    // Construct fused rotation from averaged vectors
+    Rotation2d fusedRotation = new Rotation2d(cosSum, sinSum);
+
+    // Construct fused pose
+    Pose2d fusedPose = new Pose2d(new Translation2d(fusedX, fusedY), fusedRotation);
+
+    // Calculate fused standard deviations (lower StdDev because multiple cameras agree)
+    // Use the best pose as baseline, but reduce StdDev based on number of cameras
+    edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1> baseStdDevs =
+      getEstimationStdDevs(bestPose.pose);
+
+    // Reduce uncertainty based on number of cameras (more cameras = more confidence)
+    // Use factor of 1/sqrt(n) which is statistically sound for independent measurements
+    double reductionFactor = 1.0 / Math.sqrt(poses.size());
+
+    edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1> fusedStdDevs =
+      VecBuilder.fill(
+        baseStdDevs.get(0, 0) * reductionFactor,
+        baseStdDevs.get(1, 0) * reductionFactor,
+        baseStdDevs.get(2, 0) * reductionFactor
+      );
+
+    return new FusedPoseResult(fusedPose, latestTimestamp, fusedStdDevs, bestPose.cameraName);
   }
 
   /**
@@ -285,7 +418,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
       // FRC field is ~16.54m long. Blue alliance starts at X=0, Red alliance at X=16.54
       // Reject if robot appears to be on wrong side of field
-      if (alliance.get() == Alliance.Blue && poseX > 12.0) {
+      if (alliance.get() == Alliance.Blue && poseX > 12.0) {             
         return String.format("Blue alliance robot on red side (X=%.2fm)", poseX);
       } else if (alliance.get() == Alliance.Red && poseX < 4.54) {
         return String.format("Red alliance robot on blue side (X=%.2fm)", poseX);
