@@ -63,17 +63,17 @@ public final class Constants {
 
   public static class SwerveConstants {
     // CAN IDs - UPDATE THESE TO MATCH YOUR ROBOT
-    public static final int kFrontLeftDriveMotorId = 1;
-    public static final int kFrontLeftSteerMotorId = 2;
+    public static final int kFrontLeftDriveMotorId = 2;
+    public static final int kFrontLeftSteerMotorId = 3;
 
-    public static final int kFrontRightDriveMotorId = 3;
-    public static final int kFrontRightSteerMotorId = 4;
+    public static final int kFrontRightDriveMotorId = 4;
+    public static final int kFrontRightSteerMotorId = 5;
 
-    public static final int kBackLeftDriveMotorId = 5;
-    public static final int kBackLeftSteerMotorId = 6;
+    public static final int kBackLeftDriveMotorId = 8;
+    public static final int kBackLeftSteerMotorId = 9;
 
-    public static final int kBackRightDriveMotorId = 7;
-    public static final int kBackRightSteerMotorId = 8;
+    public static final int kBackRightDriveMotorId = 6;
+    public static final int kBackRightSteerMotorId = 7;
 
     // ADIS16470 IMU Configuration
     // Connected via SPI (onboard port), no CAN ID needed
