@@ -84,10 +84,11 @@ public final class Constants {
     public static final double kWheelDiameterMeters = Units.inchesToMeters(3.0);
     public static final double kWheelCircumferenceMeters = kWheelDiameterMeters * Math.PI;
 
-    // Gear ratios - THESE ARE PLACEHOLDERS, MEASURE YOUR ACTUAL RATIOS
-    // Common swerve ratios: SDS Mk4i L1=8.14:1, L2=6.75:1, L3=6.12:1
-    public static final double kDriveGearRatio = 6.75; // Drive motor rotations per wheel rotation
-    public static final double kSteerGearRatio = 150.0 / 7.0; // Steer motor rotations per module rotation
+    // Gear ratios for REV MAXSwerve - THESE ARE PLACEHOLDERS, MEASURE YOUR ACTUAL RATIOS
+    // REV MAXSwerve drive ratios depend on pinion (12T=~5.50:1, 13T=~5.08:1, 14T=~4.71:1)
+    // Current setting assumes 14T pinion (kDrivingMotorPinionTeeth = 14)
+    public static final double kDriveGearRatio = (45.0 * 22) / (14 * 15); // Calculated from MAXSwerve gearing
+    public static final double kSteerGearRatio = 150.0 / 7.0; // REV MAXSwerve steering ratio (9424:392 = ~21.43:1)
 
     // Motor inversions
     public static final boolean kDriveMotorInverted = false;
