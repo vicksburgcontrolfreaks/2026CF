@@ -56,9 +56,10 @@ public final class Constants {
     public static final double kDeadband = 0.1;
 
     // Drive speed limits (0.0 to 1.0)
-    public static final double kNormalSpeedLimit = 0.8;
-    public static final double kTurboSpeedLimit = 1.0;
-    public static final double kPrecisionSpeedLimit = 0.3;
+    // Start with very conservative values for testing, increase as you gain confidence
+    public static final double kNormalSpeedLimit = 0.025;  // ~0.7 m/s - safe walking speed
+    public static final double kTurboSpeedLimit = 0.05;   // ~1.1 m/s - moderate speed
+    public static final double kPrecisionSpeedLimit = 0.001; // ~0.2 m/s - very slow for precise movements
   }
 
   public static class SwerveConstants {
@@ -95,21 +96,22 @@ public final class Constants {
     public static final boolean kSteerMotorInverted = true;
     public static final boolean kSteerEncoderInverted = true;
 
-    // Current limits
-    public static final int kDriveMotorCurrentLimit = 40; // Amps
+    // Current limits (from REV MAXSwerve template)
+    public static final int kDriveMotorCurrentLimit = 50; // Amps
     public static final int kSteerMotorCurrentLimit = 20; // Amps
 
-    // PID Constants for drive motors
-    public static final double kDriveP = 0.1;
+    // PID Constants for drive motors (from REV MAXSwerve template)
+    public static final double kDriveP = 0.04;
     public static final double kDriveI = 0.0;
     public static final double kDriveD = 0.0;
-    public static final double kDriveFF = 0.0;
+    // Feedforward: 12V / theoretical max speed (m/s)
+    // Calculated: 12.0 / (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters / kDrivingMotorReduction)
+    public static final double kDriveFF = 1.565; // REV MAXSwerve recommended value
 
-    // PID Constants for steer motors
-    public static final double kSteerP = 0.5;
+    // PID Constants for steer motors (from REV MAXSwerve template)
+    public static final double kSteerP = 1.0;
     public static final double kSteerI = 0.0;
-    public static final double kSteerD = 0.1;
-    public static final double kSteerFF = 0.0;
+    public static final double kSteerD = 0.0;
 
     // Chassis configuration - MEASURE YOUR ROBOT
     // Distance from robot center to module (front-back)
@@ -133,8 +135,17 @@ public final class Constants {
     public static final double kMaxSpeedMetersPerSecond = 4.5; // Theoretical max ~4.8 m/s for NEO
     public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI * 2; // 1 rotation per second
 
-    // Module offsets are configured directly on SparkMax controllers via REV Hardware Client
-    // No software offset constants needed
+    // Chassis angular offsets for swerve module positions
+    // MEASURE THESE VALUES for your robot - angles in radians
+    // These account for mechanical imperfections in module mounting
+    // Set to 0.0 initially, then adjust if modules don't point straight forward when enabled
+    public static final double kFrontLeftChassisAngularOffset = -Math.PI / 2; // Radians
+    public static final double kFrontRightChassisAngularOffset = 0; // Radians
+    public static final double kBackLeftChassisAngularOffset = Math.PI; // Radians
+    public static final double kBackRightChassisAngularOffset = Math.PI / 2; // Radians
+
+    // Note: Encoder zero offsets are still configured on SparkMax via REV Hardware Client
+    // These chassis offsets are ADDITIONAL corrections for mechanical alignment
   }
 
   public static class PhotonVisionConstants {

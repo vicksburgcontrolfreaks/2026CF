@@ -153,8 +153,14 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     for (int i = 0; i < m_cameras.size(); i++) {
       CameraData camData = m_cameras.get(i);
 
-      // Get latest result
-      camData.lastResult = camData.camera.getLatestResult();
+      // Get latest result (using newer getAllUnreadResults and taking the last one)
+      var results = camData.camera.getAllUnreadResults();
+      if (!results.isEmpty()) {
+        camData.lastResult = results.get(results.size() - 1);
+      } else {
+        // No new results, keep using the last result
+        continue;
+      }
 
       boolean hasTarget = camData.lastResult.hasTargets();
       int tagCount = hasTarget ? camData.lastResult.getTargets().size() : 0;

@@ -51,38 +51,59 @@ public static final int kDrivingMotorPinionTeeth = 14; // Change if using 12T or
 
 ## Step 2: Calibrate Swerve Modules
 
-**IMPORTANT:** REV MAXSwerve modules store calibration on the SparkMax controller, NOT in code.
+**IMPORTANT:** REV MAXSwerve modules store calibration on the SparkMax controller using the absolute encoder offset feature, NOT in code.
 
 ### 2.1 Install REV Hardware Client
 
 Download from: https://docs.revrobotics.com/rev-hardware-client/
 
-### 2.2 Manually Align Wheels
+### 2.2 Align Wheels Using REV Calibration Jig (Recommended Method)
+
+**REV provides a calibration jig specifically for MAXSwerve modules:**
 
 1. Power on robot
-2. Manually rotate all four wheels to point straight forward
-3. Ensure bevel gears face the same direction (typically right side)
+2. Place the REV MAXSwerve calibration jig on each module (one at a time)
+3. The jig ensures the wheel is at exactly 0° (straight forward)
+4. With jig installed, follow steps in 2.3 below
+5. Remove jig and repeat for next module
 
-### 2.3 Zero Each Module
+**Alternative (if no jig available):**
+- Manually align each wheel to point straight forward
+- Use a straight edge or level to ensure precise alignment
+- Ensure bevel gears face the same direction on all modules
+
+### 2.3 Set Absolute Encoder Offset in REV Hardware Client
 
 For each of the 4 steer motors:
 
 1. Open REV Hardware Client
-2. Connect to robot (USB or WiFi)
+2. Connect to robot (USB or CAN over USB-C)
 3. Select the steer motor SparkMax controller
-4. Go to "Absolute Encoder" tab
-5. With wheel aligned forward, click "Set Position to Absolute" or "Burn Flash"
-6. Repeat for all four modules
+4. Go to **"Parameters"** → **"Absolute Encoder"** section
+5. With wheel aligned using jig, click **"Set Absolute Encoder Zero Offset"**
+6. Click **"Burn Flash"** to save the offset permanently to the SparkMax
+7. Remove jig and repeat for all four modules
+
+**What this does:**
+- Sets the absolute encoder's zero position to match the wheel's forward position
+- The offset is stored on the SparkMax, not in robot code
+- No constants needed in Constants.java for module offsets
 
 ### 2.4 Verify Calibration
 
-1. Deploy code to robot
-2. Enable robot in teleop
-3. All modules should stay pointing forward
-4. Drive forward - all modules should point forward
-5. If modules turn to wrong angles, re-check calibration
+1. Power cycle the robot (important - ensures offsets are loaded)
+2. Deploy code to robot
+3. Enable robot in teleop mode
+4. **All four wheels should point straight forward when enabled**
+5. Try driving - modules should maintain correct orientation
 
-**Note:** No offset constants needed in code! Calibration persists on SparkMax.
+**If wheels don't align correctly:**
+- Check that you clicked "Burn Flash" for each module
+- Verify encoder direction setting (may need to invert encoder in SparkMax config)
+- Re-calibrate any misaligned modules using the jig
+- Check Constants.java line 96: `kSteerEncoderInverted` - may need to toggle
+
+**Note:** Since you're using the REV calibration method, no offset constants are needed in code! The SparkMax handles this automatically.
 
 ## Step 3: Configure PathPlanner
 
