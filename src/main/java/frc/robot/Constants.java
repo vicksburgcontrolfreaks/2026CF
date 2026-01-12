@@ -4,7 +4,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
@@ -53,24 +56,25 @@ public final class Constants {
     public static final double kDeadband = 0.1;
 
     // Drive speed limits (0.0 to 1.0)
-    public static final double kNormalSpeedLimit = 0.8;
-    public static final double kTurboSpeedLimit = 1.0;
-    public static final double kPrecisionSpeedLimit = 0.3;
+    // Start with very conservative values for testing, increase as you gain confidence
+    public static final double kNormalSpeedLimit = 0.025;  // ~0.7 m/s - safe walking speed
+    public static final double kTurboSpeedLimit = 0.05;   // ~1.1 m/s - moderate speed
+    public static final double kPrecisionSpeedLimit = 0.001; // ~0.2 m/s - very slow for precise movements
   }
 
   public static class SwerveConstants {
     // CAN IDs - UPDATE THESE TO MATCH YOUR ROBOT
-    public static final int kFrontLeftDriveMotorId = 1;
-    public static final int kFrontLeftSteerMotorId = 2;
+    public static final int kFrontLeftDriveMotorId = 2;
+    public static final int kFrontLeftSteerMotorId = 3;
 
-    public static final int kFrontRightDriveMotorId = 3;
-    public static final int kFrontRightSteerMotorId = 4;
+    public static final int kFrontRightDriveMotorId = 4;
+    public static final int kFrontRightSteerMotorId = 5;
 
-    public static final int kBackLeftDriveMotorId = 5;
-    public static final int kBackLeftSteerMotorId = 6;
+    public static final int kBackLeftDriveMotorId = 8;
+    public static final int kBackLeftSteerMotorId = 9;
 
-    public static final int kBackRightDriveMotorId = 7;
-    public static final int kBackRightSteerMotorId = 8;
+    public static final int kBackRightDriveMotorId = 6;
+    public static final int kBackRightSteerMotorId = 7;
 
     // ADIS16470 IMU Configuration
     // Connected via SPI (onboard port), no CAN ID needed
@@ -81,31 +85,33 @@ public final class Constants {
     public static final double kWheelDiameterMeters = Units.inchesToMeters(3.0);
     public static final double kWheelCircumferenceMeters = kWheelDiameterMeters * Math.PI;
 
-    // Gear ratios - THESE ARE PLACEHOLDERS, MEASURE YOUR ACTUAL RATIOS
-    // Common swerve ratios: SDS Mk4i L1=8.14:1, L2=6.75:1, L3=6.12:1
-    public static final double kDriveGearRatio = 6.75; // Drive motor rotations per wheel rotation
-    public static final double kSteerGearRatio = 150.0 / 7.0; // Steer motor rotations per module rotation
+    // Gear ratios for REV MAXSwerve - THESE ARE PLACEHOLDERS, MEASURE YOUR ACTUAL RATIOS
+    // REV MAXSwerve drive ratios depend on pinion (12T=~5.50:1, 13T=~5.08:1, 14T=~4.71:1)
+    // Current setting assumes 14T pinion (kDrivingMotorPinionTeeth = 14)
+    public static final double kDriveGearRatio = (45.0 * 22) / (14 * 15); // Calculated from MAXSwerve gearing
+    public static final double kSteerGearRatio = 150.0 / 7.0; // REV MAXSwerve steering ratio (9424:392 = ~21.43:1)
 
     // Motor inversions
     public static final boolean kDriveMotorInverted = false;
     public static final boolean kSteerMotorInverted = true;
     public static final boolean kSteerEncoderInverted = true;
 
-    // Current limits
-    public static final int kDriveMotorCurrentLimit = 40; // Amps
+    // Current limits (from REV MAXSwerve template)
+    public static final int kDriveMotorCurrentLimit = 50; // Amps
     public static final int kSteerMotorCurrentLimit = 20; // Amps
 
-    // PID Constants for drive motors
-    public static final double kDriveP = 0.1;
+    // PID Constants for drive motors (from REV MAXSwerve template)
+    public static final double kDriveP = 0.04;
     public static final double kDriveI = 0.0;
     public static final double kDriveD = 0.0;
-    public static final double kDriveFF = 0.0;
+    // Feedforward: 12V / theoretical max speed (m/s)
+    // Calculated: 12.0 / (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters / kDrivingMotorReduction)
+    public static final double kDriveFF = 1.565; // REV MAXSwerve recommended value
 
-    // PID Constants for steer motors
-    public static final double kSteerP = 0.5;
+    // PID Constants for steer motors (from REV MAXSwerve template)
+    public static final double kSteerP = 1.0;
     public static final double kSteerI = 0.0;
-    public static final double kSteerD = 0.1;
-    public static final double kSteerFF = 0.0;
+    public static final double kSteerD = 0.0;
 
     // Chassis configuration - MEASURE YOUR ROBOT
     // Distance from robot center to module (front-back)
@@ -129,41 +135,71 @@ public final class Constants {
     public static final double kMaxSpeedMetersPerSecond = 4.5; // Theoretical max ~4.8 m/s for NEO
     public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI * 2; // 1 rotation per second
 
-    // Module offsets are configured directly on SparkMax controllers via REV Hardware Client
-    // No software offset constants needed
+    // Chassis angular offsets for swerve module positions
+    // MEASURE THESE VALUES for your robot - angles in radians
+    // These account for mechanical imperfections in module mounting
+    // Set to 0.0 initially, then adjust if modules don't point straight forward when enabled
+    public static final double kFrontLeftChassisAngularOffset = -Math.PI / 2; // Radians
+    public static final double kFrontRightChassisAngularOffset = 0; // Radians
+    public static final double kBackLeftChassisAngularOffset = Math.PI; // Radians
+    public static final double kBackRightChassisAngularOffset = Math.PI / 2; // Radians
+
+    // Note: Encoder zero offsets are still configured on SparkMax via REV Hardware Client
+    // These chassis offsets are ADDITIONAL corrections for mechanical alignment
   }
 
-  public static class VisionConstants {
-    public static final String kLimelightName = "limelight";
+  public static class PhotonVisionConstants {
+    // Camera names (must match names configured in PhotonVision web UI)
+    public static final String kCameraFrontName = "camera-front";
+    public static final String kCameraBackName = "camera-back";
+    public static final String kCameraLeftName = "camera-left";
+    public static final String kCameraRightName = "camera-right";
 
-    // MegaTag2 Standard Deviations for Pose Estimation
-    // Lower values = trust vision more, higher values = trust vision less
+    // Camera transforms relative to robot center (robot-to-camera)
+    // TODO: Measure and update these values for your robot!
+    // Positive X = forward, Positive Y = left, Positive Z = up
+    // Rotations: Roll (X), Pitch (Y), Yaw (Z) in radians
+
+    // Front camera: mounted on front bumper, facing forward
+    public static final Transform3d kRobotToFrontCamera = new Transform3d(
+      new Translation3d(Units.inchesToMeters(12.0), 0.0, Units.inchesToMeters(10.0)), // 12" forward, 10" up
+      new Rotation3d(0, Math.toRadians(-15), 0) // Pitched down 15°
+    );
+
+    // Back camera: mounted on back bumper, facing backward
+    public static final Transform3d kRobotToBackCamera = new Transform3d(
+      new Translation3d(Units.inchesToMeters(-12.0), 0.0, Units.inchesToMeters(10.0)), // 12" back, 10" up
+      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(180)) // Pitched down 15°, facing back
+    );
+
+    // Left camera: mounted on left side, facing left
+    public static final Transform3d kRobotToLeftCamera = new Transform3d(
+      new Translation3d(0.0, Units.inchesToMeters(12.0), Units.inchesToMeters(10.0)), // 12" left, 10" up
+      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(90)) // Pitched down 15°, facing left
+    );
+
+    // Right camera: mounted on right side, facing right
+    public static final Transform3d kRobotToRightCamera = new Transform3d(
+      new Translation3d(0.0, Units.inchesToMeters(-12.0), Units.inchesToMeters(10.0)), // 12" right, 10" up
+      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-90)) // Pitched down 15°, facing right
+    );
+
+    // Standard deviations for multi-camera pose estimation
+    // Lower = trust more, higher = trust less
     // [x, y, rotation] in meters and radians
 
-    // Single tag standard deviations - less confident
-    public static final double[] kSingleTagStdDevs = {1.0, 1.0, 2.0};
+    // Single tag standard deviations
+    public static final double[] kSingleTagStdDevs = {1.5, 1.5, 3.0};
 
-    // Multi-tag (MegaTag2) standard deviations - more confident
+    // Multi-tag standard deviations (when multiple tags visible)
     public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
 
-    // Fallback vision standard deviations (used if estimate is null)
-    public static final double[] kVisionStdDevs = {0.7, 0.7, 999999}; // Don't trust rotation from vision
-
-    // Filtering thresholds for vision measurements
-    // Maximum ambiguity to accept vision measurements (0.0-1.0, lower = more strict)
-    public static final double kMaxPoseAmbiguity = 0.2;
-
-    // Maximum distance to accept AprilTag measurements (meters)
-    public static final double kMaxDistanceMeters = 4.0;
-
-    // Minimum tag area to accept measurements (percentage of image)
-    // Tags too small in frame are likely far away or at extreme angles
-    public static final double kMinTagArea = 0.01; // 1% of image area
-
-    // Minimum tag span for multi-tag measurements (pixels)
-    // Tags too close together provide poor geometry for pose estimation
-    public static final double kMinTagSpan = 10.0; // pixels between tags
+    // Filtering thresholds
+    public static final double kMaxAmbiguity = 0.2; // Maximum pose ambiguity
+    public static final double kMaxTagDistance = 5.0; // Maximum distance to trust tags (meters)
+    public static final int kMinTagsForHighConfidence = 2; // Minimum tags for high confidence
   }
+
 
   public static class AutoConstants {
     public static final double kMaxSpeedMetersPerSecond = 6.0; // 4.0

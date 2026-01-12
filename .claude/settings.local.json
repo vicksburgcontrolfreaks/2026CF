@@ -1,14 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
       "Bash(dir:*)",
-      "Bash(./gradlew build:*)",
-      "Bash(curl:*)",
-      "Bash(where:*)",
-      "Bash(cat:*)"
-    ],
-    "deny": [],
-    "ask": []
+      "Bash(./gradlew vendordep:*)",
+      "Bash(.gradlew.bat build:*)"
+    ]
   }
 }

@@ -61,34 +61,29 @@ public class SwerveDrive extends SubsystemBase {
   private static final int TELEMETRY_UPDATE_PERIOD = 5; // Publish detailed telemetry every 5 cycles (100ms)
 
   public SwerveDrive() {
-    // Initialize swerve modules
-    // Note: Offsets are 0.0 because REV MAXSwerve modules store calibration on SparkMax
+    // Initialize swerve modules with your CAN IDs
     m_frontLeft = new SwerveModule(
       SwerveConstants.kFrontLeftDriveMotorId,
       SwerveConstants.kFrontLeftSteerMotorId,
-      0.0, // Offset handled by SparkMax
-      "Front Left"
+      SwerveConstants.kFrontLeftChassisAngularOffset
     );
 
     m_frontRight = new SwerveModule(
       SwerveConstants.kFrontRightDriveMotorId,
       SwerveConstants.kFrontRightSteerMotorId,
-      0.0, // Offset handled by SparkMax
-      "Front Right"
+      SwerveConstants.kFrontRightChassisAngularOffset
     );
 
     m_backLeft = new SwerveModule(
       SwerveConstants.kBackLeftDriveMotorId,
       SwerveConstants.kBackLeftSteerMotorId,
-      0.0, // Offset handled by SparkMax
-      "Back Left"
+      SwerveConstants.kBackLeftChassisAngularOffset
     );
 
     m_backRight = new SwerveModule(
       SwerveConstants.kBackRightDriveMotorId,
       SwerveConstants.kBackRightSteerMotorId,
-      0.0, // Offset handled by SparkMax
-      "Back Right"
+      SwerveConstants.kBackRightChassisAngularOffset
     );
 
     // Initialize ADIS16470 IMU with explicit axis configuration
@@ -101,9 +96,9 @@ public class SwerveDrive extends SubsystemBase {
     System.out.println("==============================================");
 
     m_gyro = new ADIS16470_IMU(
-      IMUAxis.kZ,  // Yaw axis
-      IMUAxis.kX,  // Pitch axis
-      IMUAxis.kY,  // Roll axis
+      IMUAxis.kY,  // Yaw axis (RoboRIO mounted vertically)
+      IMUAxis.kZ,  // Pitch axis
+      IMUAxis.kX,  // Roll axis
       SPI.Port.kOnboardCS0,  // Onboard SPI port
       CalibrationTime._2s    // 2-second calibration for good accuracy with faster startup
     );
@@ -306,5 +301,12 @@ public class SwerveDrive extends SubsystemBase {
     m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)));
     m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)));
     m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)));
+  }
+
+  public void resetEncoders() {
+    m_frontLeft.resetEncoders();
+    m_frontRight.resetEncoders();
+    m_backLeft.resetEncoders();
+    m_backRight.resetEncoders();
   }
 }

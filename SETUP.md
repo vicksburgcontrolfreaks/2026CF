@@ -4,12 +4,12 @@ This guide walks you through configuring this FRC robot code on your hardware.
 
 ## Prerequisites
 
-- WPILib 2025+ installed
+- WPILib 2026 installed
 - REV Hardware Client installed
 - PathPlanner GUI installed ([download here](https://pathplanner.dev/))
 - Robot with REV MAXSwerve modules
 - ADIS16470 IMU (included with REV Control System)
-- Limelight 4 (optional, for vision)
+- Raspberry Pi 5 + PhotonVision + 4x Arducam OV9281 cameras (for vision - see [PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md))
 
 ## Step 1: Update CAN IDs and Constants
 
@@ -51,38 +51,59 @@ public static final int kDrivingMotorPinionTeeth = 14; // Change if using 12T or
 
 ## Step 2: Calibrate Swerve Modules
 
-**IMPORTANT:** REV MAXSwerve modules store calibration on the SparkMax controller, NOT in code.
+**IMPORTANT:** REV MAXSwerve modules store calibration on the SparkMax controller using the absolute encoder offset feature, NOT in code.
 
 ### 2.1 Install REV Hardware Client
 
 Download from: https://docs.revrobotics.com/rev-hardware-client/
 
-### 2.2 Manually Align Wheels
+### 2.2 Align Wheels Using REV Calibration Jig (Recommended Method)
+
+**REV provides a calibration jig specifically for MAXSwerve modules:**
 
 1. Power on robot
-2. Manually rotate all four wheels to point straight forward
-3. Ensure bevel gears face the same direction (typically right side)
+2. Place the REV MAXSwerve calibration jig on each module (one at a time)
+3. The jig ensures the wheel is at exactly 0° (straight forward)
+4. With jig installed, follow steps in 2.3 below
+5. Remove jig and repeat for next module
 
-### 2.3 Zero Each Module
+**Alternative (if no jig available):**
+- Manually align each wheel to point straight forward
+- Use a straight edge or level to ensure precise alignment
+- Ensure bevel gears face the same direction on all modules
+
+### 2.3 Set Absolute Encoder Offset in REV Hardware Client
 
 For each of the 4 steer motors:
 
 1. Open REV Hardware Client
-2. Connect to robot (USB or WiFi)
+2. Connect to robot (USB or CAN over USB-C)
 3. Select the steer motor SparkMax controller
-4. Go to "Absolute Encoder" tab
-5. With wheel aligned forward, click "Set Position to Absolute" or "Burn Flash"
-6. Repeat for all four modules
+4. Go to **"Parameters"** → **"Absolute Encoder"** section
+5. With wheel aligned using jig, click **"Set Absolute Encoder Zero Offset"**
+6. Click **"Burn Flash"** to save the offset permanently to the SparkMax
+7. Remove jig and repeat for all four modules
+
+**What this does:**
+- Sets the absolute encoder's zero position to match the wheel's forward position
+- The offset is stored on the SparkMax, not in robot code
+- No constants needed in Constants.java for module offsets
 
 ### 2.4 Verify Calibration
 
-1. Deploy code to robot
-2. Enable robot in teleop
-3. All modules should stay pointing forward
-4. Drive forward - all modules should point forward
-5. If modules turn to wrong angles, re-check calibration
+1. Power cycle the robot (important - ensures offsets are loaded)
+2. Deploy code to robot
+3. Enable robot in teleop mode
+4. **All four wheels should point straight forward when enabled**
+5. Try driving - modules should maintain correct orientation
 
-**Note:** No offset constants needed in code! Calibration persists on SparkMax.
+**If wheels don't align correctly:**
+- Check that you clicked "Burn Flash" for each module
+- Verify encoder direction setting (may need to invert encoder in SparkMax config)
+- Re-calibrate any misaligned modules using the jig
+- Check Constants.java line 96: `kSteerEncoderInverted` - may need to toggle
+
+**Note:** Since you're using the REV calibration method, no offset constants are needed in code! The SparkMax handles this automatically.
 
 ## Step 3: Configure PathPlanner
 
@@ -128,36 +149,26 @@ Download from: https://pathplanner.dev/
 4. Drag your path from Paths panel into the auto
 5. Save (auto-saves to `deploy/pathplanner/autos/`)
 
-## Step 4: Configure Vision (Optional)
+## Step 4: Configure PhotonVision (Optional)
 
-If you have a Limelight 4:
+For complete PhotonVision setup instructions with 4 cameras, see **[PHOTONVISION_SETUP.md](PHOTONVISION_SETUP.md)**.
 
-### 4.1 Update Limelight Name
+**Quick PhotonVision checklist:**
+1. Flash PhotonVision image to Raspberry Pi 5 SD card
+2. Connect and configure all 4 cameras (front, back, left, right)
+3. Calibrate each camera using PhotonVision web UI
+4. Update camera positions in [Constants.java](src/main/java/frc/robot/Constants.java) PhotonVisionConstants section
+5. Test AprilTag detection and pose estimation
 
-Edit [Constants.java](src/main/java/frc/robot/Constants.java#L143):
+### 4.1 Tune Vision Standard Deviations
 
-```java
-public static final String kLimelightName = "limelight"; // Change if different
-```
-
-### 4.2 Configure Limelight
-
-1. Connect to Limelight web interface: http://limelight.local:5801
-2. Set pipeline to **AprilTag mode**
-3. Enable **MegaTag2** in AprilTag settings
-4. Select **2025 Reefscape** field layout (or your game year)
-5. Configure camera mount position and angle
-6. Set team number to match your robot
-
-### 4.3 Tune Vision Standard Deviations
-
-After testing, you may want to adjust [Constants.java](src/main/java/frc/robot/Constants.java#L150-L156):
+After testing, you may want to adjust PhotonVisionConstants in [Constants.java](src/main/java/frc/robot/Constants.java):
 
 ```java
 // Single tag - less confident
-public static final double[] kSingleTagStdDevs = {1.0, 1.0, 2.0};
+public static final double[] kSingleTagStdDevs = {1.5, 1.5, 3.0};
 
-// Multi-tag (MegaTag2) - more confident
+// Multi-tag - more confident
 public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
 ```
 
@@ -343,11 +354,12 @@ Check these NetworkTables topics exist:
 - Rebuild and redeploy code
 
 ### Vision Not Working
-- Ping Limelight: `ping limelight.local`
-- Access web interface: http://limelight.local:5801
-- Verify MegaTag2 is enabled
-- Check field layout matches game year
-- Ensure camera position/angle configured
+- Ping PhotonVision: `ping photonvision.local`
+- Access web interface: http://photonvision.local:5800
+- Verify all cameras are connected and detected
+- Check AprilTag pipeline is configured
+- Ensure 2025 Reefscape field layout is selected
+- Verify camera transforms in Constants.java match physical mounting
 
 ### Gyro Drifting
 - Keep robot stationary during 2-second calibration
@@ -371,7 +383,7 @@ After completing setup:
 - **REV Docs**: https://docs.revrobotics.com/
 - **REV Hardware Client**: https://docs.revrobotics.com/rev-hardware-client/
 - **PathPlanner Docs**: https://pathplanner.dev/home.html
-- **Limelight Docs**: https://docs.limelightvision.io/
+- **PhotonVision Docs**: https://docs.photonvision.org/
 - **Elastic Dashboard**: https://docs.wpilib.org/en/stable/docs/software/dashboards/elastic.html
 - **ADIS16470 IMU**: https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-hardware.html
 

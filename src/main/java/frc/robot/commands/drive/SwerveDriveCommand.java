@@ -73,7 +73,7 @@ public class SwerveDriveCommand extends Command {
 
     // Calculate speeds and apply speed limit
     double xSpeed = xInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
-    double ySpeed = -yInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
+    double ySpeed = yInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
     double rot = rotInput * SwerveConstants.kMaxAngularSpeedRadiansPerSecond * speedLimit;
 
     // Drive the robot
