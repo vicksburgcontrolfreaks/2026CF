@@ -115,9 +115,9 @@ public final class Constants {
 
     // Chassis configuration - MEASURE YOUR ROBOT
     // Distance from robot center to module (front-back)
-    public static final double kTrackWidthMeters = Units.inchesToMeters(22.0);
+    public static final double kTrackWidthMeters = Units.inchesToMeters(18.5);
     // Distance from robot center to module (left-right)
-    public static final double kWheelBaseMeters = Units.inchesToMeters(22.0);
+    public static final double kWheelBaseMeters = Units.inchesToMeters(18.5);
 
     // Swerve kinematics
     public static final SwerveDriveKinematics kSwerveKinematics = new SwerveDriveKinematics(
