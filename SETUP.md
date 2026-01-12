@@ -4,7 +4,7 @@ This guide walks you through configuring this FRC robot code on your hardware.
 
 ## Prerequisites
 
-- WPILib 2025+ installed
+- WPILib 2026 installed
 - REV Hardware Client installed
 - PathPlanner GUI installed ([download here](https://pathplanner.dev/))
 - Robot with REV MAXSwerve modules

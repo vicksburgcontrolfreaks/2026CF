@@ -40,7 +40,7 @@ A comprehensive FRC robot codebase featuring swerve drive, PathPlanner autonomou
 
 ### Prerequisites
 
-- WPILib 2025+ installed
+- WPILib 2026 installed
 - REV Hardware Client
 - PathPlanner GUI ([download](https://pathplanner.dev/))
 
@@ -327,4 +327,4 @@ For questions or issues:
 
 ---
 
-**Built with WPILib 2025 | REV Robotics | PathPlanner | PhotonVision**
+**Built with WPILib 2026 | REV Robotics | PathPlanner | PhotonVision**

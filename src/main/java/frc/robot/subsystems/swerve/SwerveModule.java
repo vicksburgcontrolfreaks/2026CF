@@ -5,8 +5,9 @@
 package frc.robot.subsystems.swerve;
 
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
+import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
@@ -67,15 +68,19 @@ public class SwerveModule {
       .positionConversionFactor(SwerveConstants.kWheelCircumferenceMeters / SwerveConstants.kDriveGearRatio)
       .velocityConversionFactor(SwerveConstants.kWheelCircumferenceMeters / SwerveConstants.kDriveGearRatio / 60.0);
 
-    // Configure PID
+    // Configure PID with velocity feedforward
     config.closedLoop
       .pid(SwerveConstants.kDriveP, SwerveConstants.kDriveI, SwerveConstants.kDriveD)
-      .velocityFF(SwerveConstants.kDriveFF)
       .outputRange(-1, 1);
+
+    // Configure feedforward using new REVLib 2026 API
+    config.closedLoop.feedForward
+      .kV(SwerveConstants.kDriveFF);
 
     m_driveMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    m_driveEncoder.setPosition(0);
+    // Reset encoder position to 0
+    m_driveMotor.getEncoder().setPosition(0);
   }
 
   private void configureSteerMotor() {
@@ -91,10 +96,9 @@ public class SwerveModule {
       .positionConversionFactor(2 * Math.PI)
       .velocityConversionFactor(2 * Math.PI / 60.0);
 
-    // Configure PID - feedback device is absolute encoder
+    // Configure PID - uses absolute encoder for feedback
     config.closedLoop
       .pid(SwerveConstants.kSteerP, SwerveConstants.kSteerI, SwerveConstants.kSteerD)
-      .feedbackSensor(com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder)
       .positionWrappingEnabled(true)
       .positionWrappingMinInput(0)
       .positionWrappingMaxInput(2 * Math.PI)
@@ -128,24 +132,18 @@ public class SwerveModule {
     correctedDesiredState.speedMetersPerSecond = desiredState.speedMetersPerSecond;
     correctedDesiredState.angle = desiredState.angle;
 
-    // Optimize the reference state to avoid spinning further than 90 degrees
-    SwerveModuleState optimizedDesiredState = SwerveModuleState.optimize(
-      correctedDesiredState,
-      new Rotation2d(getSteerAngle())
+    // Optimize the reference state to avoid spinning further than 90 degrees (modifies in place)
+    correctedDesiredState.optimize(new Rotation2d(getSteerAngle()));
+
+    // Set drive motor velocity using new REVLib 2026 API
+    m_drivePIDController.setSetpoint(
+      correctedDesiredState.speedMetersPerSecond,
+      ControlType.kVelocity
     );
 
-    // Set drive motor velocity
-    m_drivePIDController.setReference(
-      optimizedDesiredState.speedMetersPerSecond,
-      SparkMax.ControlType.kVelocity
-    );
-
-    // Set steer motor position
-    double steerSetpoint = optimizedDesiredState.angle.getRadians() + (m_offset * 2 * Math.PI);
-    m_steerPIDController.setReference(
-      steerSetpoint,
-      SparkMax.ControlType.kPosition
-    );
+    // Set steer motor position using new REVLib 2026 API
+    double steerSetpoint = correctedDesiredState.angle.getRadians() + (m_offset * 2 * Math.PI);
+    m_steerPIDController.setSetpoint(steerSetpoint, ControlType.kPosition);
   }
 
   public void stop() {
@@ -174,6 +172,6 @@ public class SwerveModule {
   }
 
   public void resetDriveEncoder() {
-    m_driveEncoder.setPosition(0);
+    m_driveMotor.getEncoder().setPosition(0);
   }
 }
