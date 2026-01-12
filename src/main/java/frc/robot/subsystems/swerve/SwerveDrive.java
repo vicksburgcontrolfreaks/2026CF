@@ -248,10 +248,10 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public double getHeading() {
-    // ADIS16470_IMU getAngle() returns counter-clockwise positive (Z-axis yaw)
-    // Negate for standard FRC convention (clockwise positive)
+    // Read from Y-axis since RoboRIO is mounted vertically
+    // Try without negation first - adjust if rotation direction is backwards
     // Use IEEEremainder to keep angle in [-180, 180] range
-    return Math.IEEEremainder(-m_gyro.getAngle(), 360);
+    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), 360);
   }
 
   public Rotation2d getGyroRotation2d() {
