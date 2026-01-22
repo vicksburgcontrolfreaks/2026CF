@@ -21,9 +21,11 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
+import frc.robot.commands.shooter.ShootCommand;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDrive;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
+import frc.robot.subsystems.shooter.ShooterAdjustments;
 import frc.robot.subsystems.collector.Collector;
 import frc.robot.subsystems.collector.RunCollector;
 /**
@@ -49,6 +51,8 @@ public class RobotContainer {
   // TODO: Re-enable when PhotonVision coprocessor is connected and configured
   // private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final PhotonVisionSubsystem m_visionSubsystem = null;
+
+  private final ShooterAdjustments m_shooter = new ShooterAdjustments();
 
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
 
@@ -199,6 +203,11 @@ public class RobotContainer {
     }
     
     
+
+    // Run shooter while A button is held
+    m_driverController.a().whileTrue(
+      new ShootCommand(m_shooter)
+    );
   }
 
   /**
