@@ -46,7 +46,11 @@ public class Robot extends TimedRobot {
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+    // Set all LEDs to red when robot is disabled/idle
+    m_robotContainer.getLEDSubsystem().setAllLEDsRed();
+    System.out.println(">>> DISABLED MODE - LEDs set to RED <<<");
+  }
 
   @Override
   public void disabledPeriodic() {}
@@ -75,11 +79,22 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+
+    // Clear red LEDs when entering teleop mode
+    m_robotContainer.getLEDSubsystem().turnOff();
+    System.out.println(">>> TELEOP MODE STARTED - Button bindings should now work! LEDs cleared. <<<");
   }
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+    // Debug: Check if A button is being pressed (only when using Xbox controller)
+    if (!m_robotContainer.isUsingJoystick() &&
+        m_robotContainer.getDriverControllerForDebug() != null &&
+        m_robotContainer.getDriverControllerForDebug().a().getAsBoolean()) {
+      System.out.println(">>> A BUTTON IS PRESSED (detected in teleopPeriodic) <<<");
+    }
+  }
 
   @Override
   public void testInit() {
