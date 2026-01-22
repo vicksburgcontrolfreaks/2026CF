@@ -19,8 +19,10 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
+import frc.robot.commands.shooter.ShootCommand;
 import frc.robot.subsystems.swerve.SwerveDrive;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
+import frc.robot.subsystems.shooter.ShooterAdjustments;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -33,6 +35,7 @@ public class RobotContainer {
   // Subsystems
   private final SwerveDrive m_swerveDrive = new SwerveDrive();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
+  private final ShooterAdjustments m_shooter = new ShooterAdjustments();
 
   // Controllers
   private final CommandXboxController m_driverController =
@@ -152,6 +155,11 @@ public class RobotContainer {
     // Reset odometry to origin
     m_driverController.y().onTrue(
       m_swerveDrive.runOnce(() -> m_swerveDrive.resetOdometry(new edu.wpi.first.math.geometry.Pose2d()))
+    );
+
+    // Run shooter while A button is held
+    m_driverController.a().whileTrue(
+      new ShootCommand(m_shooter)
     );
   }
 

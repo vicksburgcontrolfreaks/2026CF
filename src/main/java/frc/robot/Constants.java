@@ -47,6 +47,16 @@ public final class Constants {
         / kDrivingMotorReduction;
   }
 
+  public static class ShooterConstants {
+    // Shooter motor speeds
+    public static final double kTopShooterSpeed = 0.8;      // Top shooter runs at constant 80%
+    public static final double kFrontShooterStartSpeed = 0.2; // Front shooter starts at 20%
+    public static final double kFrontShooterMaxSpeed = 0.8;   // Front shooter caps at 80%
+
+    // Proportional ramp value for front shooter
+    public static final double kPShooter = 0.01; // Increase front shooter by 1% per loop
+  }
+
   public static class OperatorConstants {
     // Controller ports
     public static final int kDriverControllerPort = 0;
@@ -75,6 +85,9 @@ public final class Constants {
 
     public static final int kBackRightDriveMotorId = 6;
     public static final int kBackRightSteerMotorId = 7;
+
+    public static final int kShooterTop = 0;
+    public static final int kShooterFront = 1;
 
     // ADIS16470 IMU Configuration
     // Connected via SPI (onboard port), no CAN ID needed
