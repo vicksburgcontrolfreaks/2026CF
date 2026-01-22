@@ -18,6 +18,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.PhotonVisionConstants;
+import frc.robot.Constants.VisionConstants;
 import frc.robot.subsystems.swerve.SwerveDrive;
 
 import org.photonvision.PhotonCamera;
@@ -107,7 +108,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     );
 
     // Initialize NetworkTables publishers
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable("PhotonVision");
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable(VisionConstants.kTelemetryTableName);
     m_hasTargetPub = m_telemetryTable.getBooleanTopic("Has Target").publish();
     m_totalTagCountPub = m_telemetryTable.getDoubleTopic("Total Tag Count").publish();
     m_activeCamerasPub = m_telemetryTable.getDoubleTopic("Active Cameras").publish();
@@ -271,7 +272,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // More tags = higher confidence
     int tagCount = pose.targetsUsed.size();
-    confidence += tagCount * 10.0;
+    confidence += tagCount * VisionConstants.kConfidenceTagCountMultiplier;
 
     // Lower ambiguity = higher confidence
     if (result.hasTargets() && result.getBestTarget() != null) {
@@ -281,7 +282,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       // Ambiguity ranges from 0.0 (perfect) to 1.0 (ambiguous)
       // Invert it so lower ambiguity gives higher confidence
       if (ambiguity < PhotonVisionConstants.kMaxAmbiguity) {
-        confidence += (1.0 - ambiguity) * 5.0;
+        confidence += (1.0 - ambiguity) * VisionConstants.kConfidenceAmbiguityMultiplier;
       }
     }
 
@@ -424,9 +425,9 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
       // FRC field is ~16.54m long. Blue alliance starts at X=0, Red alliance at X=16.54
       // Reject if robot appears to be on wrong side of field
-      if (alliance.get() == Alliance.Blue && poseX > 12.0) {             
+      if (alliance.get() == Alliance.Blue && poseX > VisionConstants.kBlueAllianceXThreshold) {
         return String.format("Blue alliance robot on red side (X=%.2fm)", poseX);
-      } else if (alliance.get() == Alliance.Red && poseX < 4.54) {
+      } else if (alliance.get() == Alliance.Red && poseX < VisionConstants.kRedAllianceXThreshold) {
         return String.format("Red alliance robot on blue side (X=%.2fm)", poseX);
       }
     }
@@ -459,8 +460,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Increase standard deviation based on average distance to tags
     // Further tags = less confidence
-    if (avgDistance > 2.0) {
-      double distanceFactor = avgDistance / 2.0;
+    if (avgDistance > VisionConstants.kDistanceFactorThreshold) {
+      double distanceFactor = avgDistance / VisionConstants.kDistanceFactorThreshold;
       xyStdDev *= distanceFactor;
       rotStdDev *= distanceFactor;
     }

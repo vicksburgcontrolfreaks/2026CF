@@ -9,6 +9,7 @@ import java.util.function.DoubleSupplier;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants.DriveCommandConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.SwerveConstants;
 import frc.robot.subsystems.swerve.SwerveDrive;
@@ -21,9 +22,9 @@ public class SwerveDriveCommand extends Command {
   private final DoubleSupplier m_speedLimitSupplier;
 
   // Slew rate limiters to make joystick inputs smoother
-  private final SlewRateLimiter m_xLimiter = new SlewRateLimiter(3.0);
-  private final SlewRateLimiter m_yLimiter = new SlewRateLimiter(3.0);
-  private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(3.0);
+  private final SlewRateLimiter m_xLimiter = new SlewRateLimiter(DriveCommandConstants.kTranslationSlewRate);
+  private final SlewRateLimiter m_yLimiter = new SlewRateLimiter(DriveCommandConstants.kTranslationSlewRate);
+  private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(DriveCommandConstants.kRotationSlewRate);
 
   public SwerveDriveCommand(
       SwerveDrive swerveDrive,

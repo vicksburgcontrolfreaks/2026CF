@@ -51,6 +51,7 @@ public final class Constants {
     // Controller ports
     public static final int kDriverControllerPort = 0;
     public static final int kMechanismControllerPort = 1;
+    public static final int kJoystickPort = 0; // Logitech Extreme 3D Pro (same port as Xbox when switched)
 
     // Joystick deadband
     public static final double kDeadband = 0.1;
@@ -160,28 +161,28 @@ public final class Constants {
     // Positive X = forward, Positive Y = left, Positive Z = up
     // Rotations: Roll (X), Pitch (Y), Yaw (Z) in radians
 
-    // Front camera: mounted on front bumper, facing forward
+    // Front camera: mounted on front tower, facing forward
     public static final Transform3d kRobotToFrontCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(12.0), 0.0, Units.inchesToMeters(10.0)), // 12" forward, 10" up
-      new Rotation3d(0, Math.toRadians(-15), 0) // Pitched down 15°
+      new Translation3d(Units.inchesToMeters(-2.9), Units.inchesToMeters(0.5), Units.inchesToMeters(19.4)), // 12" forward, 10" up
+      new Rotation3d(0, Math.toRadians(6), 0) // Pitched down 15°
     );
 
-    // Back camera: mounted on back bumper, facing backward
+    // Back camera: mounted on watchtower structure (back center), facing backward
     public static final Transform3d kRobotToBackCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-12.0), 0.0, Units.inchesToMeters(10.0)), // 12" back, 10" up
-      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(180)) // Pitched down 15°, facing back
+      new Translation3d(Units.inchesToMeters(-9.6), Units.inchesToMeters(0.5), Units.inchesToMeters(19.4)), // 9.6" back, 0.5" centered, 19.4" up
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(180)) // Pitched down 6°, facing back
     );
 
-    // Left camera: mounted on left side, facing left
+    // Left camera: mounted on left tower, facing left
     public static final Transform3d kRobotToLeftCamera = new Transform3d(
-      new Translation3d(0.0, Units.inchesToMeters(12.0), Units.inchesToMeters(10.0)), // 12" left, 10" up
-      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(90)) // Pitched down 15°, facing left
+      new Translation3d(Units.inchesToMeters(-6.4), Units.inchesToMeters(4.0), Units.inchesToMeters(19.4)), // 12" left, 10" up
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 15°, facing left
     );
 
-    // Right camera: mounted on right side, facing right
+    // Right camera: mounted on right tower, facing right
     public static final Transform3d kRobotToRightCamera = new Transform3d(
-      new Translation3d(0.0, Units.inchesToMeters(-12.0), Units.inchesToMeters(10.0)), // 12" right, 10" up
-      new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-90)) // Pitched down 15°, facing right
+      new Translation3d(Units.inchesToMeters(-6.4), Units.inchesToMeters(-3.0), Units.inchesToMeters(19.4)), // 12" right, 10" up
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 15°, facing right
     );
 
     // Standard deviations for multi-camera pose estimation
@@ -237,5 +238,162 @@ public final class Constants {
     // Max auto speeds
     public static final double kMaxAutoSpeedMetersPerSecond = 3.0;
     public static final double kMaxAutoAngularSpeedRadiansPerSecond = Math.PI;
+  }
+
+  public static class LEDConstants {
+    // PWM port for LED strip on RoboRIO
+    public static final int kLEDPort = 0;
+
+    // Number of addressable LEDs in the strip
+    public static final int kLEDCount = 23;
+
+    // Animation speeds (in milliseconds)
+    public static final int kBlinkSpeed = 500;
+    public static final int kBreatheSpeed = 50;
+    public static final int kRainbowSpeed = 100;
+
+    // LED animation parameters
+    public static final int kRainbowHueIncrement = 3; // Hue increment for rainbow animation
+    public static final int kRainbowHueModulo = 180; // Hue wrapping value
+    public static final int kChaseTailLength = 3; // Number of LEDs for chase tail effect
+    public static final double kChaseBrightnessFade = 0.3; // Brightness reduction per tail segment
+
+    // LED cycle counter limit
+    public static final int kCycleCounterModulo = 4; // For cycling LED patterns
+
+    // Startup test color (white)
+    public static final int kStartupTestR = 255;
+    public static final int kStartupTestG = 255;
+    public static final int kStartupTestB = 255;
+
+    // Predefined colors (RGB values 0-255)
+    public static final int[] kOffColor = {0, 0, 0};
+    public static final int[] kRedColor = {255, 0, 0};
+    public static final int[] kGreenColor = {0, 255, 0};
+    public static final int[] kBlueColor = {0, 0, 255};
+    public static final int[] kYellowColor = {255, 255, 0};
+    public static final int[] kPurpleColor = {128, 0, 128};
+    public static final int[] kOrangeColor = {255, 165, 0};
+    public static final int[] kWhiteColor = {255, 255, 255};
+
+    // Alliance colors
+    public static final int[] kAllianceRedColor = {255, 0, 0};
+    public static final int[] kAllianceBlueColor = {0, 0, 255};
+
+    // Robot state colors
+    public static final int[] kDisabledColor = {255, 165, 0}; // Orange
+    public static final int[] kAutonomousColor = {0, 255, 0}; // Green
+    public static final int[] kTeleopColor = {0, 0, 255}; // Blue
+    public static final int[] kErrorColor = {255, 0, 0}; // Red
+  }
+
+  public static class RobotContainerConstants {
+    // Controller selection flag (true = Xbox controller, false = Joystick)
+    public static final boolean kUseJoystick = true;
+
+    // Collector speed multipliers
+    public static final double kCollectorFullSpeed = 1.0;
+    public static final double kCollectorHalfSpeed = 0.5;
+    public static final double kCollectorFullSpeedReverse = -1.0;
+    public static final double kCollectorHalfSpeedReverse = -0.5;
+
+    // Timeouts
+    public static final double kSetXTimeoutSeconds = 1.0; // Timeout for wheel lock command
+
+    // Trigger threshold (deadband)
+    public static final double kTriggerThreshold = 0.1;
+
+    // Throttle position thresholds (for joystick)
+    public static final double kThrottleLowerThreshold = -0.3;
+    public static final double kThrottleUpperThreshold = 0.3;
+  }
+
+  public static class DriveCommandConstants {
+    // Slew rate limiters for smooth control (units per second)
+    public static final double kTranslationSlewRate = 3.0;
+    public static final double kRotationSlewRate = 3.0;
+  }
+
+  public static class SwerveDriveConstants {
+    // Telemetry update period (in cycles)
+    public static final int kTelemetryUpdatePeriod = 5;
+
+    // X-formation wheel lock angles (degrees)
+    public static final double kXFormationAngleFrontLeft = 45.0;
+    public static final double kXFormationAngleFrontRight = -45.0;
+    public static final double kXFormationAngleBackLeft = -45.0;
+    public static final double kXFormationAngleBackRight = 45.0;
+
+    // Angle wrapping constant
+    public static final double kGyroWrapModulo = 360.0;
+
+    // Encoder normalization constant
+    public static final double kEncoderNormalization = 2.0 * Math.PI;
+
+    // NetworkTables telemetry
+    public static final String kTelemetryTableName = "SwerveDrive";
+    public static final String kFieldOrientedTopic = "FieldOriented";
+    public static final String kGyroAngleTopic = "GyroAngle";
+    public static final String kPoseXTopic = "PoseX";
+    public static final String kPoseYTopic = "PoseY";
+    public static final String kPoseRotationTopic = "PoseRotation";
+    public static final String kFrontLeftAngleTopic = "FrontLeftAngle";
+    public static final String kFrontRightAngleTopic = "FrontRightAngle";
+    public static final String kBackLeftAngleTopic = "BackLeftAngle";
+    public static final String kBackRightAngleTopic = "BackRightAngle";
+    public static final String kFrontLeftVelocityTopic = "FrontLeftVelocity";
+    public static final String kFrontRightVelocityTopic = "FrontRightVelocity";
+    public static final String kBackLeftVelocityTopic = "BackLeftVelocity";
+    public static final String kBackRightVelocityTopic = "BackRightVelocity";
+  }
+
+  public static class ConfigConstants {
+    // Motor nominal voltage
+    public static final double kNominalVoltage = 12.0;
+
+    // Motor output ranges
+    public static final double kMotorOutputMin = -1.0;
+    public static final double kMotorOutputMax = 1.0;
+
+    // Velocity conversion factor (RPM to radians per second)
+    public static final double kVelocityConversionFactor = 1.0 / 60.0;
+
+    // Position conversion factor
+    public static final double kPositionConversionFactor = 2.0 * Math.PI;
+  }
+
+  public static class SwerveConfigConstants {
+    // Robot physical properties
+    public static final double kRobotMassKg = 25.0; // Robot mass in kilograms
+    public static final double kRobotMOI = 6.0; // Robot moment of inertia (kg*m²)
+    public static final double kWheelCoefficientOfFriction = 1.2; // Wheel coefficient of friction
+
+    // Drive system configuration
+    public static final int kNumMotorsPerModule = 1; // Number of drive motors per module
+  }
+
+  public static class VisionConstants {
+    // Field boundary thresholds for pose validation
+    public static final double kBlueAllianceXThreshold = 12.0; // Blue alliance side boundary (X > 12.0)
+    public static final double kRedAllianceXThreshold = 4.54; // Red alliance side boundary (X < 4.54)
+
+    // Distance and confidence thresholds
+    public static final double kDistanceFactorThreshold = 2.0; // Distance scaling for standard deviation
+    public static final double kConfidenceTagCountMultiplier = 10.0; // Tag count confidence boost
+    public static final double kConfidenceAmbiguityMultiplier = 5.0; // Ambiguity confidence boost
+
+    // NetworkTables telemetry
+    public static final String kTelemetryTableName = "PhotonVision";
+    public static final String kHasTargetTopic = "HasTarget";
+    public static final String kTargetYawTopic = "TargetYaw";
+    public static final String kTargetPitchTopic = "TargetPitch";
+    public static final String kTargetAreaTopic = "TargetArea";
+    public static final String kTargetSkewTopic = "TargetSkew";
+    public static final String kPoseXTopic = "PoseX";
+    public static final String kPoseYTopic = "PoseY";
+    public static final String kPoseRotationTopic = "PoseRotation";
+    public static final String kBestTagIDTopic = "BestTagID";
+    public static final String kBestTagDistanceTopic = "BestTagDistance";
+    public static final String kTagCountTopic = "TagCount";
   }
 }

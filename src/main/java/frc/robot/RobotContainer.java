@@ -16,12 +16,16 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
+import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDrive;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
-
+import frc.robot.subsystems.collector.Collector;
+import frc.robot.subsystems.collector.RunCollector;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
  * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
@@ -31,12 +35,26 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 public class RobotContainer {
 
   // Subsystems
-  private final SwerveDrive m_swerveDrive = new SwerveDrive();
-  private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
+  private boolean m_collectorHalfSpeed = false;
+  private double m_collectorSpeed = RobotContainerConstants.kCollectorFullSpeed;
 
-  // Controllers
-  private final CommandXboxController m_driverController =
-      new CommandXboxController(OperatorConstants.kDriverControllerPort);
+  // TEMPORARILY DISABLED: Collector subsystem (Spark Max ID 11 timeout issue)
+  // TODO: Re-enable when collector motors are connected
+  // private final Collector m_collector = new Collector();
+  private final Collector m_collector = null;
+
+  private final SwerveDrive m_swerveDrive = new SwerveDrive();
+
+  // TEMPORARILY DISABLED: PhotonVision subsystem (no coprocessor detected on network)
+  // TODO: Re-enable when PhotonVision coprocessor is connected and configured
+  // private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
+  private final PhotonVisionSubsystem m_visionSubsystem = null;
+
+  private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
+
+  // Controllers - only one will be initialized based on USE_JOYSTICK flag
+  private final CommandXboxController m_driverController;
+  private final JoystickContainer m_joystickContainer;
 
   // Autonomous chooser
   private final SendableChooser<Command> m_autoChooser;
@@ -46,14 +64,29 @@ public class RobotContainer {
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
+    System.out.println(">>> RobotContainer constructor started <<<");
+
+    // Initialize the appropriate controller based on kUseJoystick flag
+    if (RobotContainerConstants.kUseJoystick) {
+      System.out.println(">>> Using Logitech Extreme 3D Pro Joystick <<<");
+      m_driverController = null;
+      m_joystickContainer = new JoystickContainer(m_swerveDrive, m_collector);
+    } else {
+      System.out.println(">>> Using Xbox Controller <<<");
+      m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
+      m_joystickContainer = null;
+
+      // Configure the default command for swerve drive (Xbox only)
+      configureDefaultCommands();
+
+      // Configure the trigger bindings (Xbox only)
+      configureBindings();
+    }
+
     // Configure PathPlanner AutoBuilder
     m_pathPlannerConfigured = configurePathPlanner();
 
-    // Configure the default command for swerve drive
-    configureDefaultCommands();
-
-    // Configure the trigger bindings
-    configureBindings();
+    System.out.println(">>> RobotContainer constructor finished - Button bindings configured! <<<");
 
     // Build autonomous chooser from PathPlanner only if configured successfully
     if (m_pathPlannerConfigured) {
@@ -99,7 +132,7 @@ public class RobotContainer {
       // Register named commands for PathPlanner
       // These can be used in the PathPlanner GUI as event markers
       NamedCommands.registerCommand("stopDrive", m_swerveDrive.runOnce(() -> m_swerveDrive.stop()));
-      NamedCommands.registerCommand("lockWheels", m_swerveDrive.run(() -> m_swerveDrive.setX()).withTimeout(1.0));
+      NamedCommands.registerCommand("lockWheels", m_swerveDrive.run(() -> m_swerveDrive.setX()).withTimeout(RobotContainerConstants.kSetXTimeoutSeconds));
 
       return true;
     } catch (Exception e) {
@@ -144,15 +177,28 @@ public class RobotContainer {
       m_swerveDrive.runOnce(() -> m_swerveDrive.toggleFieldOriented())
     );
 
-    // X-configuration for defense (locks wheels)
-    m_driverController.x().whileTrue(
-      m_swerveDrive.run(() -> m_swerveDrive.setX())
-    );
+    // Collector controls - only bind if collector is available
+    if (m_collector != null) {
+      m_driverController.x().onTrue(
+         Commands.runOnce(() -> m_collectorHalfSpeed = !m_collectorHalfSpeed)
+      );
 
-    // Reset odometry to origin
-    m_driverController.y().onTrue(
-      m_swerveDrive.runOnce(() -> m_swerveDrive.resetOdometry(new edu.wpi.first.math.geometry.Pose2d()))
-    );
+      m_driverController.a().whileTrue(
+         Commands.run(() -> {
+          double speed = m_collectorHalfSpeed ? RobotContainerConstants.kCollectorHalfSpeed : RobotContainerConstants.kCollectorFullSpeed;
+         m_collector.run(speed);
+        }, m_collector)
+      );
+
+      m_driverController.b().whileTrue(
+         Commands.run(() -> {
+          double speed = m_collectorHalfSpeed ? RobotContainerConstants.kCollectorHalfSpeedReverse : RobotContainerConstants.kCollectorFullSpeedReverse;
+         m_collector.run(speed);
+        }, m_collector)
+      );
+    }
+    
+    
   }
 
   /**
@@ -165,14 +211,16 @@ public class RobotContainer {
     double rightTrigger = m_driverController.getRightTriggerAxis();
     double leftTrigger = m_driverController.getLeftTriggerAxis();
 
-    if (rightTrigger > 0.1) {
+    if (rightTrigger > RobotContainerConstants.kTriggerThreshold) {
       return OperatorConstants.kTurboSpeedLimit;
-    } else if (leftTrigger > 0.1) {
+    } else if (leftTrigger > RobotContainerConstants.kTriggerThreshold) {
       return OperatorConstants.kPrecisionSpeedLimit;
     } else {
       return OperatorConstants.kNormalSpeedLimit;
     }
   }
+
+    
 
   /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
@@ -195,8 +243,39 @@ public class RobotContainer {
 
   /**
    * Get the vision subsystem
+   * Returns null if PhotonVision is temporarily disabled
    */
   public PhotonVisionSubsystem getVisionSubsystem() {
     return m_visionSubsystem;
+  }
+
+  /**
+   * Get the LED subsystem
+   */
+  public LEDSubsystem getLEDSubsystem() {
+    return m_ledSubsystem;
+  }
+
+  /**
+   * Get the driver controller (for debugging)
+   * Returns null if joystick is being used
+   */
+  public CommandXboxController getDriverControllerForDebug() {
+    return m_driverController;
+  }
+
+  /**
+   * Get the joystick container (for debugging)
+   * Returns null if Xbox controller is being used
+   */
+  public JoystickContainer getJoystickContainerForDebug() {
+    return m_joystickContainer;
+  }
+
+  /**
+   * Check if joystick mode is active
+   */
+  public boolean isUsingJoystick() {
+    return RobotContainerConstants.kUseJoystick;
   }
 }

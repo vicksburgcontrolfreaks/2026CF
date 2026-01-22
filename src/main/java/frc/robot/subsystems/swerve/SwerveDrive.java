@@ -24,6 +24,7 @@ import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.SwerveConstants;
+import frc.robot.Constants.SwerveDriveConstants;
 
 public class SwerveDrive extends SubsystemBase {
   private final SwerveModule m_frontLeft;
@@ -58,7 +59,7 @@ public class SwerveDrive extends SubsystemBase {
 
   // Telemetry update counter for reduced frequency publishing
   private int m_telemetryCounter = 0;
-  private static final int TELEMETRY_UPDATE_PERIOD = 5; // Publish detailed telemetry every 5 cycles (100ms)
+  private static final int TELEMETRY_UPDATE_PERIOD = SwerveDriveConstants.kTelemetryUpdatePeriod; // Publish detailed telemetry every N cycles
 
   public SwerveDrive() {
     // Initialize swerve modules with your CAN IDs
@@ -92,7 +93,7 @@ public class SwerveDrive extends SubsystemBase {
     // CRITICAL: Robot MUST remain stationary during calibration!
     System.out.println("==============================================");
     System.out.println("GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT");
-    System.out.println("Calibration time: 2 seconds");
+    System.out.println("Calibration time: " + SwerveConstants.kGyroCalibrationTimeSec + " seconds");
     System.out.println("==============================================");
 
     m_gyro = new ADIS16470_IMU(
@@ -123,18 +124,18 @@ public class SwerveDrive extends SubsystemBase {
     SmartDashboard.putData("Field", m_field);
 
     // Initialize Elastic (NetworkTables) publishers
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable("SwerveDrive");
-    m_gyroAnglePub = m_telemetryTable.getDoubleTopic("Gyro Angle").publish();
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable(SwerveDriveConstants.kTelemetryTableName);
+    m_gyroAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kGyroAngleTopic).publish();
     m_robotPosePub = m_telemetryTable.getStringTopic("Robot Pose").publish();
-    m_fieldOrientedPub = m_telemetryTable.getBooleanTopic("Field Oriented").publish();
-    m_flVelocityPub = m_telemetryTable.getDoubleTopic("FL Velocity").publish();
-    m_frVelocityPub = m_telemetryTable.getDoubleTopic("FR Velocity").publish();
-    m_blVelocityPub = m_telemetryTable.getDoubleTopic("BL Velocity").publish();
-    m_brVelocityPub = m_telemetryTable.getDoubleTopic("BR Velocity").publish();
-    m_flAnglePub = m_telemetryTable.getDoubleTopic("FL Angle").publish();
-    m_frAnglePub = m_telemetryTable.getDoubleTopic("FR Angle").publish();
-    m_blAnglePub = m_telemetryTable.getDoubleTopic("BL Angle").publish();
-    m_brAnglePub = m_telemetryTable.getDoubleTopic("BR Angle").publish();
+    m_fieldOrientedPub = m_telemetryTable.getBooleanTopic(SwerveDriveConstants.kFieldOrientedTopic).publish();
+    m_flVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftVelocityTopic).publish();
+    m_frVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightVelocityTopic).publish();
+    m_blVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackLeftVelocityTopic).publish();
+    m_brVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackRightVelocityTopic).publish();
+    m_flAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftAngleTopic).publish();
+    m_frAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightAngleTopic).publish();
+    m_blAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackLeftAngleTopic).publish();
+    m_brAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackRightAngleTopic).publish();
     m_flAbsEncoderPub = m_telemetryTable.getDoubleTopic("FL Absolute Encoder").publish();
     m_frAbsEncoderPub = m_telemetryTable.getDoubleTopic("FR Absolute Encoder").publish();
     m_blAbsEncoderPub = m_telemetryTable.getDoubleTopic("BL Absolute Encoder").publish();
@@ -172,10 +173,10 @@ public class SwerveDrive extends SubsystemBase {
       m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
 
       // Publish raw absolute encoder values for calibration (useful for setup only)
-      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
-      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
-      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / (2 * Math.PI));
-      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / (2 * Math.PI));
+      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
+      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
+      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
+      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
     }
   }
 
@@ -251,7 +252,7 @@ public class SwerveDrive extends SubsystemBase {
     // Read from Y-axis since RoboRIO is mounted vertically
     // Try without negation first - adjust if rotation direction is backwards
     // Use IEEEremainder to keep angle in [-180, 180] range
-    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), 360);
+    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), SwerveDriveConstants.kGyroWrapModulo);
   }
 
   public Rotation2d getGyroRotation2d() {
@@ -297,10 +298,10 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public void setX() {
-    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)));
-    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)));
-    m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(-45)));
-    m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(45)));
+    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleFrontLeft)));
+    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleFrontRight)));
+    m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleBackLeft)));
+    m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleBackRight)));
   }
 
   public void resetEncoders() {
