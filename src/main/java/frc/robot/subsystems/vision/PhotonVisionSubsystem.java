@@ -531,4 +531,26 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     }
     return names;
   }
+
+  /**
+   * Get all unique AprilTag IDs currently detected across all cameras
+   * @return List of unique AprilTag IDs (fiducial IDs)
+   */
+  public List<Integer> getDetectedAprilTagIDs() {
+    List<Integer> tagIDs = new ArrayList<>();
+
+    for (CameraData camData : m_cameras) {
+      if (camData.lastResult != null && camData.lastResult.hasTargets()) {
+        for (PhotonTrackedTarget target : camData.lastResult.getTargets()) {
+          int tagID = target.getFiducialId();
+          // Only add if not already in list (avoid duplicates from multiple cameras)
+          if (!tagIDs.contains(tagID)) {
+            tagIDs.add(tagID);
+          }
+        }
+      }
+    }
+
+    return tagIDs;
+  }
 }

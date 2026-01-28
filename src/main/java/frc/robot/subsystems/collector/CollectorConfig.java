@@ -4,9 +4,11 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 public final class CollectorConfig {
-  // CAN IDs for collector motors - UPDATE THESE TO MATCH YOUR ROBOT
+  //collector 4 motors / shooter 2 opposite motors / lift 2 motors
+  // CAN IDs for collector motors - UPDATE THESE TO MATCH YOUR ROBOT 
   public static final int kLeftMotorId = 10;
   public static final int kRightMotorId = 11;
+  // public static final int kfeederId = 12;
 
   // Current limits
   public static final int kMotorCurrentLimit = 40; // Amps

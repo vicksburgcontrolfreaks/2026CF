@@ -40,10 +40,8 @@ public class RobotContainer {
   private boolean m_collectorHalfSpeed = false;
   private double m_collectorSpeed = RobotContainerConstants.kCollectorFullSpeed;
 
-  // TEMPORARILY DISABLED: Collector subsystem (Spark Max ID 11 timeout issue)
-  // TODO: Re-enable when collector motors are connected
-  // private final Collector m_collector = new Collector();
-  private final Collector m_collector = null;
+  // Collector subsystem - RE-ENABLED
+  private final Collector m_collector = new Collector();
 
   private final SwerveDrive m_swerveDrive = new SwerveDrive();
 
@@ -205,7 +203,7 @@ public class RobotContainer {
     
 
     // Run shooter while A button is held
-    m_driverController.a().whileTrue(
+    m_driverController.y().whileTrue(
       new ShootCommand(m_shooter)
     );
   }

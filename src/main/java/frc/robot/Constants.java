@@ -189,13 +189,13 @@ public final class Constants {
     // Left camera: mounted on left tower, facing left
     public static final Transform3d kRobotToLeftCamera = new Transform3d(
       new Translation3d(Units.inchesToMeters(-6.4), Units.inchesToMeters(4.0), Units.inchesToMeters(19.4)), // 12" left, 10" up
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 15°, facing left
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 15°, facing left
     );
 
     // Right camera: mounted on right tower, facing right
     public static final Transform3d kRobotToRightCamera = new Transform3d(
       new Translation3d(Units.inchesToMeters(-6.4), Units.inchesToMeters(-3.0), Units.inchesToMeters(19.4)), // 12" right, 10" up
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 15°, facing right
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 15°, facing right
     );
 
     // Standard deviations for multi-camera pose estimation
@@ -298,11 +298,16 @@ public final class Constants {
     public static final int[] kAutonomousColor = {0, 255, 0}; // Green
     public static final int[] kTeleopColor = {0, 0, 255}; // Blue
     public static final int[] kErrorColor = {255, 0, 0}; // Red
+
+    // AprilTag detection colors
+    public static final int[] kAprilTagDetectedColor = {0, 255, 0}; // Green
+    public static final int[] kAprilTagMultipleColor = {255, 255, 0}; // Yellow
+    public static final int[] kAprilTagAlignedColor = {0, 255, 255}; // Cyan
   }
 
   public static class RobotContainerConstants {
-    // Controller selection flag (true = Xbox controller, false = Joystick)
-    public static final boolean kUseJoystick = true;
+    // Controller selection flag (true = Joystick, false = Xbox controller)
+    public static final boolean kUseJoystick = false;
 
     // Collector speed multipliers
     public static final double kCollectorFullSpeed = 1.0;

@@ -10,7 +10,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 public class Collector extends SubsystemBase {
   private final SparkMax m_leftMotor;
   private final SparkMax m_rightMotor;
-
   public Collector() {
     // Initialize motors
     m_leftMotor = new SparkMax(CollectorConfig.kLeftMotorId, MotorType.kBrushless);

@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026CF Robot - Xbox Controller Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .team-info {
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-top: 10px;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+        }
+
+        .status-badge::before {
+            content: '●';
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controller-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .controller {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            margin: 0 auto;
+            background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
+            border-radius: 120px 120px 80px 80px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 3px solid #444;
+        }
+
+        /* Face Buttons (A, B, X, Y) */
+        .face-buttons {
+            position: absolute;
+            right: 150px;
+            top: 120px;
+            width: 120px;
+            height: 120px;
+        }
+
+        .btn {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 3px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-a {
+            background: #4CAF50;
+            color: white;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .btn-b {
+            background: #f44336;
+            color: white;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+        }
+
+        .btn-x {
+            background: #2196F3;
+            color: white;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+
+        .btn-y {
+            background: #FFC107;
+            color: white;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* D-Pad */
+        .dpad {
+            position: absolute;
+            left: 150px;
+            top: 120px;
+            width: 100px;
+            height: 100px;
+        }
+
+        .dpad-cross {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .dpad-btn {
+            position: absolute;
+            background: #333;
+            border: 2px solid #555;
+        }
+
+        .dpad-up, .dpad-down {
+            width: 30px;
+            height: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .dpad-up { top: 0; }
+        .dpad-down { bottom: 0; }
+
+        .dpad-left, .dpad-right {
+            width: 35px;
+            height: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .dpad-left { left: 0; }
+        .dpad-right { right: 0; }
+
+        .dpad-center {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #222;
+            border-radius: 5px;
+        }
+
+        /* Bumpers */
+        .bumper {
+            position: absolute;
+            width: 120px;
+            height: 30px;
+            background: #444;
+            border: 2px solid #666;
+            border-radius: 10px;
+            top: 20px;
+        }
+
+        .bumper-left { left: 100px; }
+        .bumper-right { right: 100px; }
+
+        /* Triggers */
+        .trigger {
+            position: absolute;
+            width: 100px;
+            height: 20px;
+            background: #555;
+            border: 2px solid #777;
+            border-radius: 8px;
+            top: 0;
+        }
+
+        .trigger-left { left: 110px; }
+        .trigger-right { right: 110px; }
+
+        /* Start/Back Buttons */
+        .menu-btn {
+            position: absolute;
+            width: 40px;
+            height: 25px;
+            background: #333;
+            border: 2px solid #555;
+            border-radius: 8px;
+            top: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .btn-back { left: 320px; }
+        .btn-start { right: 320px; }
+
+        /* Joysticks */
+        .joystick {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle, #444 0%, #222 100%);
+            border: 3px solid #666;
+            border-radius: 50%;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        .joystick-left {
+            left: 100px;
+            bottom: 80px;
+        }
+
+        .joystick-right {
+            right: 250px;
+            bottom: 80px;
+        }
+
+        .joystick::after {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #555;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid #777;
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1000;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            line-height: 1.6;
+        }
+
+        .tooltip strong {
+            color: #4CAF50;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .tooltip-a { top: 280px; right: 50px; }
+        .tooltip-b { top: 180px; right: -20px; }
+        .tooltip-x { top: 180px; left: 280px; }
+        .tooltip-y { top: 80px; right: 120px; }
+
+        .tooltip-start { top: 40px; right: 200px; }
+        .tooltip-back { top: 40px; left: 200px; }
+
+        .tooltip-lt { top: -60px; left: 40px; }
+        .tooltip-rt { top: -60px; right: 40px; }
+
+        .tooltip-lstick { bottom: -80px; left: 30px; }
+        .tooltip-rstick { bottom: -80px; right: 180px; }
+
+        /* Legend */
+        .legend {
+            margin-top: 60px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .legend h2 {
+            margin-bottom: 20px;
+            color: #4CAF50;
+            font-size: 1.8em;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .legend-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .legend-item strong {
+            color: #4CAF50;
+            font-size: 1.1em;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .legend-item p {
+            margin: 4px 0;
+            line-height: 1.6;
+        }
+
+        .subsystem-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(33, 150, 243, 0.3);
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        .disabled-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(244, 67, 54, 0.3);
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-top: 4px;
+            color: #ff6b6b;
+        }
+
+        .speed-table {
+            margin-top: 30px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 30px;
+        }
+
+        .speed-table h2 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        th {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .note {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 193, 7, 0.2);
+            border-left: 4px solid #FFC107;
+            border-radius: 4px;
+        }
+
+        .note strong {
+            color: #FFC107;
+        }
+
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+
+            .controller {
+                border: 2px solid black;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 2026CF Robot Controller Map</h1>
+            <p class="subtitle">Xbox Controller Configuration</p>
+            <div class="status-badge">ACTIVE CONTROLLER</div>
+            <p class="team-info">Vicksburg Control Freaks | FRC 2026 Season</p>
+        </header>
+
+        <div class="controller-container">
+            <div class="controller">
+                <!-- Left Trigger -->
+                <div class="trigger trigger-left"></div>
+                <div class="tooltip tooltip-lt">
+                    <strong>Left Trigger</strong>
+                    Precision Speed Mode<br>
+                    0.1% speed limit
+                </div>
+
+                <!-- Right Trigger -->
+                <div class="trigger trigger-right"></div>
+                <div class="tooltip tooltip-rt">
+                    <strong>Right Trigger</strong>
+                    Turbo Speed Mode<br>
+                    5% speed limit
+                </div>
+
+                <!-- Left Bumper -->
+                <div class="bumper bumper-left"></div>
+
+                <!-- Right Bumper -->
+                <div class="bumper bumper-right"></div>
+
+                <!-- D-Pad -->
+                <div class="dpad">
+                    <div class="dpad-cross">
+                        <div class="dpad-btn dpad-up"></div>
+                        <div class="dpad-btn dpad-down"></div>
+                        <div class="dpad-btn dpad-left"></div>
+                        <div class="dpad-btn dpad-right"></div>
+                        <div class="dpad-center"></div>
+                    </div>
+                </div>
+
+                <!-- Face Buttons -->
+                <div class="face-buttons">
+                    <div class="btn btn-a">A</div>
+                    <div class="btn btn-b">B</div>
+                    <div class="btn btn-x">X</div>
+                    <div class="btn btn-y">Y</div>
+                </div>
+
+                <!-- Tooltips for face buttons -->
+                <div class="tooltip tooltip-a">
+                    <strong>A Button</strong>
+                    Collector Forward (while held)<br>
+                    Speed based on X toggle
+                </div>
+
+                <div class="tooltip tooltip-b">
+                    <strong>B Button</strong>
+                    Collector Reverse (while held)<br>
+                    Speed based on X toggle
+                </div>
+
+                <div class="tooltip tooltip-x">
+                    <strong>X Button</strong>
+                    Toggle Collector Half Speed<br>
+                    Full ↔ Half Speed Mode
+                </div>
+
+                <div class="tooltip tooltip-y">
+                    <strong>Y Button</strong>
+                    Run Shooter (while held)<br>
+                    Top: 80% | Front: 20-80% ramp
+                </div>
+
+                <!-- Start/Back Buttons -->
+                <div class="menu-btn btn-start">☰</div>
+                <div class="tooltip tooltip-start">
+                    <strong>Start Button</strong>
+                    Reset Gyro<br>
+                    Zeros heading to 0°
+                </div>
+
+                <div class="menu-btn btn-back">⊟</div>
+                <div class="tooltip tooltip-back">
+                    <strong>Back Button</strong>
+                    Toggle Field-Oriented Drive<br>
+                    Field ↔ Robot Relative
+                </div>
+
+                <!-- Left Joystick -->
+                <div class="joystick joystick-left"></div>
+                <div class="tooltip tooltip-lstick">
+                    <strong>Left Stick</strong>
+                    Robot Movement<br>
+                    Y-Axis: Forward/Backward<br>
+                    X-Axis: Strafe Left/Right
+                </div>
+
+                <!-- Right Joystick -->
+                <div class="joystick joystick-right"></div>
+                <div class="tooltip tooltip-rstick">
+                    <strong>Right Stick</strong>
+                    Robot Rotation<br>
+                    X-Axis: Rotate CW/CCW
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h2>📋 Detailed Control Reference</h2>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <strong>Left Joystick</strong>
+                    <p><strong>Y-Axis:</strong> Forward/Backward translation</p>
+                    <p><strong>X-Axis:</strong> Left/Right strafe (holonomic)</p>
+                    <p><span class="subsystem-tag">Swerve Drive</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Right Joystick</strong>
+                    <p><strong>X-Axis:</strong> Rotation control (yaw)</p>
+                    <p>Allows robot to spin while translating</p>
+                    <p><span class="subsystem-tag">Swerve Drive</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>A Button (Hold)</strong>
+                    <p>Runs collector forward</p>
+                    <p>Speed depends on X button toggle state</p>
+                    <p>Full Speed: 100% | Half Speed: 50%</p>
+                    <p><span class="subsystem-tag">Collector - ACTIVE</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>B Button (Hold)</strong>
+                    <p>Runs collector in reverse</p>
+                    <p>Speed depends on X button toggle state</p>
+                    <p>Full Reverse: -100% | Half Reverse: -50%</p>
+                    <p><span class="subsystem-tag">Collector - ACTIVE</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>X Button (Toggle)</strong>
+                    <p>Switches collector between speed modes:</p>
+                    <p>• Full Speed Mode: 100% / -100%</p>
+                    <p>• Half Speed Mode: 50% / -50%</p>
+                    <p>Affects both A (forward) and B (reverse) speeds</p>
+                    <p><span class="subsystem-tag">Collector - ACTIVE</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Y Button (Hold)</strong>
+                    <p>Runs shooter motors with progressive ramp</p>
+                    <p>• Top shooter: Constant 80% speed</p>
+                    <p>• Front shooter: 20% → 80% with 1% ramp</p>
+                    <p><span class="subsystem-tag">Shooter - ACTIVE</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Start Button</strong>
+                    <p>Resets gyro heading to zero</p>
+                    <p>Use when robot orientation is known</p>
+                    <p>Critical for field-oriented drive accuracy</p>
+                    <p><span class="subsystem-tag">Gyro (ADIS16470)</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Back Button</strong>
+                    <p>Toggles drive mode:</p>
+                    <p>• <strong>Field-Oriented:</strong> Forward = away from driver</p>
+                    <p>• <strong>Robot-Oriented:</strong> Forward = robot front</p>
+                    <p><span class="subsystem-tag">Swerve Drive</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Left Trigger (Hold)</strong>
+                    <p>Precision speed mode</p>
+                    <p>Reduces max speed to 0.1% for fine adjustments</p>
+                    <p>Ideal for precise positioning and alignment</p>
+                    <p><span class="subsystem-tag">Swerve Drive</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Right Trigger (Hold)</strong>
+                    <p>Turbo speed mode</p>
+                    <p>Increases max speed to 5%</p>
+                    <p>Use for faster field traversal</p>
+                    <p><span class="subsystem-tag">Swerve Drive</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>No Trigger</strong>
+                    <p>Normal speed mode (default)</p>
+                    <p>Standard operating speed: 2.5%</p>
+                    <p>Balanced control and safety</p>
+                    <p><span class="subsystem-tag">Swerve Drive</span></p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>D-Pad</strong>
+                    <p>Currently unassigned</p>
+                    <p>All 4 directions available</p>
+                    <p>Potential uses: Auto-align, preset positions</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="speed-table">
+            <h2>⚡ Speed Modes Reference</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Trigger</th>
+                        <th>Speed Limit</th>
+                        <th>Approx. m/s</th>
+                        <th>Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Precision</strong></td>
+                        <td>Left Trigger</td>
+                        <td>0.1%</td>
+                        <td>~0.005 m/s</td>
+                        <td>Precise alignment, fine positioning</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Normal</strong></td>
+                        <td>No Trigger</td>
+                        <td>2.5%</td>
+                        <td>~0.11 m/s</td>
+                        <td>Default driving, safe walking speed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Turbo</strong></td>
+                        <td>Right Trigger</td>
+                        <td>5%</td>
+                        <td>~0.23 m/s</td>
+                        <td>Faster transit, competitive play</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Theoretical Max</strong></td>
+                        <td>-</td>
+                        <td>100%</td>
+                        <td>~4.5 m/s</td>
+                        <td>Not accessible (safety limited)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="note">
+                <strong>⚠️ Note:</strong> Speed limits are intentionally conservative for safe testing.
+                Increase values in <code>Constants.OperatorConstants</code> as driver confidence improves.
+                Current max theoretical speed with NEO Vortex motors: ~4.5 m/s (~10 mph).
+            </div>
+        </div>
+
+        <div class="legend" style="margin-top: 30px;">
+            <h2>🔧 System Information</h2>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <strong>Drive System</strong>
+                    <p>REV MAXSwerve with NEO Vortex motors</p>
+                    <p>4-module swerve drive (holonomic)</p>
+                    <p>Field-oriented and robot-oriented modes</p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Gyro</strong>
+                    <p>ADIS16470 IMU via SPI</p>
+                    <p>2-second calibration on startup</p>
+                    <p>Must remain stationary during init</p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Shooter</strong>
+                    <p>Dual motor system (CAN ID 0, 1)</p>
+                    <p>Progressive speed ramping on front motor</p>
+                    <p>Proportional control: 1% per loop</p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Collector</strong>
+                    <p>Dual-speed operation: Full & Half</p>
+                    <p>Controlled by A (forward) and B (reverse)</p>
+                    <p>Speed toggled with X button</p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>Vision (Disabled)</strong>
+                    <p>PhotonVision 4-camera system</p>
+                    <p>Temporarily disabled (no coprocessor)</p>
+                    <p>360° AprilTag detection when enabled</p>
+                </div>
+
+                <div class="legend-item">
+                    <strong>LEDs</strong>
+                    <p>23 addressable LEDs (WS2812B/AndyMark)</p>
+                    <p>GRB color order</p>
+                    <p>Multiple patterns and manual control</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="note" style="margin-top: 30px; background: rgba(76, 175, 80, 0.2); border-left: 4px solid #4CAF50;">
+            <strong style="color: #4CAF50;">✅ Active Configuration:</strong> Xbox Controller is currently enabled (<code>kUseJoystick = false</code>).
+            All controls shown on this page are active and ready to use. To switch to Logitech Extreme 3D Pro joystick,
+            set <code>RobotContainerConstants.kUseJoystick = true</code> in Constants.java.
+        </div>
+
+        <footer style="text-align: center; margin-top: 40px; opacity: 0.7; font-size: 0.9em;">
+            <p>Generated for Team 2026CF | Last Updated: January 2026</p>
+            <p>File Location: <code>c:\Users\Vicksburg FTC\StudioProjects\2026CF-1\xbox-controller-map.html</code></p>
+        </footer>
+    </div>
+</body>
+</html>
