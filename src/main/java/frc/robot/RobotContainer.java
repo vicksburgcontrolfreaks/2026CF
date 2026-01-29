@@ -39,7 +39,6 @@ public class RobotContainer {
 
   // Subsystems
   private boolean m_collectorHalfSpeed = false;
-  private double m_collectorSpeed = RobotContainerConstants.kCollectorFullSpeed;
 
   // Collector subsystem - RE-ENABLED
   private final Collector m_collector = new Collector();
@@ -49,7 +48,7 @@ public class RobotContainer {
   // TEMPORARILY DISABLED: PhotonVision subsystem (no coprocessor detected on network)
   // TODO: Re-enable when PhotonVision coprocessor is connected and configured
   // private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final PhotonVisionSubsystem m_visionSubsystem = null;
+  private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
 
   private final ShooterAdjustments m_shooter = new ShooterAdjustments();
 
@@ -163,6 +162,9 @@ public class RobotContainer {
       )
     );
   }
+  
+
+    
 
   /**
    * Use this method to define your trigger->command mappings. Triggers can be created via the
