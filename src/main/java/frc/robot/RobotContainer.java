@@ -28,6 +28,7 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import frc.robot.subsystems.shooter.ShooterAdjustments;
 import frc.robot.subsystems.collector.Collector;
 import frc.robot.subsystems.collector.RunCollector;
+import frc.robot.subsystems.climber.Climber;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
  * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
@@ -51,6 +52,10 @@ public class RobotContainer {
   private final PhotonVisionSubsystem m_visionSubsystem = null;
 
   private final ShooterAdjustments m_shooter = new ShooterAdjustments();
+
+  // Climber subsystem - TEMPORARILY DISABLED: Uncomment when motor is connected
+  // private final Climber m_climber = new Climber();
+  private final Climber m_climber = null;
 
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
 
@@ -199,10 +204,21 @@ public class RobotContainer {
         }, m_collector)
       );
     }
-    
-    
 
-    // Run shooter while A button is held
+    // Climber controls - only bind if climber is available
+    if (m_climber != null) {
+      // D-pad Up: Extend climber
+      m_driverController.povUp().whileTrue(
+        Commands.run(() -> m_climber.extend(), m_climber)
+      );
+
+      // D-pad Down: Retract climber
+      m_driverController.povDown().whileTrue(
+        Commands.run(() -> m_climber.retract(), m_climber)
+      );
+    }
+
+    // Run shooter while Y button is held
     m_driverController.y().whileTrue(
       new ShootCommand(m_shooter)
     );
