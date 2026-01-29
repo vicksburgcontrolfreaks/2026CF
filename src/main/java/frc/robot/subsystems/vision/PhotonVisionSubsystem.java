@@ -83,7 +83,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Load AprilTag field layout (2025 Reefscape)
     try {
-      m_fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
+      m_fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
     } catch (Exception e) {
       DriverStation.reportError("Failed to load AprilTag field layout!", e.getStackTrace());
       throw new RuntimeException("Failed to load AprilTag field layout", e);
@@ -424,10 +424,10 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       double poseX = pose.estimatedPose.getX();
 
       // FRC field is ~16.54m long. Blue alliance starts at X=0, Red alliance at X=16.54
-      // Reject if robot appears to be on wrong side of field
-      if (alliance.get() == Alliance.Blue && poseX > VisionConstants.kBlueAllianceXThreshold) {
+      // Reject if robot appears to be on wrong side of field (beyond midfield)
+      if (alliance.get() == Alliance.Blue && poseX < VisionConstants.kBlueAllianceXThreshold) {
         return String.format("Blue alliance robot on red side (X=%.2fm)", poseX);
-      } else if (alliance.get() == Alliance.Red && poseX < VisionConstants.kRedAllianceXThreshold) {
+      } else if (alliance.get() == Alliance.Red && poseX > VisionConstants.kRedAllianceXThreshold) {
         return String.format("Red alliance robot on blue side (X=%.2fm)", poseX);
       }
     }

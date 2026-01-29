@@ -176,26 +176,26 @@ public final class Constants {
 
     // Front camera: mounted on front tower, facing forward
     public static final Transform3d kRobotToFrontCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-2.9), Units.inchesToMeters(0.5), Units.inchesToMeters(19.4)), // 12" forward, 10" up
-      new Rotation3d(0, Math.toRadians(6), 0) // Pitched down 15°
+      new Translation3d(Units.inchesToMeters(-4), Units.inchesToMeters(0.5), Units.inchesToMeters(14)), // 12" forward, 10" up
+      new Rotation3d(0, Math.toRadians(6), 0) // Pitched down 6°
     );
 
     // Back camera: mounted on watchtower structure (back center), facing backward
     public static final Transform3d kRobotToBackCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-9.6), Units.inchesToMeters(0.5), Units.inchesToMeters(19.4)), // 9.6" back, 0.5" centered, 19.4" up
+      new Translation3d(Units.inchesToMeters(-10), Units.inchesToMeters(0.5), Units.inchesToMeters(14)), // 9.6" back, 0.5" centered, 19.4" up
       new Rotation3d(0, Math.toRadians(6), Math.toRadians(180)) // Pitched down 6°, facing back
     );
 
     // Left camera: mounted on left tower, facing left
     public static final Transform3d kRobotToLeftCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-6.4), Units.inchesToMeters(4.0), Units.inchesToMeters(19.4)), // 12" left, 10" up
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 15°, facing left
+      new Translation3d(Units.inchesToMeters(-7.5), Units.inchesToMeters(4.0), Units.inchesToMeters(14)), // 12" left, 10" up
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 6°, facing left
     );
 
     // Right camera: mounted on right tower, facing right
     public static final Transform3d kRobotToRightCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-6.4), Units.inchesToMeters(-3.0), Units.inchesToMeters(19.4)), // 12" right, 10" up
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 15°, facing right
+      new Translation3d(Units.inchesToMeters(-7.5), Units.inchesToMeters(-3.0), Units.inchesToMeters(14)), // 12" right, 10" up
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 6°, facing right
     );
 
     // Standard deviations for multi-camera pose estimation
@@ -392,8 +392,9 @@ public final class Constants {
 
   public static class VisionConstants {
     // Field boundary thresholds for pose validation
-    public static final double kBlueAllianceXThreshold = 12.0; // Blue alliance side boundary (X > 12.0)
-    public static final double kRedAllianceXThreshold = 4.54; // Red alliance side boundary (X < 4.54)
+    // FRC 2026 field is 16.54m long. Blue at X=0, Red at X=16.54, midfield at X=8.27
+    public static final double kBlueAllianceXThreshold = 2.0; // Blue alliance minimum X (reject if X < 2.0m)
+    public static final double kRedAllianceXThreshold = 14.54; // Red alliance maximum X (reject if X > 14.54m)
 
     // Distance and confidence thresholds
     public static final double kDistanceFactorThreshold = 2.0; // Distance scaling for standard deviation
