@@ -19,7 +19,6 @@
       "/SmartDashboard/Field": {
         "builtin": "",
         "height": 8.051901817321777,
-        "image": "C:\\Users\\Vicksburg FTC\\Downloads\\FE-2026-_REBUILT_Playing_Field_With_Fuel_With_Background.png",
         "width": 17.54825210571289,
         "window": {
           "name": "2026",
@@ -29,6 +28,9 @@
     }
   },
   "NetworkTables Info": {
+    "visible": true
+  },
+  "NetworkTables Log": {
     "visible": true
   },
   "NetworkTables Settings": {

@@ -41,7 +41,7 @@ public class RobotContainer {
   private boolean m_collectorHalfSpeed = false;
 
   // Collector subsystem - RE-ENABLED
-  private final Collector m_collector = new Collector();
+  private final Collector m_collector = null;
 
   private final SwerveDrive m_swerveDrive = new SwerveDrive();
 
@@ -50,7 +50,7 @@ public class RobotContainer {
   // private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
 
-  private final ShooterAdjustments m_shooter = new ShooterAdjustments();
+  private final ShooterAdjustments m_shooter = null;
 
   // Climber subsystem - TEMPORARILY DISABLED: Uncomment when motor is connected
   // private final Climber m_climber = new Climber();
@@ -220,10 +220,13 @@ public class RobotContainer {
       );
     }
 
-    // Run shooter while Y button is held
-    m_driverController.y().whileTrue(
-      new ShootCommand(m_shooter)
-    );
+    // Shooter controls - only bind if shooter is available
+    if (m_shooter != null) {
+      // Run shooter while Y button is held
+      m_driverController.y().whileTrue(
+        new ShootCommand(m_shooter)
+      );
+    }
   }
 
   /**

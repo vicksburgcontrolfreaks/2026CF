@@ -189,13 +189,13 @@ public final class Constants {
     // Left camera: mounted on left tower, facing left
     public static final Transform3d kRobotToLeftCamera = new Transform3d(
       new Translation3d(Units.inchesToMeters(-7.5), Units.inchesToMeters(4.0), Units.inchesToMeters(14)), // 12" left, 10" up
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 6°, facing left
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 6°, facing left
     );
 
     // Right camera: mounted on right tower, facing right
     public static final Transform3d kRobotToRightCamera = new Transform3d(
       new Translation3d(Units.inchesToMeters(-7.5), Units.inchesToMeters(-3.0), Units.inchesToMeters(14)), // 12" right, 10" up
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90)) // Pitched down 6°, facing right
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90)) // Pitched down 6°, facing right
     );
 
     // Standard deviations for multi-camera pose estimation
