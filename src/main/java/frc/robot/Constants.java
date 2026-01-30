@@ -255,6 +255,8 @@ public final class Constants {
     // Target position coordinates (meters)
     public static final double kBlueTargetX = 12.5;
     public static final double kBlueTargetY = 4.6;
+    public static final double kRedTargetX = 5.2;
+    public static final double kRedTargetY = 4.6;
   }
 
   public static class LEDConstants {

@@ -230,15 +230,22 @@ public class RobotContainer {
       m_swerveDrive.rotateToAngle(90)
     );
 
-    // Y button (C on some controllers) - Rotate to face blue target if X > 12.5
+    // Y button - Rotate to face targets based on robot position
+    // If X < 5.2: rotate to red target
+    // If X > 12.5: rotate to blue target
+    // Otherwise: do nothing
     m_driverController.y().onTrue(
       Commands.either(
-        // If robot X position > 12.5, rotate to face the target
-        m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
-        // Otherwise, do nothing
-        Commands.none(),
-        // Condition: check if robot X > 12.5
-        () -> m_swerveDrive.getPose().getX() > AutoConstants.kBlueTargetX
+        // If X < 5.2, rotate to red target
+        m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
+        // Otherwise, check if X > 12.5 for blue target
+        Commands.either(
+          m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
+          Commands.none(),
+          () -> m_swerveDrive.getPose().getX() > AutoConstants.kBlueTargetX
+        ),
+        // Condition: check if robot X < 5.2
+        () -> m_swerveDrive.getPose().getX() < AutoConstants.kRedTargetX
       )
     );
   }
