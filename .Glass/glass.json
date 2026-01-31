@@ -18,8 +18,9 @@
     "windows": {
       "/SmartDashboard/Field": {
         "builtin": "",
-        "height": 8.051901817321777,
-        "width": 17.54825210571289,
+        "height": 8.229999542236328,
+        "image": "C:\\Users\\vicks\\Downloads\\FE-2026-_REBUILT_Playing_Field_With_Fuel_With_Background.png",
+        "width": 16.549999237060547,
         "window": {
           "name": "2026",
           "visible": true
