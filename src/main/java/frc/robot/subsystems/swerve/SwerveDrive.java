@@ -148,24 +148,8 @@ public class SwerveDrive extends SubsystemBase {
     // Update pose estimator with current module positions and gyro reading
     m_poseEstimator.update(getGyroRotation2d(), getModulePositions());
 
-    // Update field visualization with alliance-aware pose
-    // WPILib uses Blue alliance origin (0,0) at bottom-left
-    // For Red alliance, we need to flip the pose to display correctly on Glass
-/*     Pose2d currentPose = getPose();
-    var alliance = DriverStation.getAlliance();
-
-    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
-      // For Red alliance, flip the pose across the field center
-      // FRC 2026 field is 16.54m long and 8.21m wide
-      Pose2d flippedPose = new Pose2d(
-        16.54 - currentPose.getX(),  // Flip X across field length
-        8.21 - currentPose.getY(),   // Flip Y across field width
-        currentPose.getRotation().rotateBy(Rotation2d.fromDegrees(180))  // Rotate 180 degrees
-      );
-      m_field.setRobotPose(flippedPose);
-    } else {
-      m_field.setRobotPose(currentPose);
-    } */
+    // Update field visualization
+    m_field.setRobotPose(getPose());
 
     // Publish critical telemetry every cycle
     m_gyroAnglePub.set(getHeading());

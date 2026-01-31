@@ -3,9 +3,30 @@
     "Persistent Values": {
       "open": false
     },
+    "Retained Values": {
+      "open": false
+    },
+    "Transitory Values": {
+      "open": false
+    },
     "transitory": {
-      "SmartDashboard": {
-        "open": true
+      "CameraPublisher": {
+        "camera-front": {
+          "open": true
+        }
+      },
+      "PhotonVision": {
+        "camera-back": {
+          "open": true
+        },
+        "camera-front": {
+          "open": true
+        }
+      },
+      "photonvision": {
+        "camera-back": {
+          "open": true
+        }
       }
     },
     "types": {
