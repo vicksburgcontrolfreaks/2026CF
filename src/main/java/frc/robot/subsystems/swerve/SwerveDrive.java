@@ -7,7 +7,7 @@ package frc.robot.subsystems.swerve;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.CalibrationTime;
-import edu.wpi.first.wpilibj.DriverStation;
+//import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -151,7 +151,7 @@ public class SwerveDrive extends SubsystemBase {
     // Update field visualization with alliance-aware pose
     // WPILib uses Blue alliance origin (0,0) at bottom-left
     // For Red alliance, we need to flip the pose to display correctly on Glass
-    Pose2d currentPose = getPose();
+/*     Pose2d currentPose = getPose();
     var alliance = DriverStation.getAlliance();
 
     if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
@@ -165,7 +165,7 @@ public class SwerveDrive extends SubsystemBase {
       m_field.setRobotPose(flippedPose);
     } else {
       m_field.setRobotPose(currentPose);
-    }
+    } */
 
     // Publish critical telemetry every cycle
     m_gyroAnglePub.set(getHeading());
