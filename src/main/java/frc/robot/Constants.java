@@ -65,6 +65,11 @@ public final class Constants {
     public static final double kMinShooterPower = 0.7;     // 70%
     // Maximum shooter power (0.0 to 1.0) for long-range shots
     public static final double kMaxShooterPower = 0.9;     // 90%
+
+    // Indexer motor configuration
+    public static final int kIndexerMotorId = 15;          // CAN ID for indexer motor
+    public static final double kIndexerSpeed = 0.6;        // Indexer speed (60%)
+    public static final double kSpinUpTimeSeconds = 0.5;   // Time to wait for shooter to reach speed before running indexer
   }
 
   public static class OperatorConstants {
