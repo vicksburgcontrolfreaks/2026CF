@@ -52,7 +52,7 @@ public class RobotContainer {
   // private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final PhotonVisionSubsystem m_visionSubsystem = null;
 
-  private final ShooterAdjustments m_shooter = new ShooterAdjustments();
+  private final ShooterAdjustments m_shooter = new ShooterAdjustments(m_swerveDrive);
 
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
 
