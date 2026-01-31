@@ -17,9 +17,14 @@
     },
     "windows": {
       "/SmartDashboard/Field": {
+        "bottom": 1914,
         "builtin": "",
-        "height": 8.051901817321777,
-        "width": 17.54825210571289,
+        "height": 8.069275856018066,
+        "image": "C:\\Users\\vicks\\Downloads\\2026-field.png",
+        "left": 245,
+        "right": 3942,
+        "top": 118,
+        "width": 16.54119300842285,
         "window": {
           "name": "2026",
           "visible": true
