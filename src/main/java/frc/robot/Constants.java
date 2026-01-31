@@ -251,6 +251,10 @@ public final class Constants {
     // Max auto speeds
     public static final double kMaxAutoSpeedMetersPerSecond = 3.0;
     public static final double kMaxAutoAngularSpeedRadiansPerSecond = Math.PI;
+
+    // Target position coordinates (meters)
+    public static final double kBlueTargetX = 12.5;
+    public static final double kBlueTargetY = 4.6;
   }
 
   public static class LEDConstants {

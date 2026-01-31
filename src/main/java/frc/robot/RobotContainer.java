@@ -227,6 +227,39 @@ public class RobotContainer {
         new ShootCommand(m_shooter)
       );
     }
+
+    // Rotate to cardinal directions using D-pad (POV)
+    // POV up (0°) -> Rotate to 0° (forward)
+    m_driverController.pov(0).onTrue(
+      m_swerveDrive.rotateToAngle(0)
+    );
+
+    // POV right (90°) -> Rotate to -90° (right)
+    m_driverController.pov(90).onTrue(
+      m_swerveDrive.rotateToAngle(-90)
+    );
+
+    // POV down (180°) -> Rotate to 180° (backward)
+    m_driverController.pov(180).onTrue(
+      m_swerveDrive.rotateToAngle(180)
+    );
+
+    // POV left (270°) -> Rotate to 90° (left)
+    m_driverController.pov(270).onTrue(
+      m_swerveDrive.rotateToAngle(90)
+    );
+
+    // Y button (C on some controllers) - Rotate to face blue target if X > 12.5
+    m_driverController.y().onTrue(
+      Commands.either(
+        // If robot X position > 12.5, rotate to face the target
+        m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
+        // Otherwise, do nothing
+        Commands.none(),
+        // Condition: check if robot X > 12.5
+        () -> m_swerveDrive.getPose().getX() > AutoConstants.kBlueTargetX
+      )
+    );
   }
 
   /**
