@@ -89,11 +89,11 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // Debug: Check if A button is being pressed (only when using Xbox controller)
-    if (!m_robotContainer.isUsingJoystick() &&
-        m_robotContainer.getDriverControllerForDebug() != null &&
-        m_robotContainer.getDriverControllerForDebug().a().getAsBoolean()) {
-      System.out.println(">>> A BUTTON IS PRESSED (detected in teleopPeriodic) <<<");
-    }
+    //if (!m_robotContainer.isUsingJoystick() &&
+       // m_robotContainer.getDriverControllerForDebug() != null &&
+      // m_robotContainer.getDriverControllerForDebug().a().getAsBoolean()) {
+      //System.out.println(">>> A BUTTON IS PRESSED (detected in teleopPeriodic) <<<");
+    //}
   }
 
   @Override

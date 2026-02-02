@@ -4,9 +4,11 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 public final class CollectorConfig {
-  // CAN IDs for collection motors (intake rollers)
+  //collector 4 motors / shooter 2 opposite motors / lift 2 motors
+  // CAN IDs for collector motors - UPDATE THESE TO MATCH YOUR ROBOT 
   public static final int kLeftMotorId = 10;
   public static final int kRightMotorId = 11;
+  // public static final int kfeederId = 12;
 
   // CAN IDs for deployment motors (move collector on rail)
   public static final int kLeftDeploymentMotorId = 13;

@@ -11,6 +11,8 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.LEDConstants;
 
+import java.util.List;
+
 /**
  * Subsystem for controlling a strip of 23 addressable LEDs (WS2812B/NeoPixel).
  * Provides methods for solid colors, animations, and effects.
@@ -181,13 +183,8 @@ public class LEDSubsystem extends SubsystemBase {
     setBreathe(rgb[0], rgb[1], rgb[2]);
   }
 
-  /**
-   * Sets all LEDs to display a rainbow pattern
-   */
-  public void setRainbow() {
-    m_currentPattern = LEDPattern.RAINBOW;
-    m_rainbowFirstPixelHue = 0;
-  }
+
+
 
   /**
    * Sets all LEDs to display a chase pattern
@@ -497,5 +494,52 @@ public class LEDSubsystem extends SubsystemBase {
       m_ledBuffer.setRGB(i, 0, 255, 0); // Green channel = Red in GRB
     }
     m_led.setData(m_ledBuffer);
+  }
+
+  /**
+   * Sets LEDs based on detected AprilTag IDs.
+   * Each LED number corresponds to an AprilTag ID (e.g., LED 1 = Tag 1, LED 2 = Tag 2, etc.)
+   *
+   * @param tagIDs List of detected AprilTag IDs
+   * @param color RGB color array [r, g, b] to use for detected tags
+   */
+  public void setAprilTagLEDs(List<Integer> tagIDs, int[] color) {
+    enableManualMode();
+
+    // First, turn off all LEDs
+    for (int i = 0; i < LEDConstants.kLEDCount; i++) {
+      setLED(i, 0, 0, 0);
+    }
+
+    // Light up LEDs corresponding to detected tag IDs
+    for (Integer tagID : tagIDs) {
+      // Check if tag ID is within LED range (1-23 for 23 LEDs)
+      if (tagID >= 1 && tagID <= LEDConstants.kLEDCount) {
+        // LED index is tagID - 1 (since LEDs are 0-indexed)
+        setLED(tagID - 1, color[0], color[1], color[2]);
+      }
+    }
+  }
+
+  /**
+   * Sets LEDs based on detected AprilTag IDs using individual RGB values.
+   *
+   * @param tagIDs List of detected AprilTag IDs
+   * @param r Red value (0-255)
+   * @param g Green value (0-255)
+   * @param b Blue value (0-255)
+   */
+  public void setAprilTagLEDs(List<Integer> tagIDs, int r, int g, int b) {
+    setAprilTagLEDs(tagIDs, new int[]{r, g, b});
+  }
+
+  /**
+   * Clears all AprilTag indicator LEDs
+   */
+  public void clearAprilTagLEDs() {
+    enableManualMode();
+    for (int i = 0; i < LEDConstants.kLEDCount; i++) {
+      setLED(i, 0, 0, 0);
+    }
   }
 }
