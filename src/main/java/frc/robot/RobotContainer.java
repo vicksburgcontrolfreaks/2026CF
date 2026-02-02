@@ -22,6 +22,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.shooter.ShootCommand;
+import frc.robot.commands.auto.DriveForwardCommand;
 import frc.robot.subsystems.led.AprilTagLEDCommand;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDrive;
@@ -102,14 +103,19 @@ public class RobotContainer {
     // Build autonomous chooser from PathPlanner only if configured successfully
     if (m_pathPlannerConfigured) {
       m_autoChooser = AutoBuilder.buildAutoChooser();
+
+      // Add custom autonomous commands
+      m_autoChooser.addOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
+
       SmartDashboard.putData("Auto Chooser", m_autoChooser);
     } else {
       // Create a disabled auto chooser if PathPlanner failed
       m_autoChooser = new SendableChooser<>();
-      m_autoChooser.setDefaultOption("Auto Disabled - PathPlanner Config Failed", Commands.none());
+      m_autoChooser.setDefaultOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
+      m_autoChooser.addOption("Do Nothing", Commands.none());
       SmartDashboard.putData("Auto Chooser", m_autoChooser);
 
-      DriverStation.reportWarning("PathPlanner configuration failed! Autonomous disabled.", false);
+      DriverStation.reportWarning("PathPlanner configuration failed! Using simple autonomous options.", false);
     }
   }
 
