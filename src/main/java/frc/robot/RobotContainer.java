@@ -66,6 +66,7 @@ public class RobotContainer {
 
   // Controllers - only one will be initialized based on USE_JOYSTICK flag
   private final CommandXboxController m_driverController;
+  private final CommandXboxController m_mechanismController;
   private final JoystickContainer m_joystickContainer;
 
   // Autonomous chooser
@@ -82,17 +83,20 @@ public class RobotContainer {
     if (RobotContainerConstants.kUseJoystick) {
       System.out.println(">>> Using Logitech Extreme 3D Pro Joystick <<<");
       m_driverController = null;
+      m_mechanismController = null;
       m_joystickContainer = new JoystickContainer(m_swerveDrive, m_collector);
     } else {
-      System.out.println(">>> Using Xbox Controller <<<");
+      System.out.println(">>> Using Dual Xbox Controllers <<<");
       m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
+      m_mechanismController = new CommandXboxController(OperatorConstants.kMechanismControllerPort);
       m_joystickContainer = null;
 
       // Configure the default command for swerve drive (Xbox only)
       configureDefaultCommands();
 
       // Configure the trigger bindings (Xbox only)
-      configureBindings();
+      configureDriverBindings();
+      configureMechanismBindings();
     }
 
     // Configure PathPlanner AutoBuilder
@@ -186,15 +190,10 @@ public class RobotContainer {
     
 
   /**
-   * Use this method to define your trigger->command mappings. Triggers can be created via the
-   * {@link Trigger#Trigger(java.util.function.BooleanSupplier)} constructor with an arbitrary
-   * predicate, or via the named factories in {@link
-   * edu.wpi.first.wpilibj2.command.button.CommandGenericHID}'s subclasses for {@link
-   * CommandXboxController Xbox}/{@link edu.wpi.first.wpilibj2.command.button.CommandPS4Controller
-   * PS4} controllers or {@link edu.wpi.first.wpilibj2.command.button.CommandJoystick Flight
-   * joysticks}.
+   * Configure button bindings for the driver controller.
+   * Driver controls: robot movement, rotation, gyro reset, field-oriented toggle
    */
-  private void configureBindings() {
+  private void configureDriverBindings() {
     // Reset gyro to zero
     m_driverController.start().onTrue(
       m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
@@ -291,6 +290,47 @@ public class RobotContainer {
         () -> m_isFacingTarget
       )
     );
+  }
+
+  /**
+   * Configure button bindings for the mechanism controller.
+   * Mechanism controls: shooter, climber, collector
+   */
+  private void configureMechanismBindings() {
+    // Shooter control
+    // A button - Run shooter (distance-based power)
+    m_mechanismController.a().whileTrue(
+      new ShootCommand(m_shooter)
+    );
+
+    // Climber controls
+    // Right bumper - Climb up
+    m_mechanismController.rightBumper().whileTrue(
+      Commands.run(() -> m_climber.climbUp(), m_climber)
+    );
+
+    // Left bumper - Climb down
+    m_mechanismController.leftBumper().whileTrue(
+      Commands.run(() -> m_climber.climbDown(), m_climber)
+    );
+
+    // Collector controls - only bind if collector is available
+    if (m_collector != null) {
+      // B button - Deploy collector (extends and starts motors automatically)
+      m_mechanismController.b().onTrue(
+         Commands.runOnce(() -> m_collector.deploy(), m_collector)
+      );
+
+      // X button - Retract collector (retracts and stops motors automatically)
+      m_mechanismController.x().onTrue(
+         Commands.runOnce(() -> m_collector.retract(), m_collector)
+      );
+
+      // Y button - Toggle collector deployment
+      m_mechanismController.y().onTrue(
+         Commands.runOnce(() -> m_collector.toggle(), m_collector)
+      );
+    }
   }
 
   /**

@@ -48,13 +48,28 @@ public final class Constants {
   }
 
   public static class ShooterConstants {
-    // Shooter motor speeds
+    // Shooter motor speeds (legacy - kept for compatibility)
     public static final double kTopShooterSpeed = 0.8;      // Top shooter runs at constant 80%
     public static final double kFrontShooterStartSpeed = 0.2; // Front shooter starts at 20%
     public static final double kFrontShooterMaxSpeed = 0.8;   // Front shooter caps at 80%
 
-    // Proportional ramp value for front shooter
+    // Proportional ramp value for front shooter (legacy)
     public static final double kPShooter = 0.01; // Increase front shooter by 1% per loop
+
+    // Distance-based shooting parameters
+    // Minimum distance (meters) - closer shots use minimum power
+    public static final double kMinShooterDistance = 1.0;  // 1 meter
+    // Maximum distance (meters) - farther shots use maximum power
+    public static final double kMaxShooterDistance = 5.0;  // 5 meters
+    // Minimum shooter power (0.0 to 1.0) for close-range shots
+    public static final double kMinShooterPower = 0.7;     // 70%
+    // Maximum shooter power (0.0 to 1.0) for long-range shots
+    public static final double kMaxShooterPower = 0.9;     // 90%
+
+    // Indexer motor configuration
+    public static final int kIndexerMotorId = 15;          // CAN ID for indexer motor
+    public static final double kIndexerSpeed = 0.6;        // Indexer speed (60%)
+    public static final double kSpinUpTimeSeconds = 0.5;   // Time to wait for shooter to reach speed before running indexer
   }
 
   public static class OperatorConstants {
@@ -252,11 +267,11 @@ public final class Constants {
     public static final double kMaxAutoSpeedMetersPerSecond = 3.0;
     public static final double kMaxAutoAngularSpeedRadiansPerSecond = Math.PI;
 
-    public static final double redScoringHubX = 11.9;
-    public static final double redScoringHubY = 4.0;
-
-    public static final double blueScoringHubX = 4.6;
-    public static final double blueScoringHubY = 4.0;
+    // Target position coordinates (meters)
+    public static final double kBlueTargetX = 12.5;
+    public static final double kBlueTargetY = 4.6;
+    public static final double kRedTargetX = 5.2;
+    public static final double kRedTargetY = 4.6;
   }
 
   public static class LEDConstants {

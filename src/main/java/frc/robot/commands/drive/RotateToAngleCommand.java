@@ -23,7 +23,7 @@ public class RotateToAngleCommand extends Command {
   private static final double kAngleToleranceDegrees = 2.0;
 
   // Maximum rotation speed (radians per second)
-  private static final double kMaxRotationSpeed = 3.0;
+  private static final double kMaxRotationSpeed = 0.5;
 
   /**
    * Creates a new RotateToAngleCommand.
