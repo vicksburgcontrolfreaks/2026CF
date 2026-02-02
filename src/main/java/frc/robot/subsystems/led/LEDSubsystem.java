@@ -183,13 +183,8 @@ public class LEDSubsystem extends SubsystemBase {
     setBreathe(rgb[0], rgb[1], rgb[2]);
   }
 
-  /**
-   * Sets all LEDs to display a rainbow pattern
-   */
-  public void setRainbow() {
-    m_currentPattern = LEDPattern.RAINBOW;
-    m_rainbowFirstPixelHue = 0;
-  }
+
+
 
   /**
    * Sets all LEDs to display a chase pattern

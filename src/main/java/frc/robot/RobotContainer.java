@@ -22,6 +22,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.shooter.ShootCommand;
+import frc.robot.subsystems.led.AprilTagLEDCommand;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDrive;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -39,6 +40,10 @@ public class RobotContainer {
 
   // Subsystems
   private boolean m_collectorHalfSpeed = false;
+
+  // Toggle state for facing alliance target
+  private boolean m_isFacingTarget = false;
+  private double m_savedAngle = 0.0;
 
   // Collector subsystem - RE-ENABLED
   private final Collector m_collector = null;
@@ -161,6 +166,14 @@ public class RobotContainer {
         () -> getSpeedLimit()                   // Speed limit based on triggers
       )
     );
+
+    // Set default LED command to show AprilTag detections
+    // If tag ID 15 is detected, LED 15 will light up green
+    if (m_visionSubsystem != null) {
+      m_ledSubsystem.setDefaultCommand(
+        new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
+      );
+    }
   }
   
 
@@ -249,15 +262,27 @@ public class RobotContainer {
       m_swerveDrive.rotateToAngle(90)
     );
 
-    // Y button (C on some controllers) - Rotate to face blue target if X > 12.5
+    // Y button - Toggle between facing alliance target and saved angle
     m_driverController.y().onTrue(
       Commands.either(
-        // If robot X position > 12.5, rotate to face the target
-        m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
-        // Otherwise, do nothing
-        Commands.none(),
-        // Condition: check if robot X > 12.5
-        () -> m_swerveDrive.getPose().getX() > AutoConstants.kBlueTargetX
+        // If currently facing target, return to saved angle
+        m_swerveDrive.rotateToAngle(m_savedAngle)
+          .andThen(Commands.runOnce(() -> m_isFacingTarget = false)),
+        // If not facing target, save current angle and rotate to alliance target
+        Commands.runOnce(() -> {
+          m_savedAngle = m_swerveDrive.getHeading();
+          m_isFacingTarget = true;
+        }).andThen(
+          Commands.either(
+            m_swerveDrive.rotateToTarget(AutoConstants.redScoringHubX, AutoConstants.redScoringHubY),
+            m_swerveDrive.rotateToTarget(AutoConstants.blueScoringHubX, AutoConstants.blueScoringHubY),
+            () -> {
+              var alliance = DriverStation.getAlliance();
+              return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
+            }
+          )
+        ),
+        () -> m_isFacingTarget
       )
     );
   }

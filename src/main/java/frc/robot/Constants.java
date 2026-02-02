@@ -252,9 +252,11 @@ public final class Constants {
     public static final double kMaxAutoSpeedMetersPerSecond = 3.0;
     public static final double kMaxAutoAngularSpeedRadiansPerSecond = Math.PI;
 
-    // Target position coordinates (meters)
-    public static final double kBlueTargetX = 12.5;
-    public static final double kBlueTargetY = 4.6;
+    public static final double redScoringHubX = 11.9;
+    public static final double redScoringHubY = 4.0;
+
+    public static final double blueScoringHubX = 4.6;
+    public static final double blueScoringHubY = 4.0;
   }
 
   public static class LEDConstants {
