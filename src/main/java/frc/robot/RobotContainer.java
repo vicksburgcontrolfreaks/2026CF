@@ -279,8 +279,8 @@ public class RobotContainer {
           m_isFacingTarget = true;
         }).andThen(
           Commands.either(
-            m_swerveDrive.rotateToTarget(AutoConstants.redScoringHubX, AutoConstants.redScoringHubY),
-            m_swerveDrive.rotateToTarget(AutoConstants.blueScoringHubX, AutoConstants.blueScoringHubY),
+            m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
+            m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
             () -> {
               var alliance = DriverStation.getAlliance();
               return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
@@ -304,14 +304,14 @@ public class RobotContainer {
     );
 
     // Climber controls
-    // Right bumper - Climb up
+    // Right bumper - Extend climber
     m_mechanismController.rightBumper().whileTrue(
-      Commands.run(() -> m_climber.climbUp(), m_climber)
+      Commands.run(() -> m_climber.extend(), m_climber)
     );
 
-    // Left bumper - Climb down
+    // Left bumper - Retract climber
     m_mechanismController.leftBumper().whileTrue(
-      Commands.run(() -> m_climber.climbDown(), m_climber)
+      Commands.run(() -> m_climber.retract(), m_climber)
     );
 
     // Collector controls - only bind if collector is available
