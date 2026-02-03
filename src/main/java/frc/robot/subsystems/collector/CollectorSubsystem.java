@@ -7,6 +7,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.RelativeEncoder;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.CollectorConstants;
 
 /**
  * Collector subsystem with motorized deployment control.
@@ -14,7 +15,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
  * When deployed, the collector extends and runs the collection motors.
  * When retracted, the collector retracts and motors are turned off.
  */
-public class Collector extends SubsystemBase {
+public class CollectorSubsystem extends SubsystemBase {
   // Collection motors (intake rollers)
   private final SparkMax m_leftMotor;
   private final SparkMax m_rightMotor;
@@ -31,32 +32,32 @@ public class Collector extends SubsystemBase {
   private boolean m_isDeployed;
   private double m_targetPosition;
 
-  public Collector() {
+  public CollectorSubsystem() {
     // Initialize collection motors
-    m_leftMotor = new SparkMax(CollectorConfig.kLeftMotorId, MotorType.kBrushless);
-    m_rightMotor = new SparkMax(CollectorConfig.kRightMotorId, MotorType.kBrushless);
+    m_leftMotor = new SparkMax(CollectorConstants.kLeftMotorId, MotorType.kBrushless);
+    m_rightMotor = new SparkMax(CollectorConstants.kRightMotorId, MotorType.kBrushless);
 
     // Initialize deployment motors
-    m_leftDeploymentMotor = new SparkMax(CollectorConfig.kLeftDeploymentMotorId, MotorType.kBrushless);
-    m_rightDeploymentMotor = new SparkMax(CollectorConfig.kRightDeploymentMotorId, MotorType.kBrushless);
+    m_leftDeploymentMotor = new SparkMax(CollectorConstants.kLeftDeploymentMotorId, MotorType.kBrushless);
+    m_rightDeploymentMotor = new SparkMax(CollectorConstants.kRightDeploymentMotorId, MotorType.kBrushless);
 
     // Configure collection motors
-    m_leftMotor.configure(CollectorConfig.collectionConfig, ResetMode.kResetSafeParameters,
+    m_leftMotor.configure(CollectorConstants.collectionConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
-    m_rightMotor.configure(CollectorConfig.collectionConfig, ResetMode.kResetSafeParameters,
+    m_rightMotor.configure(CollectorConstants.collectionConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
 
     // Configure deployment motors
-    m_leftDeploymentMotor.configure(CollectorConfig.deploymentConfig, ResetMode.kResetSafeParameters,
+    m_leftDeploymentMotor.configure(CollectorConstants.deploymentConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
-    m_rightDeploymentMotor.configure(CollectorConfig.deploymentConfig, ResetMode.kResetSafeParameters,
+    m_rightDeploymentMotor.configure(CollectorConstants.deploymentConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
 
     // Get encoder from left deployment motor for position tracking
     m_deploymentEncoder = m_leftDeploymentMotor.getEncoder();
 
     // Reset encoder position (assumes starting in retracted position)
-    m_deploymentEncoder.setPosition(CollectorConfig.kRetractedPosition);
+    m_deploymentEncoder.setPosition(CollectorConstants.kRetractedPosition);
 
     // Start in retracted position
     m_isDeployed = false;
@@ -67,7 +68,7 @@ public class Collector extends SubsystemBase {
    * Moves the collector along the rail to the deployed position and activates collection.
    */
   public void deploy() {
-    m_targetPosition = CollectorConfig.kDeployedPosition;
+    m_targetPosition = CollectorConstants.kDeployedPosition;
     m_isDeployed = true;
   }
 
@@ -76,7 +77,7 @@ public class Collector extends SubsystemBase {
    * Moves the collector along the rail to the retracted position and turns off motors.
    */
   public void retract() {
-    m_targetPosition = CollectorConfig.kRetractedPosition;
+    m_targetPosition = CollectorConstants.kRetractedPosition;
     m_isDeployed = false;
     // Stop collection motors when retracting
     m_leftMotor.set(0);
@@ -145,7 +146,7 @@ public class Collector extends SubsystemBase {
    */
   public boolean atTargetPosition() {
     double currentPosition = m_deploymentEncoder.getPosition();
-    return Math.abs(currentPosition - m_targetPosition) < CollectorConfig.kPositionTolerance;
+    return Math.abs(currentPosition - m_targetPosition) < CollectorConstants.kPositionTolerance;
   }
 
   /**
@@ -162,9 +163,9 @@ public class Collector extends SubsystemBase {
     double currentPosition = m_deploymentEncoder.getPosition();
     double error = m_targetPosition - currentPosition;
 
-    if (Math.abs(error) > CollectorConfig.kPositionTolerance) {
+    if (Math.abs(error) > CollectorConstants.kPositionTolerance) {
       // Move toward target position
-      double speed = Math.signum(error) * CollectorConfig.kDeploymentSpeed;
+      double speed = Math.signum(error) * CollectorConstants.kDeploymentSpeed;
       m_leftDeploymentMotor.set(speed);
       m_rightDeploymentMotor.set(speed);
     } else {
@@ -174,8 +175,8 @@ public class Collector extends SubsystemBase {
 
       // If deployed and at position, start collection motors
       if (m_isDeployed && atTargetPosition()) {
-        m_leftMotor.set(CollectorConfig.kCollectionSpeed);
-        m_rightMotor.set(CollectorConfig.kCollectionSpeed);
+        m_leftMotor.set(CollectorConstants.kCollectionSpeed);
+        m_rightMotor.set(CollectorConstants.kCollectionSpeed);
       }
     }
   }

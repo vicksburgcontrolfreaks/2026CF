@@ -4,6 +4,9 @@
 
 package frc.robot;
 
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -48,6 +51,18 @@ public final class Constants {
   }
 
   public static class ShooterConstants {
+    // CAN IDs for shooter motors
+    public static final int kTopMotorId = 0;
+    public static final int kBottomMotorId = 1;
+    public static final int kIndexerMotorId = 15;          // CAN ID for indexer motor
+
+    // Current limits
+    public static final int kMotorCurrentLimit = 40; // Amps
+
+    // Motor inversions
+    public static final boolean kTopMotorInverted = false;
+    public static final boolean kBottomMotorInverted = false;
+
     // Shooter motor speeds (legacy - kept for compatibility)
     public static final double kTopShooterSpeed = 0.8;      // Top shooter runs at constant 80%
     public static final double kFrontShooterStartSpeed = 0.2; // Front shooter starts at 20%
@@ -66,10 +81,112 @@ public final class Constants {
     // Maximum shooter power (0.0 to 1.0) for long-range shots
     public static final double kMaxShooterPower = 0.9;     // 90%
 
+    // Shooter speed settings
+    public static final double kDefaultShooterSpeed = 0.8; // 80% power
+    public static final double kSlowShooterSpeed = 0.5; // 50% power for close shots
+    public static final double kMaxShooterSpeed = 1.0; // Maximum speed
+
     // Indexer motor configuration
-    public static final int kIndexerMotorId = 15;          // CAN ID for indexer motor
     public static final double kIndexerSpeed = 0.6;        // Indexer speed (60%)
     public static final double kSpinUpTimeSeconds = 0.5;   // Time to wait for shooter to reach speed before running indexer
+
+    // Motor configuration for top shooter motor
+    public static final SparkMaxConfig topMotorConfig = new SparkMaxConfig();
+
+    // Motor configuration for bottom shooter motor
+    public static final SparkMaxConfig bottomMotorConfig = new SparkMaxConfig();
+
+    static {
+      // Configure top motor
+      topMotorConfig
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .inverted(kTopMotorInverted);
+
+      // Configure bottom motor
+      bottomMotorConfig
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .inverted(kBottomMotorInverted);
+    }
+  }
+
+  public static class CollectorConstants {
+    // CAN IDs for collector motors
+    public static final int kLeftMotorId = 10;
+    public static final int kRightMotorId = 11;
+
+    // CAN IDs for deployment motors (move collector on rail)
+    public static final int kLeftDeploymentMotorId = 13;
+    public static final int kRightDeploymentMotorId = 14;
+
+    // Current limits
+    public static final int kMotorCurrentLimit = 40; // Amps for collection motors
+    public static final int kDeploymentMotorCurrentLimit = 30; // Amps for deployment motors
+
+    // Motor inversions
+    public static final boolean kLeftMotorInverted = false;
+    public static final boolean kRightMotorInverted = true; // Typically opposite side motors are inverted
+    public static final boolean kLeftDeploymentMotorInverted = false;
+    public static final boolean kRightDeploymentMotorInverted = true;
+
+    // Collector speeds
+    public static final double kCollectionSpeed = 0.8; // Speed when collecting
+    public static final double kDeploymentSpeed = 0.5; // Speed to move along rail
+
+    // Position limits (encoder rotations)
+    public static final double kDeployedPosition = 10.0;   // Rotations for deployed position
+    public static final double kRetractedPosition = 0.0;   // Rotations for retracted position
+    public static final double kPositionTolerance = 0.5;   // Tolerance in rotations
+
+    // Motor configuration for collection motors
+    public static final SparkMaxConfig collectionConfig = new SparkMaxConfig();
+
+    // Motor configuration for deployment motors
+    public static final SparkMaxConfig deploymentConfig = new SparkMaxConfig();
+
+    static {
+      collectionConfig
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .inverted(kLeftMotorInverted);
+
+      deploymentConfig
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kDeploymentMotorCurrentLimit);
+    }
+  }
+
+  public static class ClimberConstants {
+    // CAN ID for climber motor
+    public static final int kMotorId = 12;
+
+    // Current limits
+    public static final int kMotorCurrentLimit = 40; // Amps - adjust based on your winch requirements
+    public static final int kMotorStallLimit = 60; // Amps - higher limit for stall conditions
+
+    // Motor inversion
+    public static final boolean kMotorInverted = false;
+
+    // Climber speeds (positive = extend, negative = retract)
+    public static final double kExtendSpeed = 0.8; // Speed when extending climber
+    public static final double kRetractSpeed = -0.8; // Speed when retracting climber
+    public static final double kSlowSpeed = 0.3; // Slow speed for fine adjustments
+    public static final double kClimbUpSpeed = 0.8;    // Speed when climbing up
+    public static final double kClimbDownSpeed = -0.5; // Speed when climbing down
+
+    // Gear ratio information (for reference)
+    public static final double kGearRatio = 60.0; // 60:1 reduction
+
+    // Motor configuration
+    public static final SparkMaxConfig config = new SparkMaxConfig();
+
+    static {
+      config
+          .idleMode(IdleMode.kBrake)  // Use brake mode to hold position
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .inverted(kMotorInverted);
+    }
   }
 
   public static class OperatorConstants {
@@ -101,9 +218,6 @@ public final class Constants {
 
     public static final int kBackRightDriveMotorId = 6;
     public static final int kBackRightSteerMotorId = 7;
-
-    public static final int kShooterTop = 0;
-    public static final int kShooterFront = 1;
 
     // ADIS16470 IMU Configuration
     // Connected via SPI (onboard port), no CAN ID needed

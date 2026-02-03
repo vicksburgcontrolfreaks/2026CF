@@ -1,9 +1,10 @@
-package frc.robot.subsystems.collector;
+package frc.robot.commands.collector;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.subsystems.collector.CollectorSubsystem;
 
 public class RunCollector extends Command {
-  private final Collector m_collector;
+  private final CollectorSubsystem m_collector;
   private final double m_speed;
 
   /**
@@ -12,7 +13,7 @@ public class RunCollector extends Command {
    * @param collector The collector subsystem to use
    * @param speed The speed to run the collector motors (-1.0 to 1.0)
    */
-  public RunCollector(Collector collector, double speed) {
+  public RunCollector(CollectorSubsystem collector, double speed) {
     m_collector = collector;
     m_speed = speed;
     addRequirements(collector);

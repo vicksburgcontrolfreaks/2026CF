@@ -21,16 +21,16 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
+import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShootCommand;
 import frc.robot.commands.auto.DriveForwardCommand;
-import frc.robot.subsystems.led.AprilTagLEDCommand;
+import frc.robot.commands.collector.RunCollector;
 import frc.robot.subsystems.led.LEDSubsystem;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import frc.robot.subsystems.shooter.ShooterAdjustments;
-import frc.robot.subsystems.collector.Collector;
-import frc.robot.subsystems.collector.RunCollector;
-import frc.robot.subsystems.climber.Climber;
+import frc.robot.subsystems.collector.CollectorSubsystem;
+import frc.robot.subsystems.climber.ClimberSubsystem;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
  * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
@@ -43,9 +43,9 @@ public class RobotContainer {
   private boolean m_collectorHalfSpeed = false;
 
   // Collector subsystem - RE-ENABLED
-  private final Collector m_collector = null;
+  private final CollectorSubsystem m_collector = null;
 
-  private final SwerveDrive m_swerveDrive = new SwerveDrive();
+  private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
 
   // TEMPORARILY DISABLED: PhotonVision subsystem (no coprocessor detected on network)
   // TODO: Re-enable when PhotonVision coprocessor is connected and configured
@@ -56,14 +56,14 @@ public class RobotContainer {
 
   // Climber subsystem - TEMPORARILY DISABLED: Uncomment when motor is connected
   // private final Climber m_climber = new Climber();
-  private final Climber m_climber = null;
+  private final ClimberSubsystem m_climber = null;
 
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
 
   // Controllers - only one will be initialized based on USE_JOYSTICK flag
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
-  private final JoystickContainer m_joystickContainer;
+  private final JoystickController m_joystickContainer;
 
   // Autonomous chooser
   private final SendableChooser<Command> m_autoChooser;
@@ -80,7 +80,7 @@ public class RobotContainer {
       System.out.println(">>> Using Logitech Extreme 3D Pro Joystick <<<");
       m_driverController = null;
       m_mechanismController = null;
-      m_joystickContainer = new JoystickContainer(m_swerveDrive, m_collector);
+      m_joystickContainer = new JoystickController(m_swerveDrive, m_collector);
     } else {
       System.out.println(">>> Using Dual Xbox Controllers <<<");
       m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
@@ -349,7 +349,8 @@ public class RobotContainer {
 
       // X button - Retract collector (retracts and stops motors automatically)
       m_mechanismController.x().onTrue(
-         Commands.runOnce(() -> m_collector.retract(), m_collector)
+         Commands.runOnce(() -> m_collector.
+         retract(), m_collector)
       );
 
       // Y button - Toggle collector deployment
@@ -395,7 +396,7 @@ public class RobotContainer {
   /**
    * Get the swerve drive subsystem
    */
-  public SwerveDrive getSwerveDrive() {
+  public SwerveDriveSubsystem getSwerveDrive() {
     return m_swerveDrive;
   }
 
@@ -426,7 +427,7 @@ public class RobotContainer {
    * Get the joystick container (for debugging)
    * Returns null if Xbox controller is being used
    */
-  public JoystickContainer getJoystickContainerForDebug() {
+  public JoystickController getJoystickContainerForDebug() {
     return m_joystickContainer;
   }
 

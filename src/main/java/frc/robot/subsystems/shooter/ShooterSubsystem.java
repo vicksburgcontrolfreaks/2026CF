@@ -6,24 +6,25 @@ import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ShooterConstants;
 
 /**
  * Shooter subsystem that controls two motors for shooting game pieces.
  */
-public class Shooter extends SubsystemBase {
+public class ShooterSubsystem extends SubsystemBase {
   private final SparkMax m_topMotor;
   private final SparkMax m_bottomMotor;
 
   /** Creates a new Shooter subsystem. */
-  public Shooter() {
+  public ShooterSubsystem() {
     // Initialize motors with CAN IDs from configuration
-    m_topMotor = new SparkMax(ShooterConfiguration.kTopMotorId, MotorType.kBrushless);
-    m_bottomMotor = new SparkMax(ShooterConfiguration.kBottomMotorId, MotorType.kBrushless);
+    m_topMotor = new SparkMax(ShooterConstants.kTopMotorId, MotorType.kBrushless);
+    m_bottomMotor = new SparkMax(ShooterConstants.kBottomMotorId, MotorType.kBrushless);
 
     // Configure motors with settings from configuration file
-    m_topMotor.configure(ShooterConfiguration.topMotorConfig, ResetMode.kResetSafeParameters,
+    m_topMotor.configure(ShooterConstants.topMotorConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
-    m_bottomMotor.configure(ShooterConfiguration.bottomMotorConfig, ResetMode.kResetSafeParameters,
+    m_bottomMotor.configure(ShooterConstants.bottomMotorConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
   }
 
@@ -52,14 +53,14 @@ public class Shooter extends SubsystemBase {
    * Runs both shooter motors at the default speed.
    */
   public void runDefault() {
-    run(ShooterConfiguration.kDefaultShooterSpeed);
+    run(ShooterConstants.kDefaultShooterSpeed);
   }
 
   /**
    * Runs both shooter motors at slow speed.
    */
   public void runSlow() {
-    run(ShooterConfiguration.kSlowShooterSpeed);
+    run(ShooterConstants.kSlowShooterSpeed);
   }
 
   /**

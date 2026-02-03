@@ -10,8 +10,8 @@ import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
-import frc.robot.subsystems.collector.Collector;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.collector.CollectorSubsystem;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 /**
  * Alternative controller configuration using Logitech Extreme 3D Pro joystick.
@@ -31,11 +31,11 @@ import frc.robot.subsystems.swerve.SwerveDrive;
  * - Button 7: Run collector reverse
  * - Buttons 8-12: Available for future use
  */
-public class JoystickContainer {
+public class JoystickController {
 
     private final CommandJoystick m_joystick;
-    private final SwerveDrive m_swerveDrive;
-    private final Collector m_collector;
+    private final SwerveDriveSubsystem m_swerveDrive;
+    private final CollectorSubsystem m_collector;
 
     private boolean m_collectorHalfSpeed = false;
     private boolean m_turboMode = false;
@@ -46,7 +46,7 @@ public class JoystickContainer {
      * @param swerveDrive The swerve drive subsystem
      * @param collector The collector subsystem
      */
-    public JoystickContainer(SwerveDrive swerveDrive, Collector collector) {
+    public JoystickController(SwerveDriveSubsystem swerveDrive, CollectorSubsystem collector) {
         this.m_swerveDrive = swerveDrive;
         this.m_collector = collector;
         this.m_joystick = new CommandJoystick(OperatorConstants.kJoystickPort);

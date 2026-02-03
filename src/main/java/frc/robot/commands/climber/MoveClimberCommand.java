@@ -7,14 +7,14 @@ package frc.robot.commands.climber;
 import java.util.function.DoubleSupplier;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.climber.Climber;
+import frc.robot.subsystems.climber.ClimberSubsystem;
 
 /**
  * Command to move the climber up or down based on joystick/controller input.
  * The command runs continuously while held and stops when released.
  */
 public class MoveClimberCommand extends Command {
-  private final Climber m_climber;
+  private final ClimberSubsystem m_climber;
   private final DoubleSupplier m_speedSupplier;
 
   /**
@@ -24,7 +24,7 @@ public class MoveClimberCommand extends Command {
    * @param speedSupplier A supplier that provides the desired speed (-1.0 to 1.0)
    *                      Positive = up, Negative = down
    */
-  public MoveClimberCommand(Climber climber, DoubleSupplier speedSupplier) {
+  public MoveClimberCommand(ClimberSubsystem climber, DoubleSupplier speedSupplier) {
     m_climber = climber;
     m_speedSupplier = speedSupplier;
     addRequirements(climber);

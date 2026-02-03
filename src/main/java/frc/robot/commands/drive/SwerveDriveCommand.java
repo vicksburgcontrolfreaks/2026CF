@@ -12,10 +12,10 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.DriveCommandConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.SwerveConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 public class SwerveDriveCommand extends Command {
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final DoubleSupplier m_xSupplier;
   private final DoubleSupplier m_ySupplier;
   private final DoubleSupplier m_rotSupplier;
@@ -27,7 +27,7 @@ public class SwerveDriveCommand extends Command {
   private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(DriveCommandConstants.kRotationSlewRate);
 
   public SwerveDriveCommand(
-      SwerveDrive swerveDrive,
+      SwerveDriveSubsystem swerveDrive,
       DoubleSupplier xSupplier,
       DoubleSupplier ySupplier,
       DoubleSupplier rotSupplier,

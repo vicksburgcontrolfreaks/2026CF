@@ -19,7 +19,7 @@ import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.PhotonVisionConstants;
 import frc.robot.Constants.VisionConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 import org.photonvision.PhotonCamera;
 import org.photonvision.targeting.PhotonPipelineResult;
@@ -60,7 +60,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     }
   }
 
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final List<CameraData> m_cameras = new ArrayList<>();
   private final AprilTagFieldLayout m_fieldLayout;
 
@@ -78,7 +78,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final List<BooleanPublisher> m_cameraHasTargetPubs = new ArrayList<>();
   private final List<DoublePublisher> m_cameraTagCountPubs = new ArrayList<>();
 
-  public PhotonVisionSubsystem(SwerveDrive swerveDrive) {
+  public PhotonVisionSubsystem(SwerveDriveSubsystem swerveDrive) {
     m_swerveDrive = swerveDrive;
 
     // Load AprilTag field layout (2025 Reefscape)

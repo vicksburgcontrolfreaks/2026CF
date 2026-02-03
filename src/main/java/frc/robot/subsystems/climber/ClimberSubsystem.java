@@ -6,21 +6,22 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.PersistMode;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ClimberConstants;
 
 /**
  * Climber subsystem that controls a telescoping climber with a winch system.
  * Uses a single motor with a 60:1 gear ratio.
  */
-public class Climber extends SubsystemBase {
+public class ClimberSubsystem extends SubsystemBase {
   private final SparkMax m_climberMotor;
 
   /** Creates a new Climber subsystem. */
-  public Climber() {
+  public ClimberSubsystem() {
     // Initialize motor with CAN ID from configuration
-    m_climberMotor = new SparkMax(ClimberConfiguration.kClimberMotorId, MotorType.kBrushless);
+    m_climberMotor = new SparkMax(ClimberConstants.kMotorId, MotorType.kBrushless);
 
     // Configure motor with settings from configuration file
-    m_climberMotor.configure(ClimberConfiguration.config, ResetMode.kResetSafeParameters,
+    m_climberMotor.configure(ClimberConstants.config, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
   }
 
@@ -28,28 +29,28 @@ public class Climber extends SubsystemBase {
    * Extends the climber at the configured speed.
    */
   public void extend() {
-    m_climberMotor.set(ClimberConfiguration.kExtendSpeed);
+    m_climberMotor.set(ClimberConstants.kExtendSpeed);
   }
 
   /**
    * Retracts the climber at the configured speed.
    */
   public void retract() {
-    m_climberMotor.set(ClimberConfiguration.kRetractSpeed);
+    m_climberMotor.set(ClimberConstants.kRetractSpeed);
   }
 
   /**
    * Extends the climber slowly for fine adjustment.
    */
   public void extendSlow() {
-    m_climberMotor.set(ClimberConfiguration.kSlowSpeed);
+    m_climberMotor.set(ClimberConstants.kSlowSpeed);
   }
 
   /**
    * Retracts the climber slowly for fine adjustment.
    */
   public void retractSlow() {
-    m_climberMotor.set(-ClimberConfiguration.kSlowSpeed);
+    m_climberMotor.set(-ClimberConstants.kSlowSpeed);
   }
 
   /**

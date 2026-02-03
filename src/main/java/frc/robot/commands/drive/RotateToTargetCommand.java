@@ -10,14 +10,14 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 /**
  * Command to rotate the robot to face a specific target position on the field.
  * Calculates the required angle based on the robot's current position and the target position.
  */
 public class RotateToTargetCommand extends Command {
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final Translation2d m_targetPosition;
   private final PIDController m_pidController;
   private double m_targetAngle;
@@ -35,7 +35,7 @@ public class RotateToTargetCommand extends Command {
    * @param targetX The target X coordinate in meters
    * @param targetY The target Y coordinate in meters
    */
-  public RotateToTargetCommand(SwerveDrive swerveDrive, double targetX, double targetY) {
+  public RotateToTargetCommand(SwerveDriveSubsystem swerveDrive, double targetX, double targetY) {
     m_swerveDrive = swerveDrive;
     m_targetPosition = new Translation2d(targetX, targetY);
 

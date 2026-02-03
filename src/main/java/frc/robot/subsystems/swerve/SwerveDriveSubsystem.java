@@ -27,7 +27,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.SwerveConstants;
 import frc.robot.Constants.SwerveDriveConstants;
 
-public class SwerveDrive extends SubsystemBase {
+public class SwerveDriveSubsystem extends SubsystemBase {
   private final SwerveModule m_frontLeft;
   private final SwerveModule m_frontRight;
   private final SwerveModule m_backLeft;
@@ -62,7 +62,7 @@ public class SwerveDrive extends SubsystemBase {
   private int m_telemetryCounter = 0;
   private static final int TELEMETRY_UPDATE_PERIOD = SwerveDriveConstants.kTelemetryUpdatePeriod; // Publish detailed telemetry every N cycles
 
-  public SwerveDrive() {
+  public SwerveDriveSubsystem() {
     // Initialize swerve modules with your CAN IDs
     m_frontLeft = new SwerveModule(
       SwerveConstants.kFrontLeftDriveMotorId,

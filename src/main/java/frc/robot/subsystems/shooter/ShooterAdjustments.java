@@ -15,8 +15,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Configs;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.ShooterConstants;
-import frc.robot.Constants.SwerveConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 /**
  * Shooter subsystem with indexer motor.
@@ -27,7 +26,7 @@ public class ShooterAdjustments extends SubsystemBase {
   private final SparkMax m_shooterTop;
   private final SparkMax m_shooterFront;
   private final SparkMax m_indexer;
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
 
   // Current speed of the front shooter (starts at initial speed)
   private double m_frontShooterSpeed;
@@ -39,12 +38,12 @@ public class ShooterAdjustments extends SubsystemBase {
   private final Timer m_spinUpTimer = new Timer();
 
   /** Creates a new ShooterAdjustments subsystem. */
-  public ShooterAdjustments(SwerveDrive swerveDrive) {
+  public ShooterAdjustments(SwerveDriveSubsystem swerveDrive) {
     m_swerveDrive = swerveDrive;
 
     // Initialize the shooter motors
-    m_shooterTop = new SparkMax(SwerveConstants.kShooterTop, MotorType.kBrushless);
-    m_shooterFront = new SparkMax(SwerveConstants.kShooterFront, MotorType.kBrushless);
+    m_shooterTop = new SparkMax(ShooterConstants.kTopMotorId, MotorType.kBrushless);
+    m_shooterFront = new SparkMax(ShooterConstants.kBottomMotorId, MotorType.kBrushless);
     m_indexer = new SparkMax(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
 
     // Configure motors using the config object

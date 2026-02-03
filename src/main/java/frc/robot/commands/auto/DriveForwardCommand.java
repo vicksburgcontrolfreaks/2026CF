@@ -6,14 +6,14 @@ package frc.robot.commands.auto;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 /**
  * Autonomous command to drive the robot forward a specified distance.
  * Uses odometry to track distance traveled.
  */
 public class DriveForwardCommand extends Command {
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final double m_targetDistance; // meters
   private final double m_speed; // m/s
   private Pose2d m_startPose;
@@ -25,7 +25,7 @@ public class DriveForwardCommand extends Command {
    * @param distanceMeters Distance to drive forward in meters
    * @param speedMetersPerSecond Speed to drive at in m/s
    */
-  public DriveForwardCommand(SwerveDrive swerveDrive, double distanceMeters, double speedMetersPerSecond) {
+  public DriveForwardCommand(SwerveDriveSubsystem swerveDrive, double distanceMeters, double speedMetersPerSecond) {
     m_swerveDrive = swerveDrive;
     m_targetDistance = distanceMeters;
     m_speed = speedMetersPerSecond;
@@ -39,7 +39,7 @@ public class DriveForwardCommand extends Command {
    * @param swerveDrive The swerve drive subsystem
    * @param distanceMeters Distance to drive forward in meters
    */
-  public DriveForwardCommand(SwerveDrive swerveDrive, double distanceMeters) {
+  public DriveForwardCommand(SwerveDriveSubsystem swerveDrive, double distanceMeters) {
     this(swerveDrive, distanceMeters, 0.5); // Default 0.5 m/s
   }
 
