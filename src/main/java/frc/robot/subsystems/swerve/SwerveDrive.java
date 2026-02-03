@@ -43,6 +43,9 @@ public class SwerveDrive extends SubsystemBase {
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_gyroAnglePub;
   private final StringPublisher m_robotPosePub;
+  private final DoublePublisher m_poseXPub;
+  private final DoublePublisher m_poseYPub;
+  private final DoublePublisher m_poseYawPub;
   private final BooleanPublisher m_fieldOrientedPub;
   private final DoublePublisher m_flVelocityPub;
   private final DoublePublisher m_frVelocityPub;
@@ -127,6 +130,9 @@ public class SwerveDrive extends SubsystemBase {
     m_telemetryTable = NetworkTableInstance.getDefault().getTable(SwerveDriveConstants.kTelemetryTableName);
     m_gyroAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kGyroAngleTopic).publish();
     m_robotPosePub = m_telemetryTable.getStringTopic("Robot Pose").publish();
+    m_poseXPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kPoseXTopic).publish();
+    m_poseYPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kPoseYTopic).publish();
+    m_poseYawPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kPoseRotationTopic).publish();
     m_fieldOrientedPub = m_telemetryTable.getBooleanTopic(SwerveDriveConstants.kFieldOrientedTopic).publish();
     m_flVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftVelocityTopic).publish();
     m_frVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightVelocityTopic).publish();
@@ -151,9 +157,18 @@ public class SwerveDrive extends SubsystemBase {
     m_field.setRobotPose(getPose());
 
     // Publish critical telemetry every cycle
+    Pose2d currentPose = getPose();
     m_gyroAnglePub.set(getHeading());
-    m_robotPosePub.set(getPose().toString());
+    m_robotPosePub.set(currentPose.toString());
+    m_poseXPub.set(currentPose.getX());
+    m_poseYPub.set(currentPose.getY());
+    m_poseYawPub.set(currentPose.getRotation().getDegrees());
     m_fieldOrientedPub.set(m_fieldOriented);
+
+    // Publish to SmartDashboard for Shuffleboard (top-level for easy access)
+    SmartDashboard.putNumber("Robot X (m)", currentPose.getX());
+    SmartDashboard.putNumber("Robot Y (m)", currentPose.getY());
+    SmartDashboard.putNumber("Robot Yaw (deg)", currentPose.getRotation().getDegrees());
 
     // Increment counter and check if we should publish detailed telemetry
     m_telemetryCounter++;
