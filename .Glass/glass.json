@@ -1,0 +1,66 @@
+{
+  "NetworkTables": {
+    "Persistent Values": {
+      "open": false
+    },
+    "Retained Values": {
+      "open": false
+    },
+    "Transitory Values": {
+      "open": false
+    },
+    "transitory": {
+      "CameraPublisher": {
+        "camera-front": {
+          "open": true
+        }
+      },
+      "PhotonVision": {
+        "camera-back": {
+          "open": true
+        },
+        "camera-front": {
+          "open": true
+        }
+      },
+      "photonvision": {
+        "camera-back": {
+          "open": true
+        }
+      }
+    },
+    "types": {
+      "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Auto Chooser": "String Chooser",
+      "/SmartDashboard/Field": "Field2d",
+      "/SmartDashboard/PathPlanner": "Alerts",
+      "/SmartDashboard/PhotonAlerts": "Alerts"
+    },
+    "windows": {
+      "/SmartDashboard/Field": {
+        "bottom": 1914,
+        "builtin": "",
+        "height": 8.069275856018066,
+        "image": "C:\\Users\\vicks\\Downloads\\2026-field.png",
+        "left": 245,
+        "right": 3942,
+        "top": 118,
+        "width": 16.54119300842285,
+        "window": {
+          "name": "2026",
+          "visible": true
+        }
+      }
+    }
+  },
+  "NetworkTables Info": {
+    "visible": true
+  },
+  "NetworkTables Log": {
+    "visible": true
+  },
+  "NetworkTables Settings": {
+    "mode": "Client (NT4)",
+    "serverTeam": "8126"
+  }
+}

@@ -22,6 +22,8 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.shooter.ShootCommand;
+import frc.robot.commands.auto.DriveForwardCommand;
+import frc.robot.subsystems.led.AprilTagLEDCommand;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDrive;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -29,7 +31,6 @@ import frc.robot.subsystems.shooter.ShooterAdjustments;
 import frc.robot.subsystems.collector.Collector;
 import frc.robot.subsystems.collector.RunCollector;
 import frc.robot.subsystems.climber.Climber;
-import frc.robot.commands.climber.MoveClimberCommand;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
  * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
@@ -40,11 +41,12 @@ public class RobotContainer {
 
   // Subsystems
   private boolean m_collectorHalfSpeed = false;
-  private double m_collectorSpeed = RobotContainerConstants.kCollectorFullSpeed;
 
-  // TEMPORARILY DISABLED: Collector subsystem (Spark Max ID 11 timeout issue)
-  // TODO: Re-enable when collector motors are connected
-  // private final Collector m_collector = new Collector();
+  // Toggle state for facing alliance target
+  private boolean m_isFacingTarget = false;
+  private double m_savedAngle = 0.0;
+
+  // Collector subsystem - RE-ENABLED
   private final Collector m_collector = null;
 
   private final SwerveDrive m_swerveDrive = new SwerveDrive();
@@ -52,11 +54,13 @@ public class RobotContainer {
   // TEMPORARILY DISABLED: PhotonVision subsystem (no coprocessor detected on network)
   // TODO: Re-enable when PhotonVision coprocessor is connected and configured
   // private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final PhotonVisionSubsystem m_visionSubsystem = null;
+  private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
 
-  private final ShooterAdjustments m_shooter = new ShooterAdjustments(m_swerveDrive);
+  private final ShooterAdjustments m_shooter = null;
 
-  private final Climber m_climber = new Climber();
+  // Climber subsystem - TEMPORARILY DISABLED: Uncomment when motor is connected
+  // private final Climber m_climber = new Climber();
+  private final Climber m_climber = null;
 
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
 
@@ -103,14 +107,19 @@ public class RobotContainer {
     // Build autonomous chooser from PathPlanner only if configured successfully
     if (m_pathPlannerConfigured) {
       m_autoChooser = AutoBuilder.buildAutoChooser();
+
+      // Add custom autonomous commands
+      m_autoChooser.addOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
+
       SmartDashboard.putData("Auto Chooser", m_autoChooser);
     } else {
       // Create a disabled auto chooser if PathPlanner failed
       m_autoChooser = new SendableChooser<>();
-      m_autoChooser.setDefaultOption("Auto Disabled - PathPlanner Config Failed", Commands.none());
+      m_autoChooser.setDefaultOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
+      m_autoChooser.addOption("Do Nothing", Commands.none());
       SmartDashboard.putData("Auto Chooser", m_autoChooser);
 
-      DriverStation.reportWarning("PathPlanner configuration failed! Autonomous disabled.", false);
+      DriverStation.reportWarning("PathPlanner configuration failed! Using simple autonomous options.", false);
     }
   }
 
@@ -167,7 +176,18 @@ public class RobotContainer {
         () -> getSpeedLimit()                   // Speed limit based on triggers
       )
     );
+
+    // Set default LED command to show AprilTag detections
+    // If tag ID 15 is detected, LED 15 will light up green
+    if (m_visionSubsystem != null) {
+      m_ledSubsystem.setDefaultCommand(
+        new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
+      );
+    }
   }
+  
+
+    
 
   /**
    * Configure button bindings for the driver controller.
@@ -183,6 +203,48 @@ public class RobotContainer {
     m_driverController.back().onTrue(
       m_swerveDrive.runOnce(() -> m_swerveDrive.toggleFieldOriented())
     );
+
+    // Collector controls - only bind if collector is available
+    if (m_collector != null) {
+      m_driverController.x().onTrue(
+         Commands.runOnce(() -> m_collectorHalfSpeed = !m_collectorHalfSpeed)
+      );
+
+      m_driverController.a().whileTrue(
+         Commands.run(() -> {
+          double speed = m_collectorHalfSpeed ? RobotContainerConstants.kCollectorHalfSpeed : RobotContainerConstants.kCollectorFullSpeed;
+         m_collector.run(speed);
+        }, m_collector)
+      );
+
+      m_driverController.b().whileTrue(
+         Commands.run(() -> {
+          double speed = m_collectorHalfSpeed ? RobotContainerConstants.kCollectorHalfSpeedReverse : RobotContainerConstants.kCollectorFullSpeedReverse;
+         m_collector.run(speed);
+        }, m_collector)
+      );
+    }
+
+    // Climber controls - only bind if climber is available
+    if (m_climber != null) {
+      // D-pad Up: Extend climber
+      m_driverController.povUp().whileTrue(
+        Commands.run(() -> m_climber.extend(), m_climber)
+      );
+
+      // D-pad Down: Retract climber
+      m_driverController.povDown().whileTrue(
+        Commands.run(() -> m_climber.retract(), m_climber)
+      );
+    }
+
+    // Shooter controls - only bind if shooter is available
+    if (m_shooter != null) {
+      // Run shooter while Y button is held
+      m_driverController.y().whileTrue(
+        new ShootCommand(m_shooter)
+      );
+    }
 
     // Rotate to cardinal directions using D-pad (POV)
     // POV up (0°) -> Rotate to 0° (forward)
@@ -205,22 +267,27 @@ public class RobotContainer {
       m_swerveDrive.rotateToAngle(90)
     );
 
-    // Y button - Rotate to face targets based on robot position
-    // If X < 5.2: rotate to red target
-    // If X > 12.5: rotate to blue target
-    // Otherwise: do nothing
+    // Y button - Toggle between facing alliance target and saved angle
     m_driverController.y().onTrue(
       Commands.either(
-        // If X < 5.2, rotate to red target
-        m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
-        // Otherwise, check if X > 12.5 for blue target
-        Commands.either(
-          m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
-          Commands.none(),
-          () -> m_swerveDrive.getPose().getX() > AutoConstants.kBlueTargetX
+        // If currently facing target, return to saved angle
+        m_swerveDrive.rotateToAngle(m_savedAngle)
+          .andThen(Commands.runOnce(() -> m_isFacingTarget = false)),
+        // If not facing target, save current angle and rotate to alliance target
+        Commands.runOnce(() -> {
+          m_savedAngle = m_swerveDrive.getHeading();
+          m_isFacingTarget = true;
+        }).andThen(
+          Commands.either(
+            m_swerveDrive.rotateToTarget(AutoConstants.redScoringHubX, AutoConstants.redScoringHubY),
+            m_swerveDrive.rotateToTarget(AutoConstants.blueScoringHubX, AutoConstants.blueScoringHubY),
+            () -> {
+              var alliance = DriverStation.getAlliance();
+              return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
+            }
+          )
         ),
-        // Condition: check if robot X < 5.2
-        () -> m_swerveDrive.getPose().getX() < AutoConstants.kRedTargetX
+        () -> m_isFacingTarget
       )
     );
   }
