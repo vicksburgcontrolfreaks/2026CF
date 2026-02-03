@@ -39,7 +39,7 @@ public class MoveClimberCommand extends Command {
   public void execute() {
     // Get the speed from the supplier and move the climber
     double speed = m_speedSupplier.getAsDouble();
-    m_climber.move(speed);
+    m_climber.run(speed);
   }
 
   @Override

@@ -18,6 +18,19 @@ public class Collector extends SubsystemBase {
   // Collection motors (intake rollers)
   private final SparkMax m_leftMotor;
   private final SparkMax m_rightMotor;
+
+  // Deployment motors (move collector on rail)
+  private final SparkMax m_leftDeploymentMotor;
+  private final SparkMax m_rightDeploymentMotor;
+
+  //
+  // Encoder for tracking deployment position
+  private final RelativeEncoder m_deploymentEncoder;
+
+  // State tracking
+  private boolean m_isDeployed;
+  private double m_targetPosition;
+
   public Collector() {
     // Initialize collection motors
     m_leftMotor = new SparkMax(CollectorConfig.kLeftMotorId, MotorType.kBrushless);

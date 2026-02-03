@@ -8,7 +8,9 @@ public final class CollectorConfig {
   // CAN IDs for collector motors - UPDATE THESE TO MATCH YOUR ROBOT 
   public static final int kLeftMotorId = 10;
   public static final int kRightMotorId = 11;
-  // public static final int kfeederId = 12;
+
+  //CAN IDs for conveyor motor (feed balls into shooter)
+  public static final int kPlaceHolderId = 12;
 
   // CAN IDs for deployment motors (move collector on rail)
   public static final int kLeftDeploymentMotorId = 13;
