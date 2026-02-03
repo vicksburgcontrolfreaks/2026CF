@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(./gradlew vendordep:*)",
-      "Bash(.gradlew.bat build:*)"
+      "Bash(.gradlew.bat build:*)",
+      "Bash(gradle build:*)",
+      "Bash(./gradlew build)"
     ]
   }
 }

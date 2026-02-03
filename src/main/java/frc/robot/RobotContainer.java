@@ -42,10 +42,6 @@ public class RobotContainer {
   // Subsystems
   private boolean m_collectorHalfSpeed = false;
 
-  // Toggle state for facing alliance target
-  private boolean m_isFacingTarget = false;
-  private double m_savedAngle = 0.0;
-
   // Collector subsystem - RE-ENABLED
   private final Collector m_collector = null;
 
@@ -269,12 +265,16 @@ public class RobotContainer {
       m_swerveDrive.rotateToAngle(90)
     );
 
-    // Y button - Toggle between facing alliance target and saved angle
+    // ORIGINAL VERSION - Toggle between facing target and saved angle (disabled due to oscillation issues)
+    // This version would save your current angle and toggle between that and the scoring target
+    // Disabled because it caused back-and-forth jerking on multiple presses
+    /*
     m_driverController.y().onTrue(
       Commands.either(
         // If currently facing target, return to saved angle
-        m_swerveDrive.rotateToAngle(m_savedAngle)
-          .andThen(Commands.runOnce(() -> m_isFacingTarget = false)),
+        Commands.runOnce(() -> m_isFacingTarget = false)
+          .andThen(Commands.runOnce(() -> {}, m_swerveDrive)
+            .andThen(() -> m_swerveDrive.rotateToAngle(m_savedAngle))),
         // If not facing target, save current angle and rotate to alliance target
         Commands.runOnce(() -> {
           m_savedAngle = m_swerveDrive.getHeading();
@@ -292,6 +292,26 @@ public class RobotContainer {
         () -> m_isFacingTarget
       )
     );
+    // Note: If re-enabling this version, also restore these fields at the top of the class:
+    // private boolean m_isFacingTarget = false;
+    // private double m_savedAngle = 0.0;
+    */
+
+
+    // CURRENT VERSION - Simple one-way auto-align to scoring target
+    // Y button - Rotate to face alliance scoring target
+    // Note: This is a simple one-way command - press Y to face target
+    m_driverController.y().onTrue(
+      Commands.either(
+        m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
+        m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
+        () -> {
+          var alliance = DriverStation.getAlliance();
+          return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
+        }
+      )
+    );
+
   }
 
   /**
@@ -299,22 +319,26 @@ public class RobotContainer {
    * Mechanism controls: shooter, climber, collector
    */
   private void configureMechanismBindings() {
-    // Shooter control
-    // A button - Run shooter (distance-based power)
-    m_mechanismController.a().whileTrue(
-      new ShootCommand(m_shooter)
-    );
+    // Shooter control - only bind if shooter is available
+    if (m_shooter != null) {
+      // A button - Run shooter (distance-based power)
+      m_mechanismController.a().whileTrue(
+        new ShootCommand(m_shooter)
+      );
+    }
 
-    // Climber controls
-    // Right bumper - Climb up
-    m_mechanismController.rightBumper().whileTrue(
-      Commands.run(() -> m_climber.extend(), m_climber)
-    );
+    // Climber controls - only bind if climber is available
+    if (m_climber != null) {
+      // Right bumper - Climb up
+      m_mechanismController.rightBumper().whileTrue(
+        Commands.run(() -> m_climber.extend(), m_climber)
+      );
 
-    // Left bumper - Climb down
-    m_mechanismController.leftBumper().whileTrue(
-      Commands.run(() -> m_climber.retract(), m_climber)
-    );
+      // Left bumper - Climb down
+      m_mechanismController.leftBumper().whileTrue(
+        Commands.run(() -> m_climber.retract(), m_climber)
+      );
+    }
 
     // Collector controls - only bind if collector is available
     if (m_collector != null) {

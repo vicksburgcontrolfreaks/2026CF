@@ -10,7 +10,7 @@ public final class CollectorConfig {
   public static final int kRightMotorId = 11;
 
   //CAN IDs for conveyor motor (feed balls into shooter)
-  public static final int kPlaceHolderId = 12;
+  // public static final int kPlaceHolderId = 12;
 
   // CAN IDs for deployment motors (move collector on rail)
   public static final int kLeftDeploymentMotorId = 13;
