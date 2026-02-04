@@ -25,8 +25,8 @@ public class RotateToTargetCommand extends Command {
   // Tolerance for considering the rotation complete (in degrees)
   private static final double kAngleToleranceDegrees = 3.0;
 
-  // Maximum rotation speed (radians per second) - reduced from 3.0 to prevent overcorrection
-  private static final double kMaxRotationSpeed = 1.5;
+  // Maximum rotation speed (radians per second) - slower for precise target alignment
+  private static final double kMaxRotationSpeed = 0.75;
 
   /**
    * Creates a new RotateToTargetCommand.
@@ -64,11 +64,12 @@ public class RotateToTargetCommand extends Command {
     // Calculate the vector from robot to target
     Translation2d toTarget = m_targetPosition.minus(currentPosition);
 
-    // Calculate the angle to face the target with the FRONT of the robot
+    // Calculate the angle to face AWAY from the target (back of robot toward target)
     // atan2 returns angle in radians, convert to degrees
     // In FRC coordinates: 0° = facing +X (toward red alliance wall)
     // 90° = facing +Y (toward left when looking from red alliance)
-    m_targetAngle = Math.toDegrees(Math.atan2(toTarget.getY(), toTarget.getX()));
+    // Add 180 degrees to face backwards
+    m_targetAngle = Math.toDegrees(Math.atan2(toTarget.getY(), toTarget.getX())) + 180.0;
 
     // Reset the PID controller
     m_pidController.reset();

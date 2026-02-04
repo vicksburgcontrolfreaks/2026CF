@@ -20,6 +20,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
+import frc.robot.commands.drive.RotateToAngleCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShootCommand;
@@ -185,7 +186,7 @@ public class RobotContainer {
     }
 
     if (m_shooter != null) {
-      m_driverController.y().whileTrue(
+      m_driverController.rightBumper().whileTrue(
         new ShootCommand(m_shooter)
       );
     }
