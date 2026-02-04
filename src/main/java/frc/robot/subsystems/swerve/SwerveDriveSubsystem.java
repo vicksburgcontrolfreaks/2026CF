@@ -7,7 +7,6 @@ package frc.robot.subsystems.swerve;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.CalibrationTime;
-//import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -58,12 +57,10 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   private final DoublePublisher m_blAbsEncoderPub;
   private final DoublePublisher m_brAbsEncoderPub;
 
-  // Telemetry update counter for reduced frequency publishing
   private int m_telemetryCounter = 0;
-  private static final int TELEMETRY_UPDATE_PERIOD = SwerveDriveConstants.kTelemetryUpdatePeriod; // Publish detailed telemetry every N cycles
+  private static final int TELEMETRY_UPDATE_PERIOD = SwerveDriveConstants.kTelemetryUpdatePeriod;
 
   public SwerveDriveSubsystem() {
-    // Initialize swerve modules with your CAN IDs
     m_frontLeft = new SwerveModule(
       SwerveConstants.kFrontLeftDriveMotorId,
       SwerveConstants.kFrontLeftSteerMotorId,
@@ -88,31 +85,25 @@ public class SwerveDriveSubsystem extends SubsystemBase {
       SwerveConstants.kBackRightChassisAngularOffset
     );
 
-    // Initialize ADIS16470 IMU with explicit axis configuration
-    // Yaw = Z-axis, Pitch = X-axis, Roll = Y-axis (standard FRC orientation)
-    // Using 2-second calibration for good accuracy with faster startup
-    // CRITICAL: Robot MUST remain stationary during calibration!
     System.out.println("==============================================");
     System.out.println("GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT");
     System.out.println("Calibration time: " + SwerveConstants.kGyroCalibrationTimeSec + " seconds");
     System.out.println("==============================================");
 
     m_gyro = new ADIS16470_IMU(
-      IMUAxis.kY,  // Yaw axis (RoboRIO mounted vertically)
-      IMUAxis.kZ,  // Pitch axis
-      IMUAxis.kX,  // Roll axis
-      SPI.Port.kOnboardCS0,  // Onboard SPI port
-      CalibrationTime._2s    // 2-second calibration for good accuracy with faster startup
+      IMUAxis.kY,
+      IMUAxis.kZ,
+      IMUAxis.kX,
+      SPI.Port.kOnboardCS0,
+      CalibrationTime._2s
     );
 
     System.out.println("==============================================");
     System.out.println("GYRO CALIBRATION COMPLETE");
     System.out.println("==============================================");
 
-    // Reset gyro to zero heading
     m_gyro.reset();
 
-    // Initialize pose estimator
     m_poseEstimator = new SwerveDrivePoseEstimator(
       SwerveConstants.kSwerveKinematics,
       getGyroRotation2d(),
@@ -120,11 +111,9 @@ public class SwerveDriveSubsystem extends SubsystemBase {
       new Pose2d()
     );
 
-    // Initialize field visualization and publish to Elastic
     m_field = new Field2d();
     SmartDashboard.putData("Field", m_field);
 
-    // Initialize Elastic (NetworkTables) publishers
     m_telemetryTable = NetworkTableInstance.getDefault().getTable(SwerveDriveConstants.kTelemetryTableName);
     m_gyroAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kGyroAngleTopic).publish();
     m_robotPosePub = m_telemetryTable.getStringTopic("Robot Pose").publish();
@@ -145,35 +134,27 @@ public class SwerveDriveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // Update pose estimator with current module positions and gyro reading
     m_poseEstimator.update(getGyroRotation2d(), getModulePositions());
-
-    // Update field visualization
     m_field.setRobotPose(getPose());
 
-    // Publish critical telemetry every cycle
     m_gyroAnglePub.set(getHeading());
     m_robotPosePub.set(getPose().toString());
     m_fieldOrientedPub.set(m_fieldOriented);
 
-    // Increment counter and check if we should publish detailed telemetry
     m_telemetryCounter++;
     if (m_telemetryCounter >= TELEMETRY_UPDATE_PERIOD) {
       m_telemetryCounter = 0;
 
-      // Publish module velocities at reduced rate
       m_flVelocityPub.set(m_frontLeft.getDriveVelocity());
       m_frVelocityPub.set(m_frontRight.getDriveVelocity());
       m_blVelocityPub.set(m_backLeft.getDriveVelocity());
       m_brVelocityPub.set(m_backRight.getDriveVelocity());
 
-      // Publish module angles at reduced rate
       m_flAnglePub.set(Math.toDegrees(m_frontLeft.getSteerPosition()));
       m_frAnglePub.set(Math.toDegrees(m_frontRight.getSteerPosition()));
       m_blAnglePub.set(Math.toDegrees(m_backLeft.getSteerPosition()));
       m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
 
-      // Publish raw absolute encoder values for calibration (useful for setup only)
       m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
       m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
       m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
@@ -182,7 +163,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   }
 
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
-    // Convert chassis speeds to module states
     SwerveModuleState[] swerveModuleStates;
 
     if (fieldRelative) {
@@ -199,7 +179,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   }
 
   public void setModuleStates(SwerveModuleState[] desiredStates) {
-    // Normalize wheel speeds to be at or below max speed
     SwerveDriveKinematics.desaturateWheelSpeeds(
       desiredStates,
       SwerveConstants.kMaxSpeedMetersPerSecond
@@ -250,9 +229,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   }
 
   public double getHeading() {
-    // Read from Y-axis since RoboRIO is mounted vertically
-    // Try without negation first - adjust if rotation direction is backwards
-    // Use IEEEremainder to keep angle in [-180, 180] range
     return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), SwerveDriveConstants.kGyroWrapModulo);
   }
 
