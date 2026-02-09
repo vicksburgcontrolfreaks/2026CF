@@ -167,9 +167,9 @@ public class SwerveDrive extends SubsystemBase {
     m_fieldOrientedPub.set(m_fieldOriented);
 
     // Publish to SmartDashboard for Shuffleboard (top-level for easy access)
-    SmartDashboard.putNumber("Robot X (m)", currentPose.getX());
-    SmartDashboard.putNumber("Robot Y (m)", currentPose.getY());
-    SmartDashboard.putNumber("Robot Yaw (deg)", currentPose.getRotation().getDegrees());
+    //SmartDashboard.putNumber("Robot X (m)", currentPose.getX());
+    //SmartDashboard.putNumber("Robot Y (m)", currentPose.getY());
+    //SmartDashboard.putNumber("Robot Yaw (deg)", currentPose.getRotation().getDegrees());
 
     // Increment counter and check if we should publish detailed telemetry
     m_telemetryCounter++;

@@ -43,16 +43,25 @@ public class JoystickContainer {
 
     /**
      * Creates a new JoystickContainer with Extreme 3D Pro configuration
-     * @param swerveDrive The swerve drive subsystem
-     * @param collector The collector subsystem
+     * @param swerveDrive The swerve drive subsystem (required)
+     * @param collector The collector subsystem (can be null if disabled)
      */
     public JoystickContainer(SwerveDrive swerveDrive, Collector collector) {
+        if (swerveDrive == null) {
+            throw new IllegalArgumentException("SwerveDrive cannot be null");
+        }
+
         this.m_swerveDrive = swerveDrive;
         this.m_collector = collector;
         this.m_joystick = new CommandJoystick(OperatorConstants.kJoystickPort);
 
         configureDefaultCommands();
         configureBindings();
+
+        // Log warning if collector is disabled
+        if (collector == null) {
+            System.out.println("JoystickContainer: Collector is disabled - collector buttons will not be bound");
+        }
     }
 
     /**
@@ -94,7 +103,8 @@ public class JoystickContainer {
 
         // Button 3 - Reset gyro to zero
         m_joystick.button(3).onTrue(
-            m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
+           // m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
+           m_swerveDrive.runOnce(() -> m_swerveDrive.toggleFieldOriented())
         );
 
         // Button 4 - Toggle field-oriented drive
