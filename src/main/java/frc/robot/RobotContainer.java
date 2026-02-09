@@ -196,7 +196,8 @@ public class RobotContainer {
   private void configureDriverBindings() {
     // Reset gyro to zero
     m_driverController.start().onTrue(
-      m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
+            m_swerveDrive.runOnce(() -> m_swerveDrive.toggleFieldOriented())
+      //m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
     );
 
     // Toggle field-oriented drive
@@ -297,22 +298,26 @@ public class RobotContainer {
    * Mechanism controls: shooter, climber, collector
    */
   private void configureMechanismBindings() {
-    // Shooter control
-    // A button - Run shooter (distance-based power)
-    m_mechanismController.a().whileTrue(
-      new ShootCommand(m_shooter)
-    );
+    // Shooter control - only bind if shooter is available
+    if (m_shooter != null) {
+      // A button - Run shooter (distance-based power)
+      m_mechanismController.a().whileTrue(
+        new ShootCommand(m_shooter)
+      );
+    }
 
-    // Climber controls
-    // Right bumper - Extend climber
-    m_mechanismController.rightBumper().whileTrue(
-      Commands.run(() -> m_climber.extend(), m_climber)
-    );
+    // Climber controls - only bind if climber is available
+    if (m_climber != null) {
+      // Right bumper - Extend climber
+      m_mechanismController.rightBumper().whileTrue(
+        Commands.run(() -> m_climber.extend(), m_climber)
+      );
 
-    // Left bumper - Retract climber
-    m_mechanismController.leftBumper().whileTrue(
-      Commands.run(() -> m_climber.retract(), m_climber)
-    );
+      // Left bumper - Retract climber
+      m_mechanismController.leftBumper().whileTrue(
+        Commands.run(() -> m_climber.retract(), m_climber)
+      );
+    }
 
     // Collector controls - only bind if collector is available
     if (m_collector != null) {
