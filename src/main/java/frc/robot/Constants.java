@@ -83,9 +83,9 @@ public final class Constants {
 
     // Drive speed limits (0.0 to 1.0)
     // Start with very conservative values for testing, increase as you gain confidence
-    public static final double kNormalSpeedLimit = 0.025;  // ~0.7 m/s - safe walking speed
-    public static final double kTurboSpeedLimit = 0.05;   // ~1.1 m/s - moderate speed
-    public static final double kPrecisionSpeedLimit = 0.001; // ~0.2 m/s - very slow for precise movements
+    public static final double kNormalSpeedLimit = 0.25;  // ~0.7 m/s - safe walking speed
+    public static final double kTurboSpeedLimit = 0.12;   // ~1.1 m/s - moderate speed
+    public static final double kPrecisionSpeedLimit = 0.02; // ~0.2 m/s - very slow for precise movements
   }
 
   public static class SwerveConstants {
@@ -259,9 +259,9 @@ public final class Constants {
     public static final double kITranslation = 0.0;
     public static final double kDTranslation = 0.0;
 
-    public static final double kPRotation = 5.0;
-    public static final double kIRotation = 0.0;
-    public static final double kDRotation = 0.0;
+    public static final double kPRotation = 15.0;
+    public static final double kIRotation = 0.25;  // Small I term to eliminate steady-state error
+    public static final double kDRotation = 0.1;  // Small D term to reduce oscillation
 
     // Max auto speeds
     public static final double kMaxAutoSpeedMetersPerSecond = 3.0;

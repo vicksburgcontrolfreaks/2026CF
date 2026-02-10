@@ -167,9 +167,16 @@ public class SwerveDrive extends SubsystemBase {
     m_fieldOrientedPub.set(m_fieldOriented);
 
     // Publish to SmartDashboard for Shuffleboard (top-level for easy access)
-    //SmartDashboard.putNumber("Robot X (m)", currentPose.getX());
-    //SmartDashboard.putNumber("Robot Y (m)", currentPose.getY());
-    //SmartDashboard.putNumber("Robot Yaw (deg)", currentPose.getRotation().getDegrees());
+    SmartDashboard.putNumber("Robot X (m)", currentPose.getX());
+    SmartDashboard.putNumber("Robot Y (m)", currentPose.getY());
+    SmartDashboard.putNumber("Robot Yaw (deg)", currentPose.getRotation().getDegrees());
+
+    // Publish target information
+    double distanceToTarget = getDistanceToNearestTarget();
+    SmartDashboard.putNumber("Distance to Target (m)", distanceToTarget);
+    SmartDashboard.putString("Target Alliance", getCurrentTargetAlliance());
+    SmartDashboard.putString("Target Position", String.format("(%.2f, %.2f)",
+      getCurrentTargetX(), getCurrentTargetY()));
 
     // Increment counter and check if we should publish detailed telemetry
     m_telemetryCounter++;
@@ -266,9 +273,11 @@ public class SwerveDrive extends SubsystemBase {
 
   public double getHeading() {
     // Read from Y-axis since RoboRIO is mounted vertically
-    // Try without negation first - adjust if rotation direction is backwards
+    // Add 180° offset because physical front of robot is opposite from gyro's 0° reference
     // Use IEEEremainder to keep angle in [-180, 180] range
-    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), SwerveDriveConstants.kGyroWrapModulo);
+    double rawAngle = m_gyro.getAngle(IMUAxis.kY);
+    double correctedAngle = rawAngle + 180.0;  // Correct for front/back orientation
+    return Math.IEEEremainder(correctedAngle, SwerveDriveConstants.kGyroWrapModulo);
   }
 
   public Rotation2d getGyroRotation2d() {
@@ -344,5 +353,80 @@ public class SwerveDrive extends SubsystemBase {
    */
   public edu.wpi.first.wpilibj2.command.Command rotateToTarget(double targetX, double targetY) {
     return new frc.robot.commands.drive.RotateToTargetCommand(this, targetX, targetY);
+  }
+
+  /**
+   * Get the X coordinate of the nearest target based on robot position
+   * @return Target X coordinate in meters
+   */
+  public double getCurrentTargetX() {
+    Pose2d currentPose = getPose();
+    double currentX = currentPose.getX();
+
+    // Calculate distance to both targets (only X matters since Y is the same)
+    double distanceToBlue = Math.abs(currentX - frc.robot.Constants.AutoConstants.kBlueTargetX);
+    double distanceToRed = Math.abs(currentX - frc.robot.Constants.AutoConstants.kRedTargetX);
+
+    // Return the X coordinate of the nearest target
+    if (distanceToBlue < distanceToRed) {
+      return frc.robot.Constants.AutoConstants.kBlueTargetX;
+    } else {
+      return frc.robot.Constants.AutoConstants.kRedTargetX;
+    }
+  }
+
+  /**
+   * Get the Y coordinate of the nearest target based on robot position
+   * @return Target Y coordinate in meters
+   */
+  public double getCurrentTargetY() {
+    Pose2d currentPose = getPose();
+    double currentX = currentPose.getX();
+
+    // Calculate distance to both targets (only X matters since Y is the same)
+    double distanceToBlue = Math.abs(currentX - frc.robot.Constants.AutoConstants.kBlueTargetX);
+    double distanceToRed = Math.abs(currentX - frc.robot.Constants.AutoConstants.kRedTargetX);
+
+    // Return the Y coordinate of the nearest target
+    if (distanceToBlue < distanceToRed) {
+      return frc.robot.Constants.AutoConstants.kBlueTargetY;
+    } else {
+      return frc.robot.Constants.AutoConstants.kRedTargetY;
+    }
+  }
+
+  /**
+   * Get the alliance color of the nearest target
+   * @return "Red", "Blue", or "Unknown"
+   */
+  public String getCurrentTargetAlliance() {
+    Pose2d currentPose = getPose();
+    double currentX = currentPose.getX();
+
+    // Calculate distance to both targets (only X matters since Y is the same)
+    double distanceToBlue = Math.abs(currentX - frc.robot.Constants.AutoConstants.kBlueTargetX);
+    double distanceToRed = Math.abs(currentX - frc.robot.Constants.AutoConstants.kRedTargetX);
+
+    // Return the alliance of the nearest target
+    if (distanceToBlue < distanceToRed) {
+      return "Blue";
+    } else {
+      return "Red";
+    }
+  }
+
+  /**
+   * Calculate the distance from the robot to the nearest target
+   * @return Distance in meters
+   */
+  public double getDistanceToNearestTarget() {
+    Pose2d currentPose = getPose();
+    double targetX = getCurrentTargetX();
+    double targetY = getCurrentTargetY();
+
+    double deltaX = targetX - currentPose.getX();
+    double deltaY = targetY - currentPose.getY();
+
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
   }
 }
