@@ -42,10 +42,6 @@ public class RobotContainer {
   // Subsystems
   private boolean m_collectorHalfSpeed = false;
 
-  // Toggle state for facing alliance target
-  private boolean m_isFacingTarget = false;
-  private double m_savedAngle = 0.0;
-
   // Collector subsystem - RE-ENABLED
   private final Collector m_collector = null;
 
@@ -268,28 +264,14 @@ public class RobotContainer {
       m_swerveDrive.rotateToAngle(90)
     );
 
-    // Y button - Toggle between facing alliance target and saved angle
+    // Y button - Rotate to face nearest target
     m_driverController.y().onTrue(
-      Commands.either(
-        // If currently facing target, return to saved angle
-        m_swerveDrive.rotateToAngle(m_savedAngle)
-          .andThen(Commands.runOnce(() -> m_isFacingTarget = false)),
-        // If not facing target, save current angle and rotate to alliance target
-        Commands.runOnce(() -> {
-          m_savedAngle = m_swerveDrive.getHeading();
-          m_isFacingTarget = true;
-        }).andThen(
-          Commands.either(
-            m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
-            m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
-            () -> {
-              var alliance = DriverStation.getAlliance();
-              return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
-            }
-          )
-        ),
-        () -> m_isFacingTarget
-      )
+      Commands.defer(() -> {
+        // Capture target position when button is pressed
+        double targetX = m_swerveDrive.getCurrentTargetX();
+        double targetY = m_swerveDrive.getCurrentTargetY();
+        return m_swerveDrive.rotateToTarget(targetX, targetY);
+      }, java.util.Set.of(m_swerveDrive))
     );
   }
 
