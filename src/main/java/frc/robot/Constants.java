@@ -56,7 +56,7 @@ public final class Constants {
     public static final boolean kBottomMotorInverted = false;
 
     public static final double kTopShooterSpeed = 0.8;
-    public static final double kFrontShooterStartSpeed = 0.2;
+    public static final double kFrontShooterStartPower = 0.2;
     public static final double kFrontShooterMaxSpeed = 0.8;
 
     public static final double kPShooter = 0.01;

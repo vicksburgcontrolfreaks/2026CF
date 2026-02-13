@@ -55,7 +55,7 @@ public class ShooterAdjustments extends SubsystemBase {
         PersistMode.kPersistParameters);
 
     // Initialize state
-    m_frontShooterPower = ShooterConstants.kFrontShooterStartSpeed;
+    m_frontShooterPower = ShooterConstants.kFrontShooterStartPower;
     m_isRunning = false;
   }
 
@@ -97,7 +97,7 @@ public class ShooterAdjustments extends SubsystemBase {
     m_spinUpTimer.stop();
     m_spinUpTimer.reset();
     // Reset front shooter speed for next run
-    m_frontShooterPower = ShooterConstants.kFrontShooterStartSpeed;
+    m_frontShooterPower = ShooterConstants.kFrontShooterStartPower;
   }
 
   /**
@@ -116,9 +116,9 @@ public class ShooterAdjustments extends SubsystemBase {
   }
 
   /**
-   * Gets the current front shooter speed.
+   * Gets the current front shooter power.
    */
-  public double getFrontShooterSpeed() {
+  public double getFrontShooterPower() {
     return m_frontShooterPower;
   }
 
