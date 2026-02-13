@@ -25,6 +25,7 @@ import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.SwerveConstants;
 import frc.robot.Constants.SwerveDriveConstants;
+import frc.robot.Constants.DriveCommandConstants;
 
 public class SwerveDriveSubsystem extends SubsystemBase {
   private final SwerveModule m_frontLeft;
@@ -38,6 +39,11 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   private final Field2d m_field;
 
   private boolean m_fieldOriented = true;
+
+  // Yaw correction variables
+  private double m_targetHeading = 0.0;
+  private boolean m_yawCorrectionEnabled = false;
+  private boolean m_isLateralMovement = false;
 
   // Elastic (NetworkTables) publishers for telemetry
   private final NetworkTable m_telemetryTable;
@@ -305,5 +311,92 @@ public class SwerveDriveSubsystem extends SubsystemBase {
    */
   public edu.wpi.first.wpilibj2.command.Command rotateToTarget(double targetX, double targetY) {
     return new frc.robot.commands.drive.RotateToTargetCommand(this, targetX, targetY);
+  }
+
+  /**
+   * Sets the target heading for yaw correction.
+   * This is the heading the robot will attempt to maintain during translation.
+   * @param heading Target heading in degrees
+   */
+  public void setTargetHeading(double heading) {
+    m_targetHeading = heading;
+  }
+
+  /**
+   * Enables or disables yaw correction.
+   * When enabled, the robot will automatically correct drift to maintain the target heading.
+   * @param enabled True to enable yaw correction, false to disable
+   */
+  public void setYawCorrectionEnabled(boolean enabled) {
+    m_yawCorrectionEnabled = enabled;
+  }
+
+  /**
+   * Sets whether the robot is currently moving laterally (strafing left/right).
+   * This determines which correction power to use (9% for lateral, 7% for forward/back).
+   * @param isLateral True if moving primarily left/right, false if moving forward/back
+   */
+  public void setLateralMovement(boolean isLateral) {
+    m_isLateralMovement = isLateral;
+  }
+
+  /**
+   * Calculates the yaw correction to maintain the target heading.
+   * Uses proportional control that scales with heading error:
+   * - No correction when error < 0.3 degrees (tolerance)
+   * - Proportional correction when 0.3 <= error < 3.0 degrees
+   * - Full correction power when error >= 3.0 degrees (threshold)
+   *
+   * Correction power depends on movement direction:
+   * - Forward/Backward: 7% max power
+   * - Lateral (strafing): 9% max power
+   *
+   * @return Rotational correction in radians/second to add to drive command
+   */
+  public double calculateYawCorrection() {
+    if (!m_yawCorrectionEnabled) {
+      return 0.0;
+    }
+
+    // Calculate heading error
+    double currentHeading = getHeading();
+    double headingError = m_targetHeading - currentHeading;
+
+    // Normalize error to [-180, 180]
+    while (headingError > 180) headingError -= 360;
+    while (headingError < -180) headingError += 360;
+
+    double absError = Math.abs(headingError);
+
+    // Check if within tolerance (dead zone)
+    if (absError < DriveCommandConstants.kYawCorrectionToleranceDegrees) {
+      return 0.0;
+    }
+
+    // Select max power based on movement direction
+    double maxPower = m_isLateralMovement
+        ? DriveCommandConstants.kYawCorrectionMaxPowerLateral  // 9% for lateral
+        : DriveCommandConstants.kYawCorrectionMaxPower;         // 7% for forward/back
+
+    // Calculate proportional correction
+    double correctionPower;
+    if (absError >= DriveCommandConstants.kYawCorrectionThresholdDegrees) {
+      // At or above threshold: use full power
+      correctionPower = maxPower;
+    } else {
+      // Between tolerance and threshold: scale proportionally
+      double range = DriveCommandConstants.kYawCorrectionThresholdDegrees
+                   - DriveCommandConstants.kYawCorrectionToleranceDegrees;
+      double errorAboveTolerance = absError - DriveCommandConstants.kYawCorrectionToleranceDegrees;
+      correctionPower = maxPower * (errorAboveTolerance / range);
+    }
+
+    // Apply correction in the direction to reduce error
+    // Positive error means target > current, so rotate counter-clockwise (positive)
+    // Negative error means target < current, so rotate clockwise (negative)
+    double correction = Math.signum(headingError) * correctionPower
+                      * SwerveConstants.kMaxAngularSpeedRadiansPerSecond;
+
+    return correction;
   }
 }

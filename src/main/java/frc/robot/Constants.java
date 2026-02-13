@@ -161,6 +161,29 @@ public final class Constants {
     }
   }
 
+  public static class TestMotorConstants {
+    public static final int kMotor1Id = 16;
+    public static final int kMotor2Id = 17;
+    public static final int kMotor3Id = 18;
+    public static final int kMotor4Id = 19;
+
+    public static final int kMotorCurrentLimit = 40;
+
+    public static final boolean kMotor1Inverted = false;
+    public static final boolean kMotor2Inverted = false;
+    public static final boolean kMotor3Inverted = false;
+    public static final boolean kMotor4Inverted = false;
+
+    // Motor configuration
+    public static final SparkMaxConfig config = new SparkMaxConfig();
+
+    static {
+      config
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kMotorCurrentLimit);
+    }
+  }
+
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
     public static final int kMechanismControllerPort = 1;
@@ -168,9 +191,9 @@ public final class Constants {
 
     public static final double kDeadband = 0.1;
 
-    public static final double kNormalSpeedLimit = 0.025;
-    public static final double kTurboSpeedLimit = 0.05;
-    public static final double kPrecisionSpeedLimit = 0.001;
+    public static final double kNormalSpeedLimit = 0.2;
+    public static final double kTurboSpeedLimit = 0.4;
+    public static final double kPrecisionSpeedLimit = 0.1;
   }
 
   public static class SwerveConstants {
@@ -291,13 +314,18 @@ public final class Constants {
     public static final double kIRotation = 0.0;
     public static final double kDRotation = 0.0;
 
+    // PID constants for auto-align to target (separate from general rotation)
+    public static final double kPRotationAutoAlign = 7.5;
+    public static final double kIRotationAutoAlign = 0.0;
+    public static final double kDRotationAutoAlign = 0.3;
+
     public static final double kMaxAutoSpeedMetersPerSecond = 3.0;
     public static final double kMaxAutoAngularSpeedRadiansPerSecond = Math.PI;
 
-    public static final double kBlueTargetX = 12.5;
-    public static final double kBlueTargetY = 4.6;
-    public static final double kRedTargetX = 5.2;
-    public static final double kRedTargetY = 4.6;
+    public static final double kBlueTargetX = 4.639;
+    public static final double kBlueTargetY = 4.02;
+    public static final double kRedTargetX = 11.942;
+    public static final double kRedTargetY = 4.02;
   }
 
   public static class LEDConstants {
@@ -360,6 +388,12 @@ public final class Constants {
   public static class DriveCommandConstants {
     public static final double kTranslationSlewRate = 3.0;
     public static final double kRotationSlewRate = 3.0;
+
+    // Yaw correction constants
+    public static final double kYawCorrectionThresholdDegrees = 3.0;  // Activates at 3 degrees
+    public static final double kYawCorrectionToleranceDegrees = 0.3;  // Stops within 0.3 degrees
+    public static final double kYawCorrectionMaxPower = 0.07;         // 7% power for forward/back
+    public static final double kYawCorrectionMaxPowerLateral = 0.09;  // 9% power for left/right
   }
 
   public static class SwerveDriveConstants {

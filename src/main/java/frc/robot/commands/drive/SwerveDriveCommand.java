@@ -47,6 +47,10 @@ public class SwerveDriveCommand extends Command {
     m_xLimiter.reset(0);
     m_yLimiter.reset(0);
     m_rotLimiter.reset(0);
+
+    // Initialize yaw correction with current heading
+    m_swerveDrive.setTargetHeading(m_swerveDrive.getHeading());
+    m_swerveDrive.setYawCorrectionEnabled(true);
   }
 
   @Override
@@ -76,6 +80,22 @@ public class SwerveDriveCommand extends Command {
     double xSpeed = xInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
     double ySpeed = yInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
     double rot = rotInput * SwerveConstants.kMaxAngularSpeedRadiansPerSecond * speedLimit;
+
+    // Determine if movement is primarily lateral (strafing left/right)
+    boolean isMoving = Math.abs(xInput) > OperatorConstants.kDeadband
+                    || Math.abs(yInput) > OperatorConstants.kDeadband;
+    boolean isLateral = Math.abs(yInput) > Math.abs(xInput);
+    m_swerveDrive.setLateralMovement(isLateral);
+
+    // Apply yaw correction when moving in ANY direction without intentional rotation
+    if (isMoving && Math.abs(rotInput) < OperatorConstants.kDeadband) {
+      // Driver is translating without rotating - apply yaw correction
+      double yawCorrection = m_swerveDrive.calculateYawCorrection();
+      rot += yawCorrection;  // Add correction (bypasses speed limit)
+    } else if (Math.abs(rotInput) >= OperatorConstants.kDeadband) {
+      // Driver is intentionally rotating - update target heading to current heading
+      m_swerveDrive.setTargetHeading(m_swerveDrive.getHeading());
+    }
 
     // Drive the robot
     m_swerveDrive.drive(xSpeed, ySpeed, rot, m_swerveDrive.isFieldOriented());

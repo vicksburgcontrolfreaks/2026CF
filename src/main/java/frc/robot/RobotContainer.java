@@ -25,6 +25,7 @@ import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShootCommand;
 import frc.robot.commands.auto.DriveForwardCommand;
+import frc.robot.commands.auto.DriveAndAlignCommand;
 import frc.robot.commands.collector.RunCollector;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
@@ -32,6 +33,7 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import frc.robot.subsystems.shooter.ShooterAdjustments;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.climber.ClimberSubsystem;
+import frc.robot.subsystems.test.TestMotorSubsystem;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
  * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
@@ -41,6 +43,7 @@ import frc.robot.subsystems.climber.ClimberSubsystem;
 public class RobotContainer {
 
   private boolean m_collectorHalfSpeed = false;
+  private boolean m_testMotorsReversed = false;
 
   private final CollectorSubsystem m_collector = null;
   private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
@@ -48,6 +51,7 @@ public class RobotContainer {
   private final ShooterAdjustments m_shooter = null;
   private final ClimberSubsystem m_climber = null;
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
+  private final TestMotorSubsystem m_testMotors = new TestMotorSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -85,11 +89,15 @@ public class RobotContainer {
       m_autoChooser = AutoBuilder.buildAutoChooser();
       m_autoChooser.addOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
       m_autoChooser.addOption("Drive Forward 2 Meters", new DriveForwardCommand(m_swerveDrive, 2.0));
+      m_autoChooser.addOption("Drive and Align to Target", new DriveAndAlignCommand(m_swerveDrive));
+      m_autoChooser.addOption("Drive 1m and Align", new DriveAndAlignCommand(m_swerveDrive, 1.0, 0.5));
       SmartDashboard.putData("Auto Chooser", m_autoChooser);
     } else {
       m_autoChooser = new SendableChooser<>();
-      m_autoChooser.setDefaultOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
+      m_autoChooser.setDefaultOption("Drive and Align to Target", new DriveAndAlignCommand(m_swerveDrive));
+      m_autoChooser.addOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
       m_autoChooser.addOption("Drive Forward 2 Meters", new DriveForwardCommand(m_swerveDrive, 2.0));
+      m_autoChooser.addOption("Drive 1m and Align", new DriveAndAlignCommand(m_swerveDrive, 1.0, 0.5));
       m_autoChooser.addOption("Do Nothing", Commands.none());
       SmartDashboard.putData("Auto Chooser", m_autoChooser);
       DriverStation.reportWarning("PathPlanner configuration failed! Using simple autonomous options.", false);
@@ -215,6 +223,14 @@ public class RobotContainer {
           var alliance = DriverStation.getAlliance();
           return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
         }
+      ).andThen(
+        // Hold X-formation until driver gives any stick input
+        m_swerveDrive.run(() -> m_swerveDrive.setX())
+          .until(() ->
+            Math.abs(m_driverController.getLeftY()) > 0.1 ||
+            Math.abs(m_driverController.getLeftX()) > 0.1 ||
+            Math.abs(m_driverController.getRightX()) > 0.1
+          )
       )
     );
   }
@@ -236,25 +252,45 @@ public class RobotContainer {
       );
     }
 
-    if (m_collector != null) {
-      m_mechanismController.b().onTrue(
-         Commands.runOnce(() -> m_collector.deploy(), m_collector)
-      );
+    // Test motor D-pad bindings (direction based on m_testMotorsReversed flag)
+    m_mechanismController.povUp().whileTrue(
+      Commands.run(() -> {
+        double speed = m_testMotorsReversed ? -1.0 : 1.0;
+        m_testMotors.runMotor19(speed);
+      }, m_testMotors)
+    );
 
-      m_mechanismController.x().onTrue(
-         Commands.runOnce(() -> m_collector.retract(), m_collector)
-      );
+    m_mechanismController.povRight().whileTrue(
+      Commands.run(() -> {
+        double speed = m_testMotorsReversed ? -1.0 : 1.0;
+        m_testMotors.runMotor18(speed);
+      }, m_testMotors)
+    );
 
-      m_mechanismController.y().onTrue(
-         Commands.runOnce(() -> m_collector.toggle(), m_collector)
-      );
-    }
+    m_mechanismController.povLeft().whileTrue(
+      Commands.run(() -> {
+        double speed = m_testMotorsReversed ? -1.0 : 1.0;
+        m_testMotors.runMotor17(speed);
+      }, m_testMotors)
+    );
+
+    // m_mechanismController.povDown().whileTrue(
+    //   Commands.run(() -> {
+    //     double speed = m_testMotorsReversed ? -1.0 : 1.0;
+    //     m_testMotors.runMotor16(speed);
+    //   }, m_testMotors)
+    // );
+
+    // Toggle reverse direction for all test motors
+    m_mechanismController.b().onTrue(
+      Commands.runOnce(() -> m_testMotorsReversed = !m_testMotorsReversed)
+    );
   }
 
   private double getSpeedLimit() {
     double rightTrigger = m_driverController.getRightTriggerAxis();
     double leftTrigger = m_driverController.getLeftTriggerAxis();
-
+    
     if (rightTrigger > RobotContainerConstants.kTriggerThreshold) {
       return OperatorConstants.kTurboSpeedLimit;
     } else if (leftTrigger > RobotContainerConstants.kTriggerThreshold) {

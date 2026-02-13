@@ -28,8 +28,8 @@ public class ShooterAdjustments extends SubsystemBase {
   private final SparkMax m_indexer;
   private final SwerveDriveSubsystem m_swerveDrive;
 
-  // Current speed of the front shooter (starts at initial speed)
-  private double m_frontShooterSpeed;
+  // Current power of the front shooter (starts at initial power)
+  private double m_frontShooterPower;
 
   // Flag to track if shooter is running
   private boolean m_isRunning;
@@ -55,7 +55,7 @@ public class ShooterAdjustments extends SubsystemBase {
         PersistMode.kPersistParameters);
 
     // Initialize state
-    m_frontShooterSpeed = ShooterConstants.kFrontShooterStartSpeed;
+    m_frontShooterPower = ShooterConstants.kFrontShooterStartSpeed;
     m_isRunning = false;
   }
 
@@ -77,7 +77,7 @@ public class ShooterAdjustments extends SubsystemBase {
     // Set both shooters to the calculated power
     m_shooterTop.set(power);
     m_shooterFront.set(power);
-    m_frontShooterSpeed = power;
+    m_frontShooterPower = power;
 
     // Reset and start spin-up timer
     m_spinUpTimer.restart();
@@ -97,7 +97,7 @@ public class ShooterAdjustments extends SubsystemBase {
     m_spinUpTimer.stop();
     m_spinUpTimer.reset();
     // Reset front shooter speed for next run
-    m_frontShooterSpeed = ShooterConstants.kFrontShooterStartSpeed;
+    m_frontShooterPower = ShooterConstants.kFrontShooterStartSpeed;
   }
 
   /**
@@ -119,7 +119,7 @@ public class ShooterAdjustments extends SubsystemBase {
    * Gets the current front shooter speed.
    */
   public double getFrontShooterSpeed() {
-    return m_frontShooterSpeed;
+    return m_frontShooterPower;
   }
 
   /**
@@ -174,7 +174,7 @@ public class ShooterAdjustments extends SubsystemBase {
       // Update both shooter motors with the calculated power
       m_shooterTop.set(power);
       m_shooterFront.set(power);
-      m_frontShooterSpeed = power;
+      m_frontShooterPower = power;
 
       // Only run indexer after shooter has spun up
       if (isReadyToFeed()) {

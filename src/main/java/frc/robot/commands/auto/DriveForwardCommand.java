@@ -40,7 +40,7 @@ public class DriveForwardCommand extends Command {
    * @param distanceMeters Distance to drive forward in meters
    */
   public DriveForwardCommand(SwerveDriveSubsystem swerveDrive, double distanceMeters) {
-    this(swerveDrive, distanceMeters, 0.5); // Default 0.5 m/s
+    this(swerveDrive, distanceMeters, 1); // Default 0.5 m/s
   }
 
   @Override
@@ -48,20 +48,31 @@ public class DriveForwardCommand extends Command {
     // Record starting position
     m_startPose = m_swerveDrive.getPose();
     System.out.println("DriveForwardCommand starting at: " + m_startPose);
+
+    // Set up yaw correction to maintain current heading
+    m_swerveDrive.setTargetHeading(m_swerveDrive.getHeading());
+    m_swerveDrive.setYawCorrectionEnabled(true);
+    m_swerveDrive.setLateralMovement(false); // Forward movement uses 7% correction
   }
 
   @Override
   public void execute() {
-    // Drive forward at the specified speed
+    // Calculate yaw correction to maintain heading
+    double yawCorrection = m_swerveDrive.calculateYawCorrection();
+
+    // Drive forward at the specified speed with yaw correction
     // xSpeed is forward/backward (positive = forward)
     // ySpeed is left/right (0 = straight)
-    // rot is rotation (0 = no rotation)
+    // rot is rotation (yaw correction applied)
     // fieldRelative = false (robot-relative movement)
-    m_swerveDrive.drive(m_speed, 0, 0, false);
+    m_swerveDrive.drive(m_speed, 0, yawCorrection, false);
   }
 
   @Override
   public void end(boolean interrupted) {
+    // Disable yaw correction
+    m_swerveDrive.setYawCorrectionEnabled(false);
+
     // Stop the robot
     m_swerveDrive.stop();
 
