@@ -173,7 +173,7 @@ public class SwerveDrive extends SubsystemBase {
 
     // Publish target information
     double distanceToTarget = getDistanceToNearestTarget();
-    SmartDashboard.putNumber("Distance to Target (m)", distanceToTarget);
+    SmartDashboard.putNumber("Meters2Target", distanceToTarget);
     SmartDashboard.putString("Target Alliance", getCurrentTargetAlliance());
     SmartDashboard.putString("Target Position", String.format("(%.2f, %.2f)",
       getCurrentTargetX(), getCurrentTargetY()));
@@ -272,16 +272,15 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public double getHeading() {
-    // Read from Y-axis since RoboRIO is mounted vertically
-    // Add 180° offset because physical front of robot is opposite from gyro's 0° reference
-    // Use IEEEremainder to keep angle in [-180, 180] range
-    double rawAngle = m_gyro.getAngle(IMUAxis.kY);
-    double correctedAngle = rawAngle + 180.0;  // Correct for front/back orientation
-    return Math.IEEEremainder(correctedAngle, SwerveDriveConstants.kGyroWrapModulo);
+    // Get heading from pose estimator (integrates gyro + odometry + vision)
+    return getPose().getRotation().getDegrees();
   }
 
   public Rotation2d getGyroRotation2d() {
-    return Rotation2d.fromDegrees(getHeading());
+    // Read directly from gyro for pose estimator updates
+    // Use IEEEremainder to keep angle in [-180, 180] range
+    double rawAngle = m_gyro.getAngle(IMUAxis.kY);
+    return Rotation2d.fromDegrees(Math.IEEEremainder(rawAngle, SwerveDriveConstants.kGyroWrapModulo));
   }
 
   public void setFieldOriented(boolean fieldOriented) {

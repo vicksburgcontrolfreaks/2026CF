@@ -8,6 +8,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.swerve.SwerveDrive;
@@ -74,6 +75,15 @@ public class RotateToTargetCommand extends Command {
     // Set the setpoint to the calculated target angle
     m_pidController.setSetpoint(m_targetAngle);
 
+    // Publish to SmartDashboard for debugging
+    SmartDashboard.putNumber("RotateTarget/Robot X", currentPosition.getX());
+    SmartDashboard.putNumber("RotateTarget/Robot Y", currentPosition.getY());
+    SmartDashboard.putNumber("RotateTarget/Target X", m_targetPosition.getX());
+    SmartDashboard.putNumber("RotateTarget/Target Y", m_targetPosition.getY());
+    SmartDashboard.putNumber("RotateTarget/Vector X", toTarget.getX());
+    SmartDashboard.putNumber("RotateTarget/Vector Y", toTarget.getY());
+    SmartDashboard.putNumber("RotateTarget/Target Angle", m_targetAngle);
+
     System.out.printf("RotateToTarget: Robot at (%.2f, %.2f), Target at (%.2f, %.2f), Rotating to %.2f degrees%n",
       currentPosition.getX(), currentPosition.getY(),
       m_targetPosition.getX(), m_targetPosition.getY(),
@@ -90,6 +100,11 @@ public class RotateToTargetCommand extends Command {
 
     // Clamp the rotation speed to maximum
     rotationSpeed = MathUtil.clamp(rotationSpeed, -kMaxRotationSpeed, kMaxRotationSpeed);
+
+    // Publish to SmartDashboard for debugging
+    SmartDashboard.putNumber("RotateTarget/Current Heading", currentHeading);
+    SmartDashboard.putNumber("RotateTarget/Angle Error", m_targetAngle - currentHeading);
+    SmartDashboard.putBoolean("RotateTarget/At Setpoint", m_pidController.atSetpoint());
 
     // Drive with only rotation (no translation)
     m_swerveDrive.drive(0, 0, rotationSpeed, false);

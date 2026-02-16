@@ -6,6 +6,7 @@ package frc.robot.commands.drive;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.swerve.SwerveDrive;
@@ -59,6 +60,9 @@ public class RotateToAngleCommand extends Command {
     // Set the setpoint to the target angle
     m_pidController.setSetpoint(m_targetAngleDegrees);
 
+    // Publish target angle to SmartDashboard
+    SmartDashboard.putNumber("Rotate Target Angle", m_targetAngleDegrees);
+
     System.out.println("RotateToAngle: Starting rotation to " + m_targetAngleDegrees + " degrees");
   }
 
@@ -72,6 +76,11 @@ public class RotateToAngleCommand extends Command {
 
     // Clamp the rotation speed to maximum
     rotationSpeed = MathUtil.clamp(rotationSpeed, -kMaxRotationSpeed, kMaxRotationSpeed);
+
+    // Update SmartDashboard with current values
+    SmartDashboard.putNumber("Rotate Current Angle", currentHeading);
+    SmartDashboard.putNumber("Rotate Error", m_targetAngleDegrees - currentHeading);
+    SmartDashboard.putBoolean("Rotate At Setpoint", m_pidController.atSetpoint());
 
     // Drive with only rotation (no translation)
     m_swerveDrive.drive(0, 0, rotationSpeed, false);
