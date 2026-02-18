@@ -7,7 +7,6 @@ package frc.robot.subsystems.swerve;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.CalibrationTime;
-//import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -22,12 +21,11 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
-import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.SwerveConstants;
-import frc.robot.Constants.SwerveDriveConstants;
+import frc.robot.Constants.TelemetryConstants;
 
-public class SwerveDrive extends SubsystemBase {
+public class SwerveDriveSubsystem extends SubsystemBase {
   private final SwerveModule m_frontLeft;
   private final SwerveModule m_frontRight;
   private final SwerveModule m_backLeft;
@@ -38,16 +36,15 @@ public class SwerveDrive extends SubsystemBase {
   private final SwerveDrivePoseEstimator m_poseEstimator;
   private final Field2d m_field;
 
-  private boolean m_fieldOriented = true;
+  // Yaw correction variables
+  private double m_targetHeading = 0.0;
+  private boolean m_yawCorrectionEnabled = false;
+  private boolean m_isLateralMovement = false;
 
   // Elastic (NetworkTables) publishers for telemetry
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_gyroAnglePub;
   private final StringPublisher m_robotPosePub;
-  private final DoublePublisher m_poseXPub;
-  private final DoublePublisher m_poseYPub;
-  private final DoublePublisher m_poseYawPub;
-  private final BooleanPublisher m_fieldOrientedPub;
   private final DoublePublisher m_flVelocityPub;
   private final DoublePublisher m_frVelocityPub;
   private final DoublePublisher m_blVelocityPub;
@@ -61,12 +58,9 @@ public class SwerveDrive extends SubsystemBase {
   private final DoublePublisher m_blAbsEncoderPub;
   private final DoublePublisher m_brAbsEncoderPub;
 
-  // Telemetry update counter for reduced frequency publishing
   private int m_telemetryCounter = 0;
-  private static final int TELEMETRY_UPDATE_PERIOD = SwerveDriveConstants.kTelemetryUpdatePeriod; // Publish detailed telemetry every N cycles
 
-  public SwerveDrive() {
-    // Initialize swerve modules with your CAN IDs
+  public SwerveDriveSubsystem() {
     m_frontLeft = new SwerveModule(
       SwerveConstants.kFrontLeftDriveMotorId,
       SwerveConstants.kFrontLeftSteerMotorId,
@@ -91,31 +85,25 @@ public class SwerveDrive extends SubsystemBase {
       SwerveConstants.kBackRightChassisAngularOffset
     );
 
-    // Initialize ADIS16470 IMU with explicit axis configuration
-    // Yaw = Z-axis, Pitch = X-axis, Roll = Y-axis (standard FRC orientation)
-    // Using 2-second calibration for good accuracy with faster startup
-    // CRITICAL: Robot MUST remain stationary during calibration!
     System.out.println("==============================================");
     System.out.println("GYRO CALIBRATION STARTING - DO NOT MOVE ROBOT");
     System.out.println("Calibration time: " + SwerveConstants.kGyroCalibrationTimeSec + " seconds");
     System.out.println("==============================================");
 
     m_gyro = new ADIS16470_IMU(
-      IMUAxis.kY,  // Yaw axis (RoboRIO mounted vertically)
-      IMUAxis.kZ,  // Pitch axis
-      IMUAxis.kX,  // Roll axis
-      SPI.Port.kOnboardCS0,  // Onboard SPI port
-      CalibrationTime._2s    // 2-second calibration for good accuracy with faster startup
+      IMUAxis.kY,
+      IMUAxis.kZ,
+      IMUAxis.kX,
+      SPI.Port.kOnboardCS0,
+      CalibrationTime._2s
     );
 
     System.out.println("==============================================");
     System.out.println("GYRO CALIBRATION COMPLETE");
     System.out.println("==============================================");
 
-    // Reset gyro to zero heading
     m_gyro.reset();
 
-    // Initialize pose estimator
     m_poseEstimator = new SwerveDrivePoseEstimator(
       SwerveConstants.kSwerveKinematics,
       getGyroRotation2d(),
@@ -123,26 +111,20 @@ public class SwerveDrive extends SubsystemBase {
       new Pose2d()
     );
 
-    // Initialize field visualization and publish to Elastic
     m_field = new Field2d();
     SmartDashboard.putData("Field", m_field);
 
-    // Initialize Elastic (NetworkTables) publishers
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable(SwerveDriveConstants.kTelemetryTableName);
-    m_gyroAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kGyroAngleTopic).publish();
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Swerve");
+    m_gyroAnglePub = m_telemetryTable.getDoubleTopic("Gyro Angle").publish();
     m_robotPosePub = m_telemetryTable.getStringTopic("Robot Pose").publish();
-    m_poseXPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kPoseXTopic).publish();
-    m_poseYPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kPoseYTopic).publish();
-    m_poseYawPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kPoseRotationTopic).publish();
-    m_fieldOrientedPub = m_telemetryTable.getBooleanTopic(SwerveDriveConstants.kFieldOrientedTopic).publish();
-    m_flVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftVelocityTopic).publish();
-    m_frVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightVelocityTopic).publish();
-    m_blVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackLeftVelocityTopic).publish();
-    m_brVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackRightVelocityTopic).publish();
-    m_flAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftAngleTopic).publish();
-    m_frAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightAngleTopic).publish();
-    m_blAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackLeftAngleTopic).publish();
-    m_brAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackRightAngleTopic).publish();
+    m_flVelocityPub = m_telemetryTable.getDoubleTopic("FL Velocity").publish();
+    m_frVelocityPub = m_telemetryTable.getDoubleTopic("FR Velocity").publish();
+    m_blVelocityPub = m_telemetryTable.getDoubleTopic("BL Velocity").publish();
+    m_brVelocityPub = m_telemetryTable.getDoubleTopic("BR Velocity").publish();
+    m_flAnglePub = m_telemetryTable.getDoubleTopic("FL Angle").publish();
+    m_frAnglePub = m_telemetryTable.getDoubleTopic("FR Angle").publish();
+    m_blAnglePub = m_telemetryTable.getDoubleTopic("BL Angle").publish();
+    m_brAnglePub = m_telemetryTable.getDoubleTopic("BR Angle").publish();
     m_flAbsEncoderPub = m_telemetryTable.getDoubleTopic("FL Absolute Encoder").publish();
     m_frAbsEncoderPub = m_telemetryTable.getDoubleTopic("FR Absolute Encoder").publish();
     m_blAbsEncoderPub = m_telemetryTable.getDoubleTopic("BL Absolute Encoder").publish();
@@ -151,60 +133,34 @@ public class SwerveDrive extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // Update pose estimator with current module positions and gyro reading
     m_poseEstimator.update(getGyroRotation2d(), getModulePositions());
-
-    // Update field visualization
     m_field.setRobotPose(getPose());
 
-    // Publish critical telemetry every cycle
-    Pose2d currentPose = getPose();
     m_gyroAnglePub.set(getHeading());
-    m_robotPosePub.set(currentPose.toString());
-    m_poseXPub.set(currentPose.getX());
-    m_poseYPub.set(currentPose.getY());
-    m_poseYawPub.set(currentPose.getRotation().getDegrees());
-    m_fieldOrientedPub.set(m_fieldOriented);
+    m_robotPosePub.set(getPose().toString());
 
-    // Publish to SmartDashboard for Shuffleboard (top-level for easy access)
-    SmartDashboard.putNumber("Robot X (m)", currentPose.getX());
-    SmartDashboard.putNumber("Robot Y (m)", currentPose.getY());
-    SmartDashboard.putNumber("Robot Yaw (deg)", currentPose.getRotation().getDegrees());
-
-    // Publish target information
-    double distanceToTarget = getDistanceToNearestTarget();
-    SmartDashboard.putNumber("Distance to Target (m)", distanceToTarget);
-    SmartDashboard.putString("Target Alliance", getCurrentTargetAlliance());
-    SmartDashboard.putString("Target Position", String.format("(%.2f, %.2f)",
-      getCurrentTargetX(), getCurrentTargetY()));
-
-    // Increment counter and check if we should publish detailed telemetry
     m_telemetryCounter++;
-    if (m_telemetryCounter >= TELEMETRY_UPDATE_PERIOD) {
+    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
       m_telemetryCounter = 0;
 
-      // Publish module velocities at reduced rate
       m_flVelocityPub.set(m_frontLeft.getDriveVelocity());
       m_frVelocityPub.set(m_frontRight.getDriveVelocity());
       m_blVelocityPub.set(m_backLeft.getDriveVelocity());
       m_brVelocityPub.set(m_backRight.getDriveVelocity());
 
-      // Publish module angles at reduced rate
       m_flAnglePub.set(Math.toDegrees(m_frontLeft.getSteerPosition()));
       m_frAnglePub.set(Math.toDegrees(m_frontRight.getSteerPosition()));
       m_blAnglePub.set(Math.toDegrees(m_backLeft.getSteerPosition()));
       m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
 
-      // Publish raw absolute encoder values for calibration (useful for setup only)
-      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
-      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
-      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
-      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
+      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
+      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
+      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
+      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
     }
   }
 
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
-    // Convert chassis speeds to module states
     SwerveModuleState[] swerveModuleStates;
 
     if (fieldRelative) {
@@ -221,7 +177,6 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public void setModuleStates(SwerveModuleState[] desiredStates) {
-    // Normalize wheel speeds to be at or below max speed
     SwerveDriveKinematics.desaturateWheelSpeeds(
       desiredStates,
       SwerveConstants.kMaxSpeedMetersPerSecond
@@ -272,30 +227,13 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public double getHeading() {
-    // Read from Y-axis since RoboRIO is mounted vertically
-    // Add 180° offset because physical front of robot is opposite from gyro's 0° reference
-    // Use IEEEremainder to keep angle in [-180, 180] range
-    double rawAngle = m_gyro.getAngle(IMUAxis.kY);
-    double correctedAngle = rawAngle + 180.0;  // Correct for front/back orientation
-    return Math.IEEEremainder(correctedAngle, SwerveDriveConstants.kGyroWrapModulo);
+    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), SwerveConstants.kGyroWrapModulo);
   }
 
   public Rotation2d getGyroRotation2d() {
     return Rotation2d.fromDegrees(getHeading());
   }
-
-  public void setFieldOriented(boolean fieldOriented) {
-    m_fieldOriented = fieldOriented;
-  }
-
-  public boolean isFieldOriented() {
-    return m_fieldOriented;
-  }
-
-  public void toggleFieldOriented() {
-    m_fieldOriented = !m_fieldOriented;
-  }
-
+  
   public SwerveModulePosition[] getModulePositions() {
     return new SwerveModulePosition[] {
       m_frontLeft.getPosition(),
@@ -323,10 +261,10 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public void setX() {
-    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleFrontLeft)));
-    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleFrontRight)));
-    m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleBackLeft)));
-    m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleBackRight)));
+    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleFrontLeft)));
+    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleFrontRight)));
+    m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleBackLeft)));
+    m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleBackRight)));
   }
 
   public void resetEncoders() {
@@ -356,77 +294,85 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   /**
-   * Get the X coordinate of the nearest target based on robot position
-   * @return Target X coordinate in meters
+   * Sets the target heading for yaw correction.
+   * This is the heading the robot will attempt to maintain during translation.
+   * @param heading Target heading in degrees
    */
-  public double getCurrentTargetX() {
-    Pose2d currentPose = getPose();
-    double currentX = currentPose.getX();
-
-    // Calculate distance to both targets (only X matters since Y is the same)
-    double distanceToBlue = Math.abs(currentX - frc.robot.Constants.AutoConstants.kBlueTargetX);
-    double distanceToRed = Math.abs(currentX - frc.robot.Constants.AutoConstants.kRedTargetX);
-
-    // Return the X coordinate of the nearest target
-    if (distanceToBlue < distanceToRed) {
-      return frc.robot.Constants.AutoConstants.kBlueTargetX;
-    } else {
-      return frc.robot.Constants.AutoConstants.kRedTargetX;
-    }
+  public void setTargetHeading(double heading) {
+    m_targetHeading = heading;
   }
 
   /**
-   * Get the Y coordinate of the nearest target based on robot position
-   * @return Target Y coordinate in meters
+   * Enables or disables yaw correction.
+   * When enabled, the robot will automatically correct drift to maintain the target heading.
+   * @param enabled True to enable yaw correction, false to disable
    */
-  public double getCurrentTargetY() {
-    Pose2d currentPose = getPose();
-    double currentX = currentPose.getX();
-
-    // Calculate distance to both targets (only X matters since Y is the same)
-    double distanceToBlue = Math.abs(currentX - frc.robot.Constants.AutoConstants.kBlueTargetX);
-    double distanceToRed = Math.abs(currentX - frc.robot.Constants.AutoConstants.kRedTargetX);
-
-    // Return the Y coordinate of the nearest target
-    if (distanceToBlue < distanceToRed) {
-      return frc.robot.Constants.AutoConstants.kBlueTargetY;
-    } else {
-      return frc.robot.Constants.AutoConstants.kRedTargetY;
-    }
+  public void setYawCorrectionEnabled(boolean enabled) {
+    m_yawCorrectionEnabled = enabled;
   }
 
   /**
-   * Get the alliance color of the nearest target
-   * @return "Red", "Blue", or "Unknown"
+   * Sets whether the robot is currently moving laterally (strafing left/right).
+   * This determines which correction power to use (9% for lateral, 7% for forward/back).
+   * @param isLateral True if moving primarily left/right, false if moving forward/back
    */
-  public String getCurrentTargetAlliance() {
-    Pose2d currentPose = getPose();
-    double currentX = currentPose.getX();
-
-    // Calculate distance to both targets (only X matters since Y is the same)
-    double distanceToBlue = Math.abs(currentX - frc.robot.Constants.AutoConstants.kBlueTargetX);
-    double distanceToRed = Math.abs(currentX - frc.robot.Constants.AutoConstants.kRedTargetX);
-
-    // Return the alliance of the nearest target
-    if (distanceToBlue < distanceToRed) {
-      return "Blue";
-    } else {
-      return "Red";
-    }
+  public void setLateralMovement(boolean isLateral) {
+    m_isLateralMovement = isLateral;
   }
 
   /**
-   * Calculate the distance from the robot to the nearest target
-   * @return Distance in meters
+   * Calculates the yaw correction to maintain the target heading.
+   * Uses proportional control that scales with heading error:
+   * - No correction when error < 0.3 degrees (tolerance)
+   * - Proportional correction when 0.3 <= error < 3.0 degrees
+   * - Full correction power when error >= 3.0 degrees (threshold)
+   *
+   * Correction power depends on movement direction:
+   * - Forward/Backward: 7% max power
+   * - Lateral (strafing): 9% max power
+   *
+   * @return Rotational correction in radians/second to add to drive command
    */
-  public double getDistanceToNearestTarget() {
-    Pose2d currentPose = getPose();
-    double targetX = getCurrentTargetX();
-    double targetY = getCurrentTargetY();
+  public double calculateYawCorrection() {
+    if (!m_yawCorrectionEnabled) {
+      return 0.0;
+    }
 
-    double deltaX = targetX - currentPose.getX();
-    double deltaY = targetY - currentPose.getY();
+    // Calculate heading error, normalized to [-180, 180]
+    double currentHeading = getHeading();
+    double headingError = Math.IEEEremainder(m_targetHeading - currentHeading, 360.0);
 
-    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    double absError = Math.abs(headingError);
+
+    // Check if within tolerance (dead zone)
+    if (absError < SwerveConstants.kYawCorrectionToleranceDegrees) {
+      return 0.0;
+    }
+
+    // Select max power based on movement direction
+    double maxPower = m_isLateralMovement
+        ? SwerveConstants.kYawCorrectionMaxPowerLateral  // 9% for lateral
+        : SwerveConstants.kYawCorrectionMaxPower;         // 7% for forward/back
+
+    // Calculate proportional correction
+    double correctionPower;
+    if (absError >= SwerveConstants.kYawCorrectionThresholdDegrees) {
+      // At or above threshold: use full power
+      correctionPower = maxPower;
+    } else {
+      // Between tolerance and threshold: scale proportionally
+      double range = SwerveConstants.kYawCorrectionThresholdDegrees
+                   - SwerveConstants.kYawCorrectionToleranceDegrees;
+      double errorAboveTolerance = absError - SwerveConstants.kYawCorrectionToleranceDegrees;
+      correctionPower = maxPower * (errorAboveTolerance / range);
+    }
+
+    // Apply correction in the direction to reduce error
+    // Positive error means target > current, so rotate counter-clockwise (positive)
+    // Negative error means target < current, so rotate clockwise (negative)
+    double correction = Math.signum(headingError) * correctionPower
+                      * SwerveConstants.kMaxAngularSpeedRadiansPerSecond;
+
+    return correction;
   }
 }

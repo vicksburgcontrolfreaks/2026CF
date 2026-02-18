@@ -10,7 +10,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
@@ -18,8 +17,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.PhotonVisionConstants;
-import frc.robot.Constants.VisionConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 import org.photonvision.PhotonCamera;
 import org.photonvision.targeting.PhotonPipelineResult;
@@ -60,7 +58,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     }
   }
 
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final List<CameraData> m_cameras = new ArrayList<>();
   private final AprilTagFieldLayout m_fieldLayout;
 
@@ -78,7 +76,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final List<BooleanPublisher> m_cameraHasTargetPubs = new ArrayList<>();
   private final List<DoublePublisher> m_cameraTagCountPubs = new ArrayList<>();
 
-  public PhotonVisionSubsystem(SwerveDrive swerveDrive) {
+  public PhotonVisionSubsystem(SwerveDriveSubsystem swerveDrive) {
     m_swerveDrive = swerveDrive;
 
     // Load AprilTag field layout (2025 Reefscape)
@@ -108,7 +106,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     );
 
     // Initialize NetworkTables publishers
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable(VisionConstants.kTelemetryTableName);
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Vision");
     m_hasTargetPub = m_telemetryTable.getBooleanTopic("Has Target").publish();
     m_totalTagCountPub = m_telemetryTable.getDoubleTopic("Total Tag Count").publish();
     m_activeCamerasPub = m_telemetryTable.getDoubleTopic("Active Cameras").publish();
@@ -272,7 +270,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // More tags = higher confidence
     int tagCount = pose.targetsUsed.size();
-    confidence += tagCount * VisionConstants.kConfidenceTagCountMultiplier;
+    confidence += tagCount * PhotonVisionConstants.kConfidenceTagCountMultiplier;
 
     // Lower ambiguity = higher confidence
     if (result.hasTargets() && result.getBestTarget() != null) {
@@ -282,7 +280,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       // Ambiguity ranges from 0.0 (perfect) to 1.0 (ambiguous)
       // Invert it so lower ambiguity gives higher confidence
       if (ambiguity < PhotonVisionConstants.kMaxAmbiguity) {
-        confidence += (1.0 - ambiguity) * VisionConstants.kConfidenceAmbiguityMultiplier;
+        confidence += (1.0 - ambiguity) * PhotonVisionConstants.kConfidenceAmbiguityMultiplier;
       }
     }
 
@@ -418,20 +416,6 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       }
     }
 
-    // Alliance color validation - ensure pose is reasonable for our alliance
-    var alliance = DriverStation.getAlliance();
-    if (alliance.isPresent()) {
-      double poseX = pose.estimatedPose.getX();
-
-      // FRC field is ~16.54m long. Blue alliance starts at X=0, Red alliance at X=16.54
-      // Reject if robot appears to be on wrong side of field (beyond midfield)
-      if (alliance.get() == Alliance.Blue && poseX < VisionConstants.kBlueAllianceXThreshold) {
-        return String.format("Blue alliance robot on red side (X=%.2fm)", poseX);
-      } else if (alliance.get() == Alliance.Red && poseX > VisionConstants.kRedAllianceXThreshold) {
-        return String.format("Red alliance robot on blue side (X=%.2fm)", poseX);
-      }
-    }
-
     return null; // Accept measurement
   }
 
@@ -460,8 +444,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Increase standard deviation based on average distance to tags
     // Further tags = less confidence
-    if (avgDistance > VisionConstants.kDistanceFactorThreshold) {
-      double distanceFactor = avgDistance / VisionConstants.kDistanceFactorThreshold;
+    if (avgDistance > PhotonVisionConstants.kDistanceFactorThreshold) {
+      double distanceFactor = avgDistance / PhotonVisionConstants.kDistanceFactorThreshold;
       xyStdDev *= distanceFactor;
       rotStdDev *= distanceFactor;
     }

@@ -9,25 +9,24 @@ import java.util.function.DoubleSupplier;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.Constants.DriveCommandConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.SwerveConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 public class SwerveDriveCommand extends Command {
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final DoubleSupplier m_xSupplier;
   private final DoubleSupplier m_ySupplier;
   private final DoubleSupplier m_rotSupplier;
   private final DoubleSupplier m_speedLimitSupplier;
 
   // Slew rate limiters to make joystick inputs smoother
-  private final SlewRateLimiter m_xLimiter = new SlewRateLimiter(DriveCommandConstants.kTranslationSlewRate);
-  private final SlewRateLimiter m_yLimiter = new SlewRateLimiter(DriveCommandConstants.kTranslationSlewRate);
-  private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(DriveCommandConstants.kRotationSlewRate);
+  private final SlewRateLimiter m_xLimiter = new SlewRateLimiter(SwerveConstants.kTranslationSlewRate);
+  private final SlewRateLimiter m_yLimiter = new SlewRateLimiter(SwerveConstants.kTranslationSlewRate);
+  private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(SwerveConstants.kRotationSlewRate);
 
   public SwerveDriveCommand(
-      SwerveDrive swerveDrive,
+      SwerveDriveSubsystem swerveDrive,
       DoubleSupplier xSupplier,
       DoubleSupplier ySupplier,
       DoubleSupplier rotSupplier,
@@ -47,6 +46,10 @@ public class SwerveDriveCommand extends Command {
     m_xLimiter.reset(0);
     m_yLimiter.reset(0);
     m_rotLimiter.reset(0);
+
+    // Initialize yaw correction with current heading
+    m_swerveDrive.setTargetHeading(m_swerveDrive.getHeading());
+    m_swerveDrive.setYawCorrectionEnabled(true);
   }
 
   @Override
@@ -77,8 +80,24 @@ public class SwerveDriveCommand extends Command {
     double ySpeed = yInput * SwerveConstants.kMaxSpeedMetersPerSecond * speedLimit;
     double rot = rotInput * SwerveConstants.kMaxAngularSpeedRadiansPerSecond * speedLimit;
 
+    // Determine if movement is primarily lateral (strafing left/right)
+    // xInput/yInput have already had deadband applied, so non-zero means the driver is moving
+    boolean isMoving = xInput != 0 || yInput != 0;
+    boolean isLateral = Math.abs(yInput) > Math.abs(xInput);
+    m_swerveDrive.setLateralMovement(isLateral);
+
+    // Apply yaw correction when moving in ANY direction without intentional rotation
+    if (isMoving && rotInput == 0) {
+      // Driver is translating without rotating - apply yaw correction, scaled by speed limit
+      double yawCorrection = m_swerveDrive.calculateYawCorrection() * speedLimit;
+      rot += yawCorrection;
+    } else if (rotInput != 0) {
+      // Driver is intentionally rotating - update target heading to current heading
+      m_swerveDrive.setTargetHeading(m_swerveDrive.getHeading());
+    }
+
     // Drive the robot
-    m_swerveDrive.drive(xSpeed, ySpeed, rot, m_swerveDrive.isFieldOriented());
+    m_swerveDrive.drive(xSpeed, ySpeed, rot, SwerveConstants.m_fieldOriented);
   }
 
   @Override

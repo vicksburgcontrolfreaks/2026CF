@@ -12,7 +12,6 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.SwerveConstants;
-import frc.robot.Constants.SwerveConfigConstants;
 
 public class SwerveConfig {
 
@@ -24,15 +23,15 @@ public class SwerveConfig {
         // Create robot configuration for PathPlanner
         // Mass is in kg, MOI is in kg*m^2
         robotConfig = new RobotConfig(
-          SwerveConfigConstants.kRobotMassKg, // Robot mass (kg)
-          SwerveConfigConstants.kRobotMOI,  // Robot MOI (kg*m^2)
+          SwerveConstants.kRobotMassKg, // Robot mass (kg)
+          SwerveConstants.kRobotMOI,  // Robot MOI (kg*m^2)
           new com.pathplanner.lib.config.ModuleConfig(
             SwerveConstants.kWheelCircumferenceMeters / (2 * Math.PI), // Wheel radius (m)
             SwerveConstants.kMaxSpeedMetersPerSecond, // Max wheel speed (m/s)
-            SwerveConfigConstants.kWheelCoefficientOfFriction, // Wheel COF - coefficient of friction
-            DCMotor.getNEO(SwerveConfigConstants.kNumMotorsPerModule).withReduction(SwerveConstants.kDriveGearRatio), // Drive motor
+            SwerveConstants.kWheelCoefficientOfFriction, // Wheel COF - coefficient of friction
+            DCMotor.getNEO(SwerveConstants.kNumMotorsPerModule).withReduction(SwerveConstants.kDriveGearRatio), // Drive motor
             SwerveConstants.kDriveMotorCurrentLimit, // Drive current limit (A)
-            SwerveConfigConstants.kNumMotorsPerModule // Number of drive motors per module
+            SwerveConstants.kNumMotorsPerModule // Number of drive motors per module
           ),
           // Module locations (same order as kinematics: FL, FR, BL, BR)
           new Translation2d(SwerveConstants.kWheelBaseMeters / 2.0, SwerveConstants.kTrackWidthMeters / 2.0),  // FL

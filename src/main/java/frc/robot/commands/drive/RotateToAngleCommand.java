@@ -8,14 +8,14 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.subsystems.swerve.SwerveDrive;
+import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 
 /**
  * Command to rotate the robot to a specified angle using PID control.
  * The angle is in degrees and is field-relative (0 degrees = forward from driver perspective).
  */
 public class RotateToAngleCommand extends Command {
-  private final SwerveDrive m_swerveDrive;
+  private final SwerveDriveSubsystem m_swerveDrive;
   private final double m_targetAngleDegrees;
   private final PIDController m_pidController;
 
@@ -31,7 +31,7 @@ public class RotateToAngleCommand extends Command {
    * @param swerveDrive The swerve drive subsystem
    * @param targetAngleDegrees The target angle in degrees (0 = forward, positive = counter-clockwise)
    */
-  public RotateToAngleCommand(SwerveDrive swerveDrive, double targetAngleDegrees) {
+  public RotateToAngleCommand(SwerveDriveSubsystem swerveDrive, double targetAngleDegrees) {
     m_swerveDrive = swerveDrive;
     m_targetAngleDegrees = targetAngleDegrees;
 
