@@ -5,10 +5,10 @@
 package frc.robot.commands.test;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.test.TestMotorSubsystem;
+import frc.robot.subsystems.shooter.ShooterSubsystem;
 
 public class TestMotorCommand extends Command {
-  private final TestMotorSubsystem testMotors;
+  private final ShooterSubsystem testMotors;
   private final int motorNumber;
   private final double speed;
 
@@ -18,7 +18,7 @@ public class TestMotorCommand extends Command {
    * @param motorNumber The motor number (16, 17, 18, or 19)
    * @param speed The speed from -1.0 to 1.0
    */
-  public TestMotorCommand(TestMotorSubsystem testMotors, int motorNumber, double speed) {
+  public TestMotorCommand(ShooterSubsystem testMotors, int motorNumber, double speed) {
     this.testMotors = testMotors;
     this.motorNumber = motorNumber;
     this.speed = speed;

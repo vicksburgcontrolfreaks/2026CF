@@ -4,36 +4,18 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.auto.NamedCommands;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.config.RobotConfig;
-import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.Constants.RobotContainerConstants;
-import frc.robot.Constants.TestMotorConstants;
+import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
-import frc.robot.commands.shooter.ShootCommand;
-import frc.robot.commands.auto.DriveForwardCommand;
-import frc.robot.commands.auto.DriveAndAlignCommand;
-import frc.robot.commands.hopper.DeployHopperCommand;
-import frc.robot.subsystems.hopper.HopperSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
+import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
-import frc.robot.subsystems.shooter.ShooterAdjustments;
-import frc.robot.subsystems.collector.CollectorSubsystem;
-import frc.robot.subsystems.climber.ClimberSubsystem;
-import frc.robot.subsystems.test.TestMotorSubsystem;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
  * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
@@ -41,100 +23,23 @@ import frc.robot.subsystems.test.TestMotorSubsystem;
  * subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
-
-  private boolean m_collectorHalfSpeed = false;
-  private boolean m_testMotorsReversed = false;
-
-  private final CollectorSubsystem m_collector = null;
   private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final ShooterAdjustments m_shooter = null;
-  private final ClimberSubsystem m_climber = null;
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
-  private final TestMotorSubsystem m_testMotors = new TestMotorSubsystem();
-  private final HopperSubsystem m_hopper = new HopperSubsystem();
+  private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
-  private final JoystickController m_joystickController;
 
-  private final SendableChooser<Command> m_autoChooser;
-
-  private boolean m_pathPlannerConfigured = false;
+  //private final SendableChooser<Command> m_autoChooser;
 
   public RobotContainer() {
-    System.out.println(">>> RobotContainer constructor started <<<");
-
-    if (RobotContainerConstants.kUseJoystick) {
-      System.out.println(">>> Using Logitech Extreme 3D Pro Joystick <<<");
-      m_driverController = null;
-      m_mechanismController = null;
-      m_joystickController = new JoystickController(m_swerveDrive, m_collector);
-    } else {
-      System.out.println(">>> Using Dual Xbox Controllers <<<");
       m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OperatorConstants.kMechanismControllerPort);
-      m_joystickController = null;
 
       configureDefaultCommands();
-
       configureDriverBindings();
       configureMechanismBindings();
-    }
-
-    m_pathPlannerConfigured = configurePathPlanner();
-
-    System.out.println(">>> RobotContainer constructor finished - Button bindings configured! <<<");
-
-    if (m_pathPlannerConfigured) {
-      m_autoChooser = AutoBuilder.buildAutoChooser();
-      m_autoChooser.addOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
-      m_autoChooser.addOption("Drive Forward 2 Meters", new DriveForwardCommand(m_swerveDrive, 2.0));
-      m_autoChooser.addOption("Drive and Align to Target", new DriveAndAlignCommand(m_swerveDrive));
-      m_autoChooser.addOption("Drive 1m and Align", new DriveAndAlignCommand(m_swerveDrive, 1.0, 0.5));
-      SmartDashboard.putData("Auto Chooser", m_autoChooser);
-    } else {
-      m_autoChooser = new SendableChooser<>();
-      m_autoChooser.setDefaultOption("Drive and Align to Target", new DriveAndAlignCommand(m_swerveDrive));
-      m_autoChooser.addOption("Drive Forward 1 Meter", new DriveForwardCommand(m_swerveDrive, 1.0));
-      m_autoChooser.addOption("Drive Forward 2 Meters", new DriveForwardCommand(m_swerveDrive, 2.0));
-      m_autoChooser.addOption("Drive 1m and Align", new DriveAndAlignCommand(m_swerveDrive, 1.0, 0.5));
-      m_autoChooser.addOption("Do Nothing", Commands.none());
-      SmartDashboard.putData("Auto Chooser", m_autoChooser);
-      DriverStation.reportWarning("PathPlanner configuration failed! Using simple autonomous options.", false);
-    }
-  }
-
-  private boolean configurePathPlanner() {
-    try {
-      RobotConfig config = RobotConfig.fromGUISettings();
-
-      AutoBuilder.configure(
-        m_swerveDrive::getPose,
-        m_swerveDrive::resetOdometry,
-        m_swerveDrive::getChassisSpeeds,
-        (speeds, feedforwards) -> m_swerveDrive.setChassisSpeeds(speeds),
-        new PPHolonomicDriveController(
-          new PIDConstants(AutoConstants.kPTranslation, AutoConstants.kITranslation, AutoConstants.kDTranslation),
-          new PIDConstants(AutoConstants.kPRotation, AutoConstants.kIRotation, AutoConstants.kDRotation)
-        ),
-        config,
-        () -> {
-          var alliance = DriverStation.getAlliance();
-          return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
-        },
-        m_swerveDrive
-      );
-
-      NamedCommands.registerCommand("stopDrive", m_swerveDrive.runOnce(() -> m_swerveDrive.stop()));
-      NamedCommands.registerCommand("lockWheels", m_swerveDrive.run(() -> m_swerveDrive.setX()).withTimeout(RobotContainerConstants.kSetXTimeoutSeconds));
-
-      return true;
-    } catch (Exception e) {
-      DriverStation.reportError("Failed to load PathPlanner RobotConfig! Please open PathPlanner GUI and configure your robot.", false);
-      e.printStackTrace();
-      return false;
-    }
   }
 
   private void configureDefaultCommands() {
@@ -160,62 +65,6 @@ public class RobotContainer {
       m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
     );
 
-    m_driverController.back().onTrue(
-      m_swerveDrive.runOnce(() -> m_swerveDrive.toggleFieldOriented())
-    );
-
-    if (m_collector != null) {
-      m_driverController.x().onTrue(
-         Commands.runOnce(() -> m_collectorHalfSpeed = !m_collectorHalfSpeed)
-      );
-
-      m_driverController.a().whileTrue(
-         Commands.run(() -> {
-          double speed = m_collectorHalfSpeed ? RobotContainerConstants.kCollectorHalfSpeed : RobotContainerConstants.kCollectorFullSpeed;
-         m_collector.run(speed);
-        }, m_collector)
-      );
-
-      m_driverController.b().whileTrue(
-         Commands.run(() -> {
-          double speed = m_collectorHalfSpeed ? RobotContainerConstants.kCollectorHalfSpeedReverse : RobotContainerConstants.kCollectorFullSpeedReverse;
-         m_collector.run(speed);
-        }, m_collector)
-      );
-    }
-
-    if (m_climber != null) {
-      m_driverController.povUp().whileTrue(
-        Commands.run(() -> m_climber.extend(), m_climber)
-      );
-
-      m_driverController.povDown().whileTrue(
-        Commands.run(() -> m_climber.retract(), m_climber)
-      );
-    }
-
-    if (m_shooter != null) {
-      m_driverController.rightBumper().whileTrue(
-        new ShootCommand(m_shooter)
-      );
-    }
-
-    m_driverController.pov(0).onTrue(
-      m_swerveDrive.rotateToAngle(0)
-    );
-
-    m_driverController.pov(90).onTrue(
-      m_swerveDrive.rotateToAngle(-90)
-    );
-
-    m_driverController.pov(180).onTrue(
-      m_swerveDrive.rotateToAngle(180)
-    );
-
-    m_driverController.pov(270).onTrue(
-      m_swerveDrive.rotateToAngle(90)
-    );
-
     m_driverController.y().onTrue(
       Commands.either(
         m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
@@ -237,13 +86,11 @@ public class RobotContainer {
   }
 
   private void configureMechanismBindings() {
-    // Run all 4 test motors at once (motor 16 will run opposite due to inversion)
-    // Stops automatically when any motor exceeds the current limit
     m_mechanismController.a().whileTrue(
       Commands.run(() -> {
         m_testMotors.runAllMotors();
       }, m_testMotors)
-      .until(() -> m_testMotors.isAnyMotorOverCurrent(TestMotorConstants.kMotorCurrentLimit))
+      .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
     );
 
     m_mechanismController.y().onTrue(
@@ -251,43 +98,6 @@ public class RobotContainer {
         m_testMotors.stopAll();
       }, m_testMotors)
     );
-
-    if (m_shooter != null) {
-      m_mechanismController.y().whileTrue(
-        new ShootCommand(m_shooter)
-      );
-    }
-
-    if (m_climber != null) {
-      m_mechanismController.rightBumper().whileTrue(
-        Commands.run(() -> m_climber.extend(), m_climber)
-      );
-
-      m_mechanismController.leftBumper().whileTrue(
-        Commands.run(() -> m_climber.retract(), m_climber)
-      );
-    }
-
-    // Hopper deployment - D-pad up deploys, D-pad down retracts
-    m_mechanismController.povUp().whileTrue(new DeployHopperCommand(m_hopper, true));
-    m_mechanismController.povDown().whileTrue(new DeployHopperCommand(m_hopper, false));
-
-    // Test motor D-pad bindings (direction based on m_testMotorsReversed flag)
-
-    m_mechanismController.povRight().whileTrue(
-      Commands.run(() -> {
-        double speed = m_testMotorsReversed ? -1.0 : 1.0;
-        m_testMotors.runIndexer(speed);
-      }, m_testMotors)
-    );
-
-    m_mechanismController.povLeft().whileTrue(
-      Commands.run(() -> {
-        double speed = m_testMotorsReversed ? -1.0 : 1.0;
-        m_testMotors.runFloorMotor(speed);
-      }, m_testMotors)
-    );
-
   }
 
   private double getSpeedLimit() {
@@ -300,9 +110,11 @@ public class RobotContainer {
     }
   }
 
+/*
   public Command getAutonomousCommand() {
     return m_autoChooser.getSelected();
   }
+*/
 
   public SwerveDriveSubsystem getSwerveDrive() {
     return m_swerveDrive;
@@ -318,13 +130,5 @@ public class RobotContainer {
 
   public CommandXboxController getDriverControllerForDebug() {
     return m_driverController;
-  }
-
-  public JoystickController getJoystickContainerForDebug() {
-    return m_joystickController;
-  }
-
-  public boolean isUsingJoystick() {
-    return RobotContainerConstants.kUseJoystick;
   }
 }

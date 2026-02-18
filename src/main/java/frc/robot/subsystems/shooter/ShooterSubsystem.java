@@ -1,106 +1,138 @@
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
 package frc.robot.subsystems.shooter;
 
-import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.Constants.TelemetryConstants;
 
-/**
- * Shooter subsystem that controls two motors for shooting game pieces.
- */
 public class ShooterSubsystem extends SubsystemBase {
-  private final SparkMax m_topMotor;
-  private final SparkMax m_bottomMotor;
+  private final SparkFlex m_rightShooterMotor;
+  private final SparkFlex m_floorMotor;
+  private final SparkFlex m_indexerMotor;
+  private final SparkFlex m_leftShooterMotor;
 
-  /** Creates a new Shooter subsystem. */
+  private int m_telemetryCounter = 0;
+
+  private final NetworkTable m_telemetryTable;
+  private final DoublePublisher m_rightShooterSpeedPub;
+  private final DoublePublisher m_floorMotorSpeedPub;
+  private final DoublePublisher m_indexerSpeedPub;
+  private final DoublePublisher m_leftShooterSpeedPub;
+  private final DoublePublisher m_rightShooterCurrentPub;
+  private final DoublePublisher m_floorMotorCurrentPub;
+  private final DoublePublisher m_indexerCurrentPub;
+  private final DoublePublisher m_leftShooterCurrentPub;
+  private final DoublePublisher m_rightShooterVelocityPub;
+  private final DoublePublisher m_floorMotorVelocityPub;
+  private final DoublePublisher m_indexerVelocityPub;
+  private final DoublePublisher m_leftShooterVelocityPub;
+
   public ShooterSubsystem() {
-    // Initialize motors with CAN IDs from configuration
-    m_topMotor = new SparkMax(ShooterConstants.kTopMotorId, MotorType.kBrushless);
-    m_bottomMotor = new SparkMax(ShooterConstants.kBottomMotorId, MotorType.kBrushless);
+    m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
+    m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
+    m_indexerMotor = new SparkFlex(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
+    m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
+    m_rightShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_floorMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_indexerMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_leftShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // Configure motors with settings from configuration file
-    m_topMotor.configure(ShooterConstants.topMotorConfig, ResetMode.kResetSafeParameters,
-        PersistMode.kPersistParameters);
-    m_bottomMotor.configure(ShooterConstants.bottomMotorConfig, ResetMode.kResetSafeParameters,
-        PersistMode.kPersistParameters);
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
+    m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
+    m_floorMotorSpeedPub     = m_telemetryTable.getDoubleTopic("Floor Motor Speed").publish();
+    m_indexerSpeedPub        = m_telemetryTable.getDoubleTopic("Indexer Speed").publish();
+    m_leftShooterSpeedPub    = m_telemetryTable.getDoubleTopic("Left Shooter Speed").publish();
+    m_rightShooterCurrentPub = m_telemetryTable.getDoubleTopic("Right Shooter Current").publish();
+    m_floorMotorCurrentPub   = m_telemetryTable.getDoubleTopic("Floor Motor Current").publish();
+    m_indexerCurrentPub      = m_telemetryTable.getDoubleTopic("Indexer Current").publish();
+    m_leftShooterCurrentPub  = m_telemetryTable.getDoubleTopic("Left Shooter Current").publish();
+    m_rightShooterVelocityPub  = m_telemetryTable.getDoubleTopic("Right Shooter Velocity").publish();
+    m_floorMotorVelocityPub    = m_telemetryTable.getDoubleTopic("Floor Motor Velocity").publish();
+    m_indexerVelocityPub       = m_telemetryTable.getDoubleTopic("Indexer Velocity").publish();
+    m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
   }
 
-  /**
-   * Runs both shooter motors at the specified speed.
-   *
-   * @param speed The speed to run the motors (-1.0 to 1.0)
-   */
-  public void run(double speed) {
-    m_topMotor.set(speed);
-    m_bottomMotor.set(speed);
+  public void runRightShooter(double speed) {
+    m_rightShooterMotor.set(speed);
   }
 
-  /**
-   * Runs the shooter motors at different speeds.
-   *
-   * @param topSpeed The speed for the top motor (-1.0 to 1.0)
-   * @param bottomSpeed The speed for the bottom motor (-1.0 to 1.0)
-   */
-  public void run(double topSpeed, double bottomSpeed) {
-    m_topMotor.set(topSpeed);
-    m_bottomMotor.set(bottomSpeed);
+  public void runFloorMotor(double speed) {
+    m_floorMotor.set(speed);
   }
 
-  /**
-   * Runs both shooter motors at the default speed.
-   */
-  public void runDefault() {
-    run(ShooterConstants.kDefaultShooterSpeed);
+  public void runIndexer(double speed) {
+    m_indexerMotor.set(speed);
   }
 
-  /**
-   * Runs both shooter motors at slow speed.
-   */
-  public void runSlow() {
-    run(ShooterConstants.kSlowShooterSpeed);
+  public void runLeftShooter(double speed) {
+    m_leftShooterMotor.set(speed);
   }
 
-  /**
-   * Stops both shooter motors.
-   */
-  public void stop() {
-    m_topMotor.set(0);
-    m_bottomMotor.set(0);
+  public void runAllMotors() {
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      ShooterConstants.kTargetRPM,
+      ControlType.kVelocity
+    );
+
+    m_floorMotor.set(-0.1);
+
+    m_indexerMotor.getClosedLoopController().setSetpoint(
+      ShooterConstants.kTargetRPM,
+      ControlType.kVelocity
+    );
+
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      -ShooterConstants.kTargetRPM,
+      ControlType.kVelocity
+    );
   }
 
-  /**
-   * Gets the current speed of the top motor.
-   *
-   * @return The speed of the top motor
-   */
-  public double getTopMotorSpeed() {
-    return m_topMotor.getAppliedOutput();
+  public void stopAll() {
+    m_rightShooterMotor.set(0);
+    m_floorMotor.set(0);
+    m_indexerMotor.set(0);
+    m_leftShooterMotor.set(0);
   }
 
-  /**
-   * Gets the current speed of the bottom motor.
-   *
-   * @return The speed of the bottom motor
-   */
-  public double getBottomMotorSpeed() {
-    return m_bottomMotor.getAppliedOutput();
-  }
-
-  /**
-   * Gets whether the shooter is currently running.
-   *
-   * @return True if either motor is running, false otherwise
-   */
-  public boolean isRunning() {
-    return Math.abs(m_topMotor.getAppliedOutput()) > 0.01 ||
-           Math.abs(m_bottomMotor.getAppliedOutput()) > 0.01;
+  public boolean isAnyMotorOverCurrent(double threshold) {
+    return m_rightShooterMotor.getOutputCurrent() > threshold ||
+           m_floorMotor.getOutputCurrent() > threshold ||
+           m_indexerMotor.getOutputCurrent() > threshold ||
+           m_leftShooterMotor.getOutputCurrent() > threshold;
   }
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
+    m_telemetryCounter++;
+    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+      m_telemetryCounter = 0;
+
+      m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
+      m_floorMotorSpeedPub.set(m_floorMotor.get());
+      m_indexerSpeedPub.set(m_indexerMotor.get());
+      m_leftShooterSpeedPub.set(m_leftShooterMotor.get());
+
+      m_rightShooterCurrentPub.set(m_rightShooterMotor.getOutputCurrent());
+      m_floorMotorCurrentPub.set(m_floorMotor.getOutputCurrent());
+      m_indexerCurrentPub.set(m_indexerMotor.getOutputCurrent());
+      m_leftShooterCurrentPub.set(m_leftShooterMotor.getOutputCurrent());
+
+      m_rightShooterVelocityPub.set(m_rightShooterMotor.getEncoder().getVelocity());
+      m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
+      m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
+      m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
+    }
   }
 }

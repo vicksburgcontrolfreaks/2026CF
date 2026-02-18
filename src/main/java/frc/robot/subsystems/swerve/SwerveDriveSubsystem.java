@@ -21,11 +21,9 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
-import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.SwerveConstants;
-import frc.robot.Constants.SwerveDriveConstants;
-import frc.robot.Constants.DriveCommandConstants;
+import frc.robot.Constants.TelemetryConstants;
 
 public class SwerveDriveSubsystem extends SubsystemBase {
   private final SwerveModule m_frontLeft;
@@ -38,8 +36,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   private final SwerveDrivePoseEstimator m_poseEstimator;
   private final Field2d m_field;
 
-  private boolean m_fieldOriented = true;
-
   // Yaw correction variables
   private double m_targetHeading = 0.0;
   private boolean m_yawCorrectionEnabled = false;
@@ -49,7 +45,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_gyroAnglePub;
   private final StringPublisher m_robotPosePub;
-  private final BooleanPublisher m_fieldOrientedPub;
   private final DoublePublisher m_flVelocityPub;
   private final DoublePublisher m_frVelocityPub;
   private final DoublePublisher m_blVelocityPub;
@@ -64,7 +59,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   private final DoublePublisher m_brAbsEncoderPub;
 
   private int m_telemetryCounter = 0;
-  private static final int TELEMETRY_UPDATE_PERIOD = SwerveDriveConstants.kTelemetryUpdatePeriod;
 
   public SwerveDriveSubsystem() {
     m_frontLeft = new SwerveModule(
@@ -120,18 +114,17 @@ public class SwerveDriveSubsystem extends SubsystemBase {
     m_field = new Field2d();
     SmartDashboard.putData("Field", m_field);
 
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable(SwerveDriveConstants.kTelemetryTableName);
-    m_gyroAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kGyroAngleTopic).publish();
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Swerve");
+    m_gyroAnglePub = m_telemetryTable.getDoubleTopic("Gyro Angle").publish();
     m_robotPosePub = m_telemetryTable.getStringTopic("Robot Pose").publish();
-    m_fieldOrientedPub = m_telemetryTable.getBooleanTopic(SwerveDriveConstants.kFieldOrientedTopic).publish();
-    m_flVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftVelocityTopic).publish();
-    m_frVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightVelocityTopic).publish();
-    m_blVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackLeftVelocityTopic).publish();
-    m_brVelocityPub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackRightVelocityTopic).publish();
-    m_flAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontLeftAngleTopic).publish();
-    m_frAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kFrontRightAngleTopic).publish();
-    m_blAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackLeftAngleTopic).publish();
-    m_brAnglePub = m_telemetryTable.getDoubleTopic(SwerveDriveConstants.kBackRightAngleTopic).publish();
+    m_flVelocityPub = m_telemetryTable.getDoubleTopic("FL Velocity").publish();
+    m_frVelocityPub = m_telemetryTable.getDoubleTopic("FR Velocity").publish();
+    m_blVelocityPub = m_telemetryTable.getDoubleTopic("BL Velocity").publish();
+    m_brVelocityPub = m_telemetryTable.getDoubleTopic("BR Velocity").publish();
+    m_flAnglePub = m_telemetryTable.getDoubleTopic("FL Angle").publish();
+    m_frAnglePub = m_telemetryTable.getDoubleTopic("FR Angle").publish();
+    m_blAnglePub = m_telemetryTable.getDoubleTopic("BL Angle").publish();
+    m_brAnglePub = m_telemetryTable.getDoubleTopic("BR Angle").publish();
     m_flAbsEncoderPub = m_telemetryTable.getDoubleTopic("FL Absolute Encoder").publish();
     m_frAbsEncoderPub = m_telemetryTable.getDoubleTopic("FR Absolute Encoder").publish();
     m_blAbsEncoderPub = m_telemetryTable.getDoubleTopic("BL Absolute Encoder").publish();
@@ -145,10 +138,9 @@ public class SwerveDriveSubsystem extends SubsystemBase {
 
     m_gyroAnglePub.set(getHeading());
     m_robotPosePub.set(getPose().toString());
-    m_fieldOrientedPub.set(m_fieldOriented);
 
     m_telemetryCounter++;
-    if (m_telemetryCounter >= TELEMETRY_UPDATE_PERIOD) {
+    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
       m_telemetryCounter = 0;
 
       m_flVelocityPub.set(m_frontLeft.getDriveVelocity());
@@ -161,10 +153,10 @@ public class SwerveDriveSubsystem extends SubsystemBase {
       m_blAnglePub.set(Math.toDegrees(m_backLeft.getSteerPosition()));
       m_brAnglePub.set(Math.toDegrees(m_backRight.getSteerPosition()));
 
-      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
-      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
-      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
-      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / SwerveDriveConstants.kEncoderNormalization);
+      m_flAbsEncoderPub.set(m_frontLeft.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
+      m_frAbsEncoderPub.set(m_frontRight.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
+      m_blAbsEncoderPub.set(m_backLeft.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
+      m_brAbsEncoderPub.set(m_backRight.getAbsoluteEncoderRaw() / SwerveConstants.kEncoderNormalization);
     }
   }
 
@@ -235,25 +227,13 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   }
 
   public double getHeading() {
-    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), SwerveDriveConstants.kGyroWrapModulo);
+    return Math.IEEEremainder(m_gyro.getAngle(IMUAxis.kY), SwerveConstants.kGyroWrapModulo);
   }
 
   public Rotation2d getGyroRotation2d() {
     return Rotation2d.fromDegrees(getHeading());
   }
-
-  public void setFieldOriented(boolean fieldOriented) {
-    m_fieldOriented = fieldOriented;
-  }
-
-  public boolean isFieldOriented() {
-    return m_fieldOriented;
-  }
-
-  public void toggleFieldOriented() {
-    m_fieldOriented = !m_fieldOriented;
-  }
-
+  
   public SwerveModulePosition[] getModulePositions() {
     return new SwerveModulePosition[] {
       m_frontLeft.getPosition(),
@@ -281,10 +261,10 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   }
 
   public void setX() {
-    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleFrontLeft)));
-    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleFrontRight)));
-    m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleBackLeft)));
-    m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveDriveConstants.kXFormationAngleBackRight)));
+    m_frontLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleFrontLeft)));
+    m_frontRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleFrontRight)));
+    m_backLeft.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleBackLeft)));
+    m_backRight.setDesiredState(new SwerveModuleState(0, Rotation2d.fromDegrees(SwerveConstants.kXFormationAngleBackRight)));
   }
 
   public void resetEncoders() {
@@ -358,36 +338,32 @@ public class SwerveDriveSubsystem extends SubsystemBase {
       return 0.0;
     }
 
-    // Calculate heading error
+    // Calculate heading error, normalized to [-180, 180]
     double currentHeading = getHeading();
-    double headingError = m_targetHeading - currentHeading;
-
-    // Normalize error to [-180, 180]
-    while (headingError > 180) headingError -= 360;
-    while (headingError < -180) headingError += 360;
+    double headingError = Math.IEEEremainder(m_targetHeading - currentHeading, 360.0);
 
     double absError = Math.abs(headingError);
 
     // Check if within tolerance (dead zone)
-    if (absError < DriveCommandConstants.kYawCorrectionToleranceDegrees) {
+    if (absError < SwerveConstants.kYawCorrectionToleranceDegrees) {
       return 0.0;
     }
 
     // Select max power based on movement direction
     double maxPower = m_isLateralMovement
-        ? DriveCommandConstants.kYawCorrectionMaxPowerLateral  // 9% for lateral
-        : DriveCommandConstants.kYawCorrectionMaxPower;         // 7% for forward/back
+        ? SwerveConstants.kYawCorrectionMaxPowerLateral  // 9% for lateral
+        : SwerveConstants.kYawCorrectionMaxPower;         // 7% for forward/back
 
     // Calculate proportional correction
     double correctionPower;
-    if (absError >= DriveCommandConstants.kYawCorrectionThresholdDegrees) {
+    if (absError >= SwerveConstants.kYawCorrectionThresholdDegrees) {
       // At or above threshold: use full power
       correctionPower = maxPower;
     } else {
       // Between tolerance and threshold: scale proportionally
-      double range = DriveCommandConstants.kYawCorrectionThresholdDegrees
-                   - DriveCommandConstants.kYawCorrectionToleranceDegrees;
-      double errorAboveTolerance = absError - DriveCommandConstants.kYawCorrectionToleranceDegrees;
+      double range = SwerveConstants.kYawCorrectionThresholdDegrees
+                   - SwerveConstants.kYawCorrectionToleranceDegrees;
+      double errorAboveTolerance = absError - SwerveConstants.kYawCorrectionToleranceDegrees;
       correctionPower = maxPower * (errorAboveTolerance / range);
     }
 
