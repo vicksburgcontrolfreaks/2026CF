@@ -28,17 +28,17 @@ public class TestMotorCommand extends Command {
   @Override
   public void execute() {
     switch (motorNumber) {
-      // case 16:
-      //   testMotors.runMotor16(speed);
-      //   break;
+      case 16:
+        testMotors.runRightShooter(speed);
+        break;
       case 17:
-        testMotors.runMotor17(speed);
+        testMotors.runFloorMotor(speed);
         break;
       case 18:
-        testMotors.runMotor18(speed);
+        testMotors.runIndexer(speed);
         break;
       case 19:
-        testMotors.runMotor19(speed);
+        testMotors.runLeftShooter(speed);
         break;
       default:
         testMotors.stopAll();

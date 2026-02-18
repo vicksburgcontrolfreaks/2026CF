@@ -5,6 +5,7 @@
 package frc.robot;
 
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 import edu.wpi.first.math.geometry.Rotation3d;
@@ -49,7 +50,6 @@ public final class Constants {
     public static final int kTopMotorId = 0;
     public static final int kBottomMotorId = 1;
     public static final int kIndexerMotorId = 15;
-
     public static final int kMotorCurrentLimit = 40;
 
     public static final boolean kTopMotorInverted = false;
@@ -162,25 +162,31 @@ public final class Constants {
   }
 
   public static class TestMotorConstants {
-    public static final int kMotor1Id = 16;
-    public static final int kMotor2Id = 17;
-    public static final int kMotor3Id = 18;
-    public static final int kMotor4Id = 19;
+    public static final int kRightShooterId = 16;
+    public static final int kFloorMotorId = 17;
+    public static final int kIndexerMotorId = 18;
+    public static final int kLeftShooterId = 19;
 
-    public static final int kMotorCurrentLimit = 40;
+    public static final int kMotorCurrentLimit = 60;
 
-    public static final boolean kMotor1Inverted = false;
-    public static final boolean kMotor2Inverted = false;
-    public static final boolean kMotor3Inverted = false;
-    public static final boolean kMotor4Inverted = false;
+    // Velocity control constants
+    public static final double kVelocityP = 0.001;
+    public static final double kVelocityI = 0.0;
+    public static final double kVelocityD = 0.0;
+    public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
+    public static final double kTargetRPM = 3000; // 40% of max velocity
+    // max rpm 6784 
 
-    // Motor configuration
-    public static final SparkMaxConfig config = new SparkMaxConfig();
+    // Motor configuration for SparkFlex
+    public static final SparkFlexConfig config = new SparkFlexConfig();
 
     static {
       config
-          .idleMode(IdleMode.kBrake)
-          .smartCurrentLimit(kMotorCurrentLimit);
+          .idleMode(IdleMode.kCoast)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .closedLoop
+            .pid(kVelocityP, kVelocityI, kVelocityD)
+            .velocityFF(kVelocityFF);
     }
   }
 
@@ -191,9 +197,9 @@ public final class Constants {
 
     public static final double kDeadband = 0.1;
 
-    public static final double kNormalSpeedLimit = 0.2;
-    public static final double kTurboSpeedLimit = 0.4;
-    public static final double kPrecisionSpeedLimit = 0.1;
+    public static final double kNormalSpeedLimit = 0.4;
+    public static final double kTurboSpeedLimit = 0.9;
+    public static final double kPrecisionSpeedLimit = 0.2;
   }
 
   public static class SwerveConstants {
@@ -437,6 +443,28 @@ public final class Constants {
 
     // Position conversion factor
     public static final double kPositionConversionFactor = 2.0 * Math.PI;
+  }
+
+  public static class HopperConstants {
+    public static final int kMotorId = 20;
+
+    public static final int kMotorCurrentLimit = 30;
+
+    public static final boolean kMotorInverted = false;
+
+    public static final double kGearRatio = 81.0;
+
+    public static final double kDeploySpeed = 0.1;
+    public static final double kRetractSpeed = -0.1;
+
+    public static final SparkFlexConfig config = new SparkFlexConfig();
+
+    static {
+      config
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .inverted(kMotorInverted);
+    }
   }
 
   public static class SwerveConfigConstants {

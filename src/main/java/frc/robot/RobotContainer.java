@@ -16,17 +16,17 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.RobotContainerConstants;
-import frc.robot.commands.drive.RotateToAngleCommand;
+import frc.robot.Constants.TestMotorConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShootCommand;
 import frc.robot.commands.auto.DriveForwardCommand;
 import frc.robot.commands.auto.DriveAndAlignCommand;
-import frc.robot.commands.collector.RunCollector;
+import frc.robot.commands.hopper.DeployHopperCommand;
+import frc.robot.subsystems.hopper.HopperSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -52,6 +52,7 @@ public class RobotContainer {
   private final ClimberSubsystem m_climber = null;
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
   private final TestMotorSubsystem m_testMotors = new TestMotorSubsystem();
+  private final HopperSubsystem m_hopper = new HopperSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -236,8 +237,23 @@ public class RobotContainer {
   }
 
   private void configureMechanismBindings() {
+    // Run all 4 test motors at once (motor 16 will run opposite due to inversion)
+    // Stops automatically when any motor exceeds the current limit
+    m_mechanismController.a().whileTrue(
+      Commands.run(() -> {
+        m_testMotors.runAllMotors();
+      }, m_testMotors)
+      .until(() -> m_testMotors.isAnyMotorOverCurrent(TestMotorConstants.kMotorCurrentLimit))
+    );
+
+    m_mechanismController.y().onTrue(
+      Commands.run(() -> {
+        m_testMotors.stopAll();
+      }, m_testMotors)
+    );
+
     if (m_shooter != null) {
-      m_mechanismController.a().whileTrue(
+      m_mechanismController.y().whileTrue(
         new ShootCommand(m_shooter)
       );
     }
@@ -252,48 +268,32 @@ public class RobotContainer {
       );
     }
 
+    // Hopper deployment - D-pad up deploys, D-pad down retracts
+    m_mechanismController.povUp().whileTrue(new DeployHopperCommand(m_hopper, true));
+    m_mechanismController.povDown().whileTrue(new DeployHopperCommand(m_hopper, false));
+
     // Test motor D-pad bindings (direction based on m_testMotorsReversed flag)
-    m_mechanismController.povUp().whileTrue(
-      Commands.run(() -> {
-        double speed = m_testMotorsReversed ? -1.0 : 1.0;
-        m_testMotors.runMotor19(speed);
-      }, m_testMotors)
-    );
 
     m_mechanismController.povRight().whileTrue(
       Commands.run(() -> {
         double speed = m_testMotorsReversed ? -1.0 : 1.0;
-        m_testMotors.runMotor18(speed);
+        m_testMotors.runIndexer(speed);
       }, m_testMotors)
     );
 
     m_mechanismController.povLeft().whileTrue(
       Commands.run(() -> {
         double speed = m_testMotorsReversed ? -1.0 : 1.0;
-        m_testMotors.runMotor17(speed);
+        m_testMotors.runFloorMotor(speed);
       }, m_testMotors)
     );
 
-    // m_mechanismController.povDown().whileTrue(
-    //   Commands.run(() -> {
-    //     double speed = m_testMotorsReversed ? -1.0 : 1.0;
-    //     m_testMotors.runMotor16(speed);
-    //   }, m_testMotors)
-    // );
-
-    // Toggle reverse direction for all test motors
-    m_mechanismController.b().onTrue(
-      Commands.runOnce(() -> m_testMotorsReversed = !m_testMotorsReversed)
-    );
   }
 
   private double getSpeedLimit() {
-    double rightTrigger = m_driverController.getRightTriggerAxis();
-    double leftTrigger = m_driverController.getLeftTriggerAxis();
-    
-    if (rightTrigger > RobotContainerConstants.kTriggerThreshold) {
+    if (m_driverController.rightBumper().getAsBoolean()) {
       return OperatorConstants.kTurboSpeedLimit;
-    } else if (leftTrigger > RobotContainerConstants.kTriggerThreshold) {
+    } else if (m_driverController.leftBumper().getAsBoolean()) {
       return OperatorConstants.kPrecisionSpeedLimit;
     } else {
       return OperatorConstants.kNormalSpeedLimit;
