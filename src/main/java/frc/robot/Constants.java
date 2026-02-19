@@ -264,6 +264,44 @@ public final class Constants {
     public static final double kRedTargetY = 4.02;
   }
 
+  public static class CollectorConstants {
+    public static final int kUpperCollectorMotorId = 10;
+    public static final int kLowerCollectorMotorId = 11;
+    public static final int kHopperMotorId = 12;
+
+    public static final int kMotorCurrentLimit = 40;
+
+    public static final double kCollectorSpeed = 0.1;
+    public static final double kHopperMaxSpeed = 0.5;
+    public static final double kHopperGearRatio = 81.0;
+
+    public static final double kHopperRetractedPosition = 0.0;
+    public static final double kHopperDeployedPosition = 5.0;
+    public static final double kHopperPositionTolerance = 0.1;
+
+    public static final double kHopperP = 0.1;
+    public static final double kHopperI = 0.0;
+    public static final double kHopperD = 0.0;
+
+    public static final SparkFlexConfig collectorConfig = new SparkFlexConfig();
+    public static final SparkMaxConfig hopperConfig = new SparkMaxConfig();
+
+    static {
+      collectorConfig
+          .idleMode(IdleMode.kCoast)
+          .smartCurrentLimit(kMotorCurrentLimit);
+
+      hopperConfig
+          .idleMode(IdleMode.kBrake)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .closedLoop
+            .pid(kHopperP, kHopperI, kHopperD)
+            .outputRange(-kHopperMaxSpeed, kHopperMaxSpeed);
+      hopperConfig.encoder
+          .positionConversionFactor(1.0);
+    }
+  }
+
   public static class LEDConstants {
     public static final int kLEDPort = 0;
     public static final int kLEDCount = 23;
