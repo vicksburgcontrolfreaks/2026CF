@@ -62,7 +62,8 @@ public class RobotContainer {
 
   private void configureDriverBindings() {
     m_driverController.start().onTrue(
-      m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
+            m_swerveDrive.runOnce(() -> m_swerveDrive.toggleFieldOriented())
+      //m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
     );
 
     m_driverController.y().onTrue(

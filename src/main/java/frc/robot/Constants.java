@@ -249,9 +249,9 @@ public final class Constants {
     public static final double kITranslation = 0.0;
     public static final double kDTranslation = 0.0;
 
-    public static final double kPRotation = 5.0;
-    public static final double kIRotation = 0.0;
-    public static final double kDRotation = 0.0;
+    public static final double kPRotation = 15.0;
+    public static final double kIRotation = 0.25;  // Small I term to eliminate steady-state error
+    public static final double kDRotation = 0.1;  // Small D term to reduce oscillation
 
     // PID constants for auto-align to target (separate from general rotation)
     public static final double kPRotationAutoAlign = 7.5;
