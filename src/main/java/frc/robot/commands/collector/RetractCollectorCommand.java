@@ -19,7 +19,6 @@ public class RetractCollectorCommand extends Command {
   @Override
   public void initialize() {
     m_collector.stopCollector();
-    m_collector.setHopperPosition(CollectorConstants.kHopperRetractedPosition);
   }
 
   @Override
@@ -27,9 +26,4 @@ public class RetractCollectorCommand extends Command {
 
   @Override
   public void end(boolean interrupted) {}
-
-  @Override
-  public boolean isFinished() {
-    return m_collector.isHopperAtPosition(CollectorConstants.kHopperRetractedPosition);
-  }
 }

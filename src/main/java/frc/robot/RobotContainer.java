@@ -10,8 +10,11 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.commands.collector.DeployCollectorCommand;
+import frc.robot.commands.collector.RetractCollectorCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
@@ -27,6 +30,7 @@ public class RobotContainer {
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
   private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
+  private final CollectorSubsystem m_collector = new CollectorSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -97,6 +101,14 @@ public class RobotContainer {
       Commands.run(() -> {
         m_testMotors.stopAll();
       }, m_testMotors)
+    );
+
+    m_mechanismController.b().onTrue(
+      new DeployCollectorCommand(m_collector)
+    );
+
+    m_mechanismController.x().onTrue(
+      new RetractCollectorCommand(m_collector)
     );
   }
 
