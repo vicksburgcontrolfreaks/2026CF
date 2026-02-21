@@ -5,11 +5,13 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
@@ -33,11 +35,14 @@ public class RobotContainer {
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
-  //private final SendableChooser<Command> m_autoChooser;
+  private final Command m_autoCommand;
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OperatorConstants.kMechanismControllerPort);
+
+      // Create autonomous command
+      m_autoCommand = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_testMotors);
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -151,11 +156,9 @@ public class RobotContainer {
     }
   }
 
-/*
   public Command getAutonomousCommand() {
-    return m_autoChooser.getSelected();
+    return m_autoCommand;
   }
-*/
 
   public SwerveDriveSubsystem getSwerveDrive() {
     return m_swerveDrive;
