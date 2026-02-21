@@ -59,8 +59,8 @@ public final class Constants {
   @SuppressWarnings("removal")
   public static class ShooterConstants {
     public static final int kRightShooterId = 16;
-    public static final int kFloorMotorId = 17;
-    public static final int kIndexerMotorId = 18;
+    public static final int kFloorMotorId = 13;
+    public static final int kIndexerMotorId = 14;
     public static final int kLeftShooterId = 19;
 
     public static final int kMotorCurrentLimit = 60;
