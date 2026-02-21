@@ -537,4 +537,58 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     return tagIDs;
   }
+
+  /**
+   * Get the distance to a specific AprilTag in meters.
+   * Searches all cameras for the specified tag and returns the closest distance found.
+   * @param tagID The fiducial ID of the AprilTag to find
+   * @return Distance to the tag in meters, or -1.0 if tag not found
+   */
+  public double getDistanceToTag(int tagID) {
+    double closestDistance = -1.0;
+
+    for (CameraData camData : m_cameras) {
+      if (camData.lastResult != null && camData.lastResult.hasTargets()) {
+        for (PhotonTrackedTarget target : camData.lastResult.getTargets()) {
+          if (target.getFiducialId() == tagID) {
+            double distance = target.getBestCameraToTarget().getTranslation().getNorm();
+            if (closestDistance < 0 || distance < closestDistance) {
+              closestDistance = distance;
+            }
+          }
+        }
+      }
+    }
+
+    return closestDistance;
+  }
+
+  /**
+   * Get the distance to the speaker target based on alliance.
+   * Returns distance to the appropriate speaker AprilTag for red or blue alliance.
+   * @return Distance to speaker in meters, or -1.0 if tag not found or alliance unknown
+   */
+  public double getDistanceToSpeaker() {
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      return -1.0;
+    }
+
+    // 2026 Reefscape speaker tag IDs (adjust based on actual field layout)
+    // Red alliance speaker tags: 3, 4
+    // Blue alliance speaker tags: 7, 8
+    int[] speakerTags = alliance.get() == DriverStation.Alliance.Red
+      ? new int[]{3, 4}
+      : new int[]{7, 8};
+
+    double closestDistance = -1.0;
+    for (int tagID : speakerTags) {
+      double distance = getDistanceToTag(tagID);
+      if (distance > 0 && (closestDistance < 0 || distance < closestDistance)) {
+        closestDistance = distance;
+      }
+    }
+
+    return closestDistance;
+  }
 }

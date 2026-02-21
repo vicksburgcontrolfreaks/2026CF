@@ -7,6 +7,7 @@ package frc.robot.subsystems.shooter;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
@@ -44,10 +45,15 @@ public class ShooterSubsystem extends SubsystemBase {
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
     m_indexerMotor = new SparkFlex(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
+
     m_rightShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_floorMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_indexerMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_leftShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure left shooter to follow right shooter (inverted because they're on opposite sides of the axle)
+    var leftConfig = new com.revrobotics.spark.config.SparkFlexConfig();
+    leftConfig.follow(ShooterConstants.kRightShooterId, true);
+    m_leftShooterMotor.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
     m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
@@ -81,20 +87,20 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void runAllMotors() {
+    runAllMotors(ShooterConstants.kTargetRPM);
+  }
+
+  public void runAllMotors(double targetRPM) {
+    // Right shooter is the leader - left follows automatically (inverted)
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kTargetRPM,
+      targetRPM,
       ControlType.kVelocity
     );
 
     m_floorMotor.set(-0.1);
 
     m_indexerMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kTargetRPM,
-      ControlType.kVelocity
-    );
-
-    m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -ShooterConstants.kTargetRPM,
+      targetRPM,
       ControlType.kVelocity
     );
   }
