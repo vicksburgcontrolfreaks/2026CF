@@ -12,6 +12,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
@@ -27,6 +28,7 @@ public class RobotContainer {
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
   private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
+  private final ClimberSubsystem m_climber = new ClimberSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -106,6 +108,36 @@ public class RobotContainer {
       Commands.run(() -> {
         m_testMotors.stopAll();
       }, m_testMotors)
+    );
+
+    // X button: Extend climber to full extension
+    m_mechanismController.x().onTrue(
+      Commands.runOnce(() -> {
+        m_climber.extend();
+      }, m_climber)
+    );
+
+    // B button: Retract climber to full retraction
+    m_mechanismController.b().onTrue(
+      Commands.runOnce(() -> {
+        m_climber.retract();
+      }, m_climber)
+    );
+
+    // D-pad Up: Manual climber extend
+    m_mechanismController.povUp().whileTrue(
+      Commands.run(() -> {
+        m_climber.setSpeed(0.5);
+      }, m_climber)
+      .finallyDo(() -> m_climber.stop())
+    );
+
+    // D-pad Down: Manual climber retract
+    m_mechanismController.povDown().whileTrue(
+      Commands.run(() -> {
+        m_climber.setSpeed(-0.5);
+      }, m_climber)
+      .finallyDo(() -> m_climber.stop())
     );
   }
 

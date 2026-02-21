@@ -138,6 +138,47 @@ public final class Constants {
     }
   }
 
+  public static class ClimberConstants {
+    public static final int kLeftClimberMotorId = 17;
+    public static final int kRightClimberMotorId = 18;
+
+    public static final int kMotorCurrentLimit = 40;
+
+    // Position control PID constants
+    public static final double kPositionP = 0.1;
+    public static final double kPositionI = 0.0;
+    public static final double kPositionD = 0.0;
+
+    // Position setpoints (in rotations)
+    // TODO: Tune these values based on your actual climber mechanism
+    public static final double kRetractedPosition = 0.0;    // Fully retracted
+    public static final double kExtendedPosition = 100.0;   // Fully extended
+
+    // Position tolerance for checking if at target
+    public static final double kPositionTolerance = 2.0;
+
+    // Maximum speed for manual control
+    public static final double kManualSpeed = 0.5;
+
+    // Soft limits (in rotations)
+    public static final double kSoftLimitMin = -5.0;   // Safety buffer below retracted
+    public static final double kSoftLimitMax = 105.0;  // Safety buffer above extended
+
+    public static final SparkMaxConfig config = new SparkMaxConfig();
+
+    static {
+      config
+          .idleMode(IdleMode.kBrake)  // Brake mode to hold position
+          .smartCurrentLimit(kMotorCurrentLimit);
+
+      config.closedLoop
+            .pid(kPositionP, kPositionI, kPositionD);
+
+      // Note: Soft limits are enforced in software in ClimberSubsystem.setSpeed()
+      // Hardware soft limits can be configured via Phoenix Tuner if needed
+    }
+  }
+
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
     public static final int kMechanismControllerPort = 1;
