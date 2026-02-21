@@ -86,13 +86,22 @@ public class RobotContainer {
   }
 
   private void configureMechanismBindings() {
+    // A button: Run shooter with distance-based RPM
     m_mechanismController.a().whileTrue(
       Commands.run(() -> {
-        m_testMotors.runAllMotors();
+        // Get distance to speaker from vision
+        double distance = m_visionSubsystem.getDistanceToSpeaker();
+
+        // Calculate RPM based on distance
+        double targetRPM = ShooterConstants.getRPMForDistance(distance);
+
+        // Run motors at calculated RPM
+        m_testMotors.runAllMotors(targetRPM);
       }, m_testMotors)
       .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
     );
 
+    // Y button: Stop all shooter motors
     m_mechanismController.y().onTrue(
       Commands.run(() -> {
         m_testMotors.stopAll();
