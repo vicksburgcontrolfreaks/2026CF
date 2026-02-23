@@ -58,10 +58,12 @@ public final class Constants {
 
   @SuppressWarnings("removal")
   public static class ShooterConstants {
-    public static final int kRightShooterId = 16;
-    public static final int kFloorMotorId = 13;
+    
+    public static final int kFloorMotorId   = 13;
     public static final int kIndexerMotorId = 14;
-    public static final int kLeftShooterId = 19;
+
+    public static final int kRightShooterId = 15;
+    public static final int kLeftShooterId  = 16;
 
     public static final int kMotorCurrentLimit = 60;
 
@@ -139,7 +141,7 @@ public final class Constants {
   }
 
   public static class ClimberConstants {
-    public static final int kLeftClimberMotorId = 17;
+    public static final int kLeftClimberMotorId  = 17;
     public static final int kRightClimberMotorId = 18;
 
     public static final int kMotorCurrentLimit = 40;
@@ -346,7 +348,7 @@ public final class Constants {
 
     public static final double kPRotation = 15.0;
     public static final double kIRotation = 0.25;  // Small I term to eliminate steady-state error
-    public static final double kDRotation = 0.1;  // Small D term to reduce oscillation
+    public static final double kDRotation = 0.1;   // Small D term to reduce oscillation
 
     // PID constants for auto-align to target (separate from general rotation)
     public static final double kPRotationAutoAlign = 7.5;
