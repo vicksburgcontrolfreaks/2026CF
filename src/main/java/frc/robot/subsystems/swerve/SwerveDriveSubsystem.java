@@ -275,25 +275,6 @@ public class SwerveDriveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Create a command to rotate the robot to a specified angle
-   * @param targetAngleDegrees Target angle in degrees (0 = forward, positive = counter-clockwise)
-   * @return Command that rotates the robot to the target angle
-   */
-  public edu.wpi.first.wpilibj2.command.Command rotateToAngle(double targetAngleDegrees) {
-    return new frc.robot.commands.drive.RotateToAngleCommand(this, targetAngleDegrees);
-  }
-
-  /**
-   * Create a command to rotate the robot to face a target position on the field
-   * @param targetX Target X coordinate in meters
-   * @param targetY Target Y coordinate in meters
-   * @return Command that rotates the robot to face the target
-   */
-  public edu.wpi.first.wpilibj2.command.Command rotateToTarget(double targetX, double targetY) {
-    return new frc.robot.commands.drive.RotateToTargetCommand(this, targetX, targetY);
-  }
-
-  /**
    * Sets the target heading for yaw correction.
    * This is the heading the robot will attempt to maintain during translation.
    * @param heading Target heading in degrees

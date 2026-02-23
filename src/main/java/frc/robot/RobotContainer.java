@@ -68,25 +68,6 @@ public class RobotContainer {
     m_driverController.start().onTrue(
       m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
     );
-
-    m_driverController.y().onTrue(
-      Commands.either(
-        m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
-        m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
-        () -> {
-          var alliance = DriverStation.getAlliance();
-          return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
-        }
-      ).andThen(
-        // Hold X-formation until driver gives any stick input
-        m_swerveDrive.run(() -> m_swerveDrive.setX())
-          .until(() ->
-            Math.abs(m_driverController.getLeftY()) > 0.1 ||
-            Math.abs(m_driverController.getLeftX()) > 0.1 ||
-            Math.abs(m_driverController.getRightX()) > 0.1
-          )
-      )
-    );
   }
 
   private void configureMechanismBindings() {
