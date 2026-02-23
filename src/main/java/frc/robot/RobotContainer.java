@@ -11,7 +11,7 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.collector.DeployCollectorCommand;
-import frc.robot.commands.collector.RetractCollectorCommand;
+import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
@@ -108,7 +108,19 @@ public class RobotContainer {
     );
 
     m_mechanismController.x().onTrue(
-      new RetractCollectorCommand(m_collector)
+      new StopCollectorCommand(m_collector)
+    );
+
+    m_mechanismController.povUp().onTrue(
+      Commands.run(() -> {
+        ShooterSubsystem.setKTargetRPM(getSpeedLimit() + 1000);
+      })
+    );
+
+    m_mechanismController.povDown().onTrue(
+      Commands.run(() -> {
+        ShooterSubsystem.setKTargetRPM(getSpeedLimit() - 1000);
+      })
     );
   }
 

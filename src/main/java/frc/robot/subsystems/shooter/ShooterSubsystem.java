@@ -39,6 +39,9 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher m_indexerVelocityPub;
   private final DoublePublisher m_leftShooterVelocityPub;
 
+  private static double kTargetRPM = 3000; // 40% of max velocity
+  // max rpm 6784 
+
   public ShooterSubsystem() {
     m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
@@ -82,19 +85,19 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public void runAllMotors() {
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kTargetRPM,
+      kTargetRPM,
       ControlType.kVelocity
     );
 
     m_floorMotor.set(-0.1);
 
     m_indexerMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kTargetRPM,
+      kTargetRPM,
       ControlType.kVelocity
     );
 
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -ShooterConstants.kTargetRPM,
+      -kTargetRPM,
       ControlType.kVelocity
     );
   }
@@ -133,6 +136,15 @@ public class ShooterSubsystem extends SubsystemBase {
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
       m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
+    }
+  }
+
+  public static double getKTargetRPM() {
+    return kTargetRPM;
+  }
+  public static void setKTargetRPM(double newRPM) {
+    if (newRPM <= 6784) {
+      kTargetRPM = newRPM;
     }
   }
 }

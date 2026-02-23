@@ -8,10 +8,10 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.CollectorConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 
-public class RetractCollectorCommand extends Command {
+public class StopCollectorCommand extends Command {
   private final CollectorSubsystem m_collector;
 
-  public RetractCollectorCommand(CollectorSubsystem collector) {
+  public StopCollectorCommand(CollectorSubsystem collector) {
     m_collector = collector;
     addRequirements(collector);
   }

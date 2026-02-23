@@ -69,8 +69,6 @@ public final class Constants {
     public static final double kVelocityI = 0.0;
     public static final double kVelocityD = 0.0;
     public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
-    public static final double kTargetRPM = 3000; // 40% of max velocity
-    // max rpm 6784 
     
     public static final SparkFlexConfig config = new SparkFlexConfig();
 
