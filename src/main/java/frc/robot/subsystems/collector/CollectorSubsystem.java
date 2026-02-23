@@ -56,7 +56,7 @@ public class CollectorSubsystem extends SubsystemBase {
 
   public void runCollector() {
     m_upperCollectorMotor.set(CollectorConstants.kCollectorSpeed);
-    m_lowerCollectorMotor.set(CollectorConstants.kCollectorSpeed);
+    m_lowerCollectorMotor.set(-CollectorConstants.kCollectorSpeed);
   }
 
   public void stopCollector() {

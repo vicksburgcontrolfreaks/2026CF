@@ -67,25 +67,9 @@ public class ShooterSubsystem extends SubsystemBase {
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
   }
 
-  public void runRightShooter(double speed) {
-    m_rightShooterMotor.set(speed);
-  }
-
-  public void runFloorMotor(double speed) {
-    m_floorMotor.set(speed);
-  }
-
-  public void runIndexer(double speed) {
-    m_indexerMotor.set(speed);
-  }
-
-  public void runLeftShooter(double speed) {
-    m_leftShooterMotor.set(speed);
-  }
-
   public void runAllMotors() {
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      kTargetRPM,
+      -kTargetRPM,
       ControlType.kVelocity
     );
 
@@ -97,7 +81,7 @@ public class ShooterSubsystem extends SubsystemBase {
     );
 
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -kTargetRPM,
+      kTargetRPM,
       ControlType.kVelocity
     );
   }

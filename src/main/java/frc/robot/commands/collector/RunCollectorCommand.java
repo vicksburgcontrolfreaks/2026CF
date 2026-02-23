@@ -8,17 +8,16 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.CollectorConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 
-public class DeployCollectorCommand extends Command {
+public class RunCollectorCommand extends Command {
   private final CollectorSubsystem m_collector;
 
-  public DeployCollectorCommand(CollectorSubsystem collector) {
+  public RunCollectorCommand(CollectorSubsystem collector) {
     m_collector = collector;
     addRequirements(collector);
   }
 
   @Override
   public void initialize() {
-    m_collector.setHopperPosition(CollectorConstants.kHopperDeployedPosition);
     m_collector.runCollector();
   }
 

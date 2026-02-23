@@ -6,11 +6,13 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
-import frc.robot.commands.collector.DeployCollectorCommand;
+import frc.robot.commands.collector.DeployHopperCommand;
+import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
@@ -85,7 +87,9 @@ public class RobotContainer {
     );
 
     m_mechanismController.b().onTrue(
-      new DeployCollectorCommand(m_collector)
+     // new DeployHopperCommand(m_collector).andThen(
+        new RunCollectorCommand(m_collector)
+     // )
     );
 
     m_mechanismController.x().onTrue(
@@ -105,7 +109,7 @@ public class RobotContainer {
     );
   }
 
-  private double getSpeedLimit() {
+  public double getSpeedLimit() {
     if (m_driverController.rightBumper().getAsBoolean()) {
       return OperatorConstants.kTurboSpeedLimit;
     } else if (m_driverController.leftBumper().getAsBoolean()) {

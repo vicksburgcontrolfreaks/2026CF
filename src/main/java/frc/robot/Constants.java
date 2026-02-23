@@ -58,12 +58,12 @@ public final class Constants {
 
   @SuppressWarnings("removal")
   public static class ShooterConstants {
-    public static final int kRightShooterId = 16;
-    public static final int kFloorMotorId = 17;
-    public static final int kIndexerMotorId = 18;
-    public static final int kLeftShooterId = 19;
+    public static final int kRightShooterId = 15;
+    public static final int kFloorMotorId = 13;
+    public static final int kIndexerMotorId = 14;
+    public static final int kLeftShooterId = 16;
 
-    public static final int kMotorCurrentLimit = 60;
+    public static final int kMotorCurrentLimit = 40;
 
     public static final double kVelocityP = 0.001;
     public static final double kVelocityI = 0.0;
@@ -269,7 +269,7 @@ public final class Constants {
 
     public static final int kMotorCurrentLimit = 40;
 
-    public static final double kCollectorSpeed = 0.1;
+    public static final double kCollectorSpeed = 0.5;
     public static final double kHopperMaxSpeed = 0.5;
     public static final double kHopperGearRatio = 81.0;
 
