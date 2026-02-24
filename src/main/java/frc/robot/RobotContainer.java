@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import java.util.Queue;
+
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
@@ -87,13 +89,15 @@ public class RobotContainer {
     );
 
     m_mechanismController.b().onTrue(
-     // new DeployHopperCommand(m_collector).andThen(
+    //  new DeployHopperCommand(m_collector).andThen(
         new RunCollectorCommand(m_collector)
-     // )
+        .alongWith(Commands.run(() -> m_testMotors.runFloor(), m_testMotors))
+    //  )
     );
 
     m_mechanismController.x().onTrue(
       new StopCollectorCommand(m_collector)
+      .alongWith(Commands.run(() -> m_testMotors.StopFloor(), m_testMotors))
     );
 
     m_mechanismController.povUp().onTrue(

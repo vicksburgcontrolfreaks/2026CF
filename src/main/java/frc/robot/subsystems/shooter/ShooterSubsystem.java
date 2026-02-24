@@ -86,6 +86,14 @@ public class ShooterSubsystem extends SubsystemBase {
     );
   }
 
+  public void runFloor() {
+    m_floorMotor.set(-0.1);
+  }
+
+  public void StopFloor() {
+    m_floorMotor.set(0);
+  }
+
   public void stopAll() {
     m_rightShooterMotor.set(0);
     m_floorMotor.set(0);
