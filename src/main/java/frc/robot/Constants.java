@@ -266,16 +266,21 @@ public final class Constants {
     public static final int kUpperCollectorMotorId = 10;
     public static final int kLowerCollectorMotorId = 11;
     public static final int kHopperMotorId = 12;
+    public static final int kLimitSwitchDIO = 0;
 
     public static final int kMotorCurrentLimit = 40;
 
     public static final double kCollectorSpeed = 0.5;
     public static final double kHopperMaxSpeed = 0.5;
+    public static final double kHopperSlowSpeed = 0.15;
     public static final double kHopperGearRatio = 81.0;
 
     public static final double kHopperRetractedPosition = 0.0;
+    public static final double kHopperExtendedPosition = 50.0;
     public static final double kHopperDeployedPosition = 5.0;
     public static final double kHopperPositionTolerance = 0.1;
+    public static final double kHopperSlowZoneThreshold = 200.0;
+    public static final double kHopperSwitchOffsetTicks = 50.0;
 
     public static final double kHopperP = 0.1;
     public static final double kHopperI = 0.0;

@@ -11,9 +11,11 @@ import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.CollectorConstants;
 import frc.robot.Constants.TelemetryConstants;
@@ -22,8 +24,10 @@ public class CollectorSubsystem extends SubsystemBase {
   private final SparkFlex m_upperCollectorMotor;
   private final SparkFlex m_lowerCollectorMotor;
   private final SparkMax m_hopperMotor;
+  private final DigitalInput m_limitSwitch;
 
   private double m_hopperTargetPosition = 0.0;
+  private boolean m_lastSwitchState = false;
   private int m_telemetryCounter = 0;
 
   private final NetworkTable m_telemetryTable;
@@ -34,11 +38,13 @@ public class CollectorSubsystem extends SubsystemBase {
   private final DoublePublisher m_upperCollectorCurrentPub;
   private final DoublePublisher m_lowerCollectorCurrentPub;
   private final DoublePublisher m_hopperCurrentPub;
+  private final BooleanPublisher m_limitSwitchPub;
 
   public CollectorSubsystem() {
     m_upperCollectorMotor = new SparkFlex(CollectorConstants.kUpperCollectorMotorId, MotorType.kBrushless);
     m_lowerCollectorMotor = new SparkFlex(CollectorConstants.kLowerCollectorMotorId, MotorType.kBrushless);
     m_hopperMotor = new SparkMax(CollectorConstants.kHopperMotorId, MotorType.kBrushless);
+    m_limitSwitch = new DigitalInput(CollectorConstants.kLimitSwitchDIO);
 
     m_upperCollectorMotor.configure(CollectorConstants.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_lowerCollectorMotor.configure(CollectorConstants.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
@@ -52,6 +58,7 @@ public class CollectorSubsystem extends SubsystemBase {
     m_upperCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Upper Collector Current").publish();
     m_lowerCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Lower Collector Current").publish();
     m_hopperCurrentPub = m_telemetryTable.getDoubleTopic("Hopper Current").publish();
+    m_limitSwitchPub = m_telemetryTable.getBooleanTopic("Limit Switch").publish();
   }
 
   public void runCollector() {
@@ -76,6 +83,10 @@ public class CollectorSubsystem extends SubsystemBase {
     return Math.abs(getHopperPosition() - targetPosition) < CollectorConstants.kHopperPositionTolerance;
   }
 
+  public boolean isLimitSwitchPressed() {
+    return m_limitSwitch.get();
+  }
+
   public void stopAll() {
     m_upperCollectorMotor.set(0);
     m_lowerCollectorMotor.set(0);
@@ -97,20 +108,22 @@ public class CollectorSubsystem extends SubsystemBase {
     double currentPosition = getHopperPosition();
     double error = m_hopperTargetPosition - currentPosition;
     double distance = Math.abs(error);
-    double maxDistance = Math.abs(CollectorConstants.kHopperDeployedPosition - CollectorConstants.kHopperRetractedPosition);
 
     if (distance < CollectorConstants.kHopperPositionTolerance) {
       m_hopperMotor.set(0);
       return;
     }
 
-    double progress = 1.0 - (distance / maxDistance);
-    double speedMultiplier = calculateEasing(progress);
-    double speed = CollectorConstants.kHopperMaxSpeed * speedMultiplier;
-    speed = Math.max(speed, 0.1);
+    double speed;
 
     if (error < 0) {
-      speed *= -1;
+      if (currentPosition < CollectorConstants.kHopperSlowZoneThreshold) {
+        speed = -CollectorConstants.kHopperSlowSpeed;
+      } else {
+        speed = -CollectorConstants.kHopperMaxSpeed;
+      }
+    } else {
+      speed = CollectorConstants.kHopperMaxSpeed;
     }
 
     m_hopperMotor.set(speed);
@@ -118,6 +131,15 @@ public class CollectorSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    boolean currentSwitchState = isLimitSwitchPressed();
+
+    if (currentSwitchState && !m_lastSwitchState) {
+      m_hopperMotor.getEncoder().setPosition(0.0);
+      m_hopperTargetPosition = CollectorConstants.kHopperSwitchOffsetTicks;
+    }
+
+    m_lastSwitchState = currentSwitchState;
+
     updateHopperMotion();
 
     m_telemetryCounter++;
@@ -132,6 +154,7 @@ public class CollectorSubsystem extends SubsystemBase {
       m_upperCollectorCurrentPub.set(m_upperCollectorMotor.getOutputCurrent());
       m_lowerCollectorCurrentPub.set(m_lowerCollectorMotor.getOutputCurrent());
       m_hopperCurrentPub.set(m_hopperMotor.getOutputCurrent());
+      m_limitSwitchPub.set(currentSwitchState);
     }
   }
 }

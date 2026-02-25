@@ -14,9 +14,7 @@ public class DeployHopperCommand extends Command {
 
     @Override
     public void initialize() {
-        if (m_hopper.getHopperPosition() != CollectorConstants.kHopperDeployedPosition) {
-            m_hopper.setHopperPosition(CollectorConstants.kHopperDeployedPosition);
-        }
+        m_hopper.setHopperPosition(CollectorConstants.kHopperExtendedPosition);
     }
 
     @Override
@@ -24,4 +22,9 @@ public class DeployHopperCommand extends Command {
 
     @Override
     public void end(boolean interrupted) {}
+
+    @Override
+    public boolean isFinished() {
+        return m_hopper.isHopperAtPosition(CollectorConstants.kHopperExtendedPosition);
+    }
 }
