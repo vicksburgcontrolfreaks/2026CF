@@ -4,16 +4,13 @@
 
 package frc.robot;
 
-import java.util.Queue;
-
-import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.collector.DeployHopperCommand;
+import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
@@ -38,8 +35,6 @@ public class RobotContainer {
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
-
-  //private final SendableChooser<Command> m_autoChooser;
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
@@ -89,15 +84,13 @@ public class RobotContainer {
     );
 
     m_mechanismController.b().onTrue(
-    //  new DeployHopperCommand(m_collector).andThen(
-        new RunCollectorCommand(m_collector)
+      new RunCollectorCommand(m_collector)
         .alongWith(Commands.run(() -> m_testMotors.runFloor(), m_testMotors))
-    //  )
     );
 
     m_mechanismController.x().onTrue(
       new StopCollectorCommand(m_collector)
-      .alongWith(Commands.run(() -> m_testMotors.StopFloor(), m_testMotors))
+        .alongWith(Commands.run(() -> m_testMotors.StopFloor(), m_testMotors))
     );
 
     m_mechanismController.povUp().onTrue(
@@ -111,6 +104,14 @@ public class RobotContainer {
         ShooterSubsystem.setKTargetRPM(getSpeedLimit() - 1000);
       })
     );
+
+    m_mechanismController.povLeft().onTrue(
+      new DeployHopperCommand(m_collector)
+    );
+
+    m_mechanismController.povRight().onTrue(
+      new RetractHopperCommand(m_collector)
+    );
   }
 
   public double getSpeedLimit() {
@@ -123,11 +124,10 @@ public class RobotContainer {
     }
   }
 
-/*
   public Command getAutonomousCommand() {
-    return m_autoChooser.getSelected();
+    return null;
   }
-*/
+
 
   public SwerveDriveSubsystem getSwerveDrive() {
     return m_swerveDrive;

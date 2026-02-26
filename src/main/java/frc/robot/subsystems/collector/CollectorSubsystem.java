@@ -9,8 +9,6 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
-
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
@@ -62,8 +60,8 @@ public class CollectorSubsystem extends SubsystemBase {
   }
 
   public void runCollector() {
-    m_upperCollectorMotor.set(CollectorConstants.kCollectorSpeed);
-    m_lowerCollectorMotor.set(-CollectorConstants.kCollectorSpeed);
+    m_upperCollectorMotor.set(-CollectorConstants.kCollectorSpeed);
+    m_lowerCollectorMotor.set(CollectorConstants.kCollectorSpeed);
   }
 
   public void stopCollector() {
@@ -91,17 +89,6 @@ public class CollectorSubsystem extends SubsystemBase {
     m_upperCollectorMotor.set(0);
     m_lowerCollectorMotor.set(0);
     m_hopperMotor.set(0);
-  }
-
-  private double calculateEasing(double progress) {
-    progress = MathUtil.clamp(progress, 0.0, 1.0);
-
-    if (progress < 0.5) {
-      return 2 * progress * progress;
-    } else {
-      double p = progress - 1;
-      return 1 - 2 * p * p;
-    }
   }
 
   private void updateHopperMotion() {
