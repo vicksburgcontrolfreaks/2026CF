@@ -21,8 +21,6 @@ import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.commands.auto.DriveAimShootCommand;
-import frc.robot.commands.drive.SwerveDriveCommand;
-import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
@@ -40,7 +38,6 @@ public class RobotContainer {
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
-  private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
   private final ClimberSubsystem m_climber = new ClimberSubsystem();
 
   private final CommandXboxController m_driverController;
@@ -53,7 +50,7 @@ public class RobotContainer {
       m_mechanismController = new CommandXboxController(OperatorConstants.kMechanismControllerPort);
 
       // Create autonomous command
-      m_autoCommand = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_testMotors);
+      m_autoCommand = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_shooterSubsystem);
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -99,18 +96,7 @@ public class RobotContainer {
       Commands.run(() -> {
         m_shooterSubsystem.runAllMotors();
       }, m_shooterSubsystem)
-      .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
-        // Get distance to speaker from vision
-        double distance = m_visionSubsystem.getDistanceToSpeaker();
-
-        // Calculate RPM based on distance
-        double targetRPM = ShooterConstants.getRPMForDistance(distance);
-
-        // Run motors at calculated RPM
-        m_testMotors.runAllMotors(targetRPM);
-      }, m_testMotors)
-      .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
-    );
+      .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit)));
 
     // Y button: Stop all shooter motors
     m_mechanismController.y().onTrue(
