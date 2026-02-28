@@ -7,6 +7,7 @@ package frc.robot.subsystems.collector;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 import edu.wpi.first.networktables.BooleanPublisher;
@@ -92,28 +93,10 @@ public class CollectorSubsystem extends SubsystemBase {
   }
 
   private void updateHopperMotion() {
-    double currentPosition = getHopperPosition();
-    double error = m_hopperTargetPosition - currentPosition;
-    double distance = Math.abs(error);
-
-    if (distance < CollectorConstants.kHopperPositionTolerance) {
-      m_hopperMotor.set(0);
-      return;
-    }
-
-    double speed;
-
-    if (error < 0) {
-      if (currentPosition < CollectorConstants.kHopperSlowZoneThreshold) {
-        speed = -CollectorConstants.kHopperSlowSpeed;
-      } else {
-        speed = -CollectorConstants.kHopperMaxSpeed;
-      }
-    } else {
-      speed = CollectorConstants.kHopperMaxSpeed;
-    }
-
-    m_hopperMotor.set(speed);
+    m_hopperMotor.getClosedLoopController().setSetpoint(
+      m_hopperTargetPosition,
+      ControlType.kPosition
+    );
   }
 
   @Override

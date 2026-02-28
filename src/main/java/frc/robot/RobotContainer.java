@@ -4,15 +4,19 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.collector.DeployHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
+import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
@@ -30,7 +34,7 @@ public class RobotContainer {
   private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
-  private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
 
   private final CommandXboxController m_driverController;
@@ -67,30 +71,39 @@ public class RobotContainer {
     m_driverController.start().onTrue(
       m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
     );
+
+    m_driverController.y().onTrue(
+      Commands.either(
+        new RotateToTargetCommand(m_swerveDrive, AutoConstants.blueTarget),
+        new RotateToTargetCommand(m_swerveDrive, AutoConstants.redTarget),
+        () -> DriverStation.getAlliance().isPresent() &&
+              DriverStation.getAlliance().get() == Alliance.Blue
+      )
+    );
   }
 
   private void configureMechanismBindings() {
     m_mechanismController.a().whileTrue(
       Commands.run(() -> {
-        m_testMotors.runAllMotors();
-      }, m_testMotors)
-      .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
+        m_shooterSubsystem.runAllMotors();
+      }, m_shooterSubsystem)
+      .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
     );
 
     m_mechanismController.y().onTrue(
       Commands.run(() -> {
-        m_testMotors.stopAll();
-      }, m_testMotors)
+        m_shooterSubsystem.stopAll();
+      }, m_shooterSubsystem)
     );
 
     m_mechanismController.b().onTrue(
       new RunCollectorCommand(m_collector)
-        .alongWith(Commands.run(() -> m_testMotors.runFloor(), m_testMotors))
+        .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(), m_shooterSubsystem))
     );
 
     m_mechanismController.x().onTrue(
       new StopCollectorCommand(m_collector)
-        .alongWith(Commands.run(() -> m_testMotors.StopFloor(), m_testMotors))
+        .alongWith(Commands.run(() -> m_shooterSubsystem.StopFloor(), m_shooterSubsystem))
     );
 
     m_mechanismController.povUp().onTrue(

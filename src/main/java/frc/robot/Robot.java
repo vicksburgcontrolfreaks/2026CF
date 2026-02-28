@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
  */
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
+  @SuppressWarnings("unused")
   private final RobotContainer m_robotContainer;
 
   /**
@@ -45,11 +46,7 @@ public class Robot extends TimedRobot {
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {
-    // Set all LEDs to red when robot is disabled/idle
-    m_robotContainer.getLEDSubsystem().setAllLEDsRed();
-    System.out.println(">>> DISABLED MODE - LEDs set to RED <<<");
-  }
+  public void disabledInit() {}
 
   @Override
   public void disabledPeriodic() {}
