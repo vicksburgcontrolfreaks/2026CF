@@ -58,19 +58,18 @@ public final class Constants {
 
   @SuppressWarnings("removal")
   public static class ShooterConstants {
-    
-    public static final int kFloorMotorId   = 13;
-    public static final int kIndexerMotorId = 14;
-
     public static final int kRightShooterId = 15;
-    public static final int kLeftShooterId  = 16;
+    public static final int kFloorMotorId = 13;
+    public static final int kIndexerMotorId = 14;
+    public static final int kLeftShooterId = 16;
 
-    public static final int kMotorCurrentLimit = 60;
+    public static final int kMotorCurrentLimit = 40;
 
     public static final double kVelocityP = 0.001;
     public static final double kVelocityI = 0.0;
     public static final double kVelocityD = 0.0;
     public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
+    
     public static final double kTargetRPM = 3000; // Default/fallback RPM value
     // max rpm 6784
 
@@ -223,15 +222,6 @@ public final class Constants {
     public static final double kWheelCoefficientOfFriction = 1.2; // Wheel coefficient of friction
     public static final int kNumMotorsPerModule = 1; 
 
-    public static final double kDriveP = 0.04;
-    public static final double kDriveI = 0.0;
-    public static final double kDriveD = 0.0;
-    public static final double kDriveFF = 1.565;
-
-    public static final double kSteerP = 1.0;
-    public static final double kSteerI = 0.0;
-    public static final double kSteerD = 0.0;
-
     public static final double kTrackWidthMeters = Units.inchesToMeters(18.5);
     public static final double kWheelBaseMeters = Units.inchesToMeters(18.5);
 
@@ -256,11 +246,6 @@ public final class Constants {
     public static final double kXFormationAngleFrontRight = -45.0;
     public static final double kXFormationAngleBackLeft = -45.0;
     public static final double kXFormationAngleBackRight = 45.0;
-
-    public static final double kYawCorrectionThresholdDegrees = 3.0;
-    public static final double kYawCorrectionToleranceDegrees = 0.3;
-    public static final double kYawCorrectionMaxPower = 0.07;
-    public static final double kYawCorrectionMaxPowerLateral = 0.09;
 
     public static final double kTranslationSlewRate = 3.0;
     public static final double kRotationSlewRate = 3.0;
@@ -350,31 +335,41 @@ public final class Constants {
     public static final double kIRotation = 0.25;  // Small I term to eliminate steady-state error
     public static final double kDRotation = 0.1;   // Small D term to reduce oscillation
 
-    // PID constants for auto-align to target (separate from general rotation)
-    public static final double kPRotationAutoAlign = 7.5;
-    public static final double kIRotationAutoAlign = 0.0;
-    public static final double kDRotationAutoAlign = 0.3;
+    public static final Translation2d blueTarget = new Translation2d(
+      4.639,
+      4.02
+    );
 
-    public static final double kBlueTargetX = 4.639;
-    public static final double kBlueTargetY = 4.02;
-    public static final double kRedTargetX = 11.942;
-    public static final double kRedTargetY = 4.02;
+    public static final Translation2d redTarget = new Translation2d(
+      11.942,
+      4.02
+    );
+
+    // RotateToTarget constants
+    public static final double kRotateToTargetP = 0.02;
+    public static final double kRotateToTargetI = 0.0001;
+    public static final double kRotateToTargetD = 0.003;
+    public static final double kRotateToTargetTolerance = 2.0;  // degrees
+    public static final double kRotateToTargetMaxVelocity = 0.5;  // fraction of max angular velocity
   }
 
   public static class CollectorConstants {
     public static final int kUpperCollectorMotorId = 10;
     public static final int kLowerCollectorMotorId = 11;
     public static final int kHopperMotorId = 12;
+    public static final int kLimitSwitchDIO = 0;
 
     public static final int kMotorCurrentLimit = 40;
 
-    public static final double kCollectorSpeed = 0.1;
+    public static final double kCollectorSpeed = 0.5;
     public static final double kHopperMaxSpeed = 0.5;
     public static final double kHopperGearRatio = 81.0;
 
     public static final double kHopperRetractedPosition = 0.0;
+    public static final double kHopperExtendedPosition = 50.0;
     public static final double kHopperDeployedPosition = 5.0;
     public static final double kHopperPositionTolerance = 0.1;
+    public static final double kHopperSwitchOffsetTicks = 50.0;
 
     public static final double kHopperP = 0.1;
     public static final double kHopperI = 0.0;
@@ -400,42 +395,12 @@ public final class Constants {
   }
 
   public static class LEDConstants {
+    // Hardware configuration
     public static final int kLEDPort = 0;
     public static final int kLEDCount = 23;
 
-    public static final int kBlinkSpeed = 500;
-    public static final int kBreatheSpeed = 50;
-
-    public static final int kRainbowHueIncrement = 3;
-    public static final int kRainbowHueModulo = 180;
-    public static final int kChaseTailLength = 3;
-    public static final double kChaseBrightnessFade = 0.3;
-
-    public static final int kCycleCounterModulo = 4;
-
-    public static final int kStartupTestR = 255;
-    public static final int kStartupTestG = 255;
-    public static final int kStartupTestB = 255;
-
-    public static final int[] kOffColor = {0, 0, 0};
-    public static final int[] kRedColor = {255, 0, 0};
+    // Color definitions (RGB values 0-255)
     public static final int[] kGreenColor = {0, 255, 0};
-    public static final int[] kBlueColor = {0, 0, 255};
-    public static final int[] kYellowColor = {255, 255, 0};
-    public static final int[] kPurpleColor = {128, 0, 128};
-    public static final int[] kOrangeColor = {255, 165, 0};
-    public static final int[] kWhiteColor = {255, 255, 255};
-
-    public static final int[] kAllianceRedColor = {255, 0, 0};
-    public static final int[] kAllianceBlueColor = {0, 0, 255};
-
-    public static final int[] kDisabledColor = {255, 165, 0};
-    public static final int[] kAutonomousColor = {0, 255, 0};
-    public static final int[] kTeleopColor = {0, 0, 255};
-    public static final int[] kErrorColor = {255, 0, 0};
-
-    public static final int[] kAprilTagDetectedColor = {0, 255, 0};
-    public static final int[] kAprilTagMultipleColor = {255, 255, 0};
-    public static final int[] kAprilTagAlignedColor = {0, 255, 255};
+    public static final int[] kOffColor = {0, 0, 0};
   }
 }

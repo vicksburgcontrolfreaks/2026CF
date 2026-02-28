@@ -40,6 +40,9 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher m_indexerVelocityPub;
   private final DoublePublisher m_leftShooterVelocityPub;
 
+  private static double kTargetRPM = 3000; // 40% of max velocity
+  // max rpm 6784 
+
   public ShooterSubsystem() {
     m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
@@ -70,22 +73,6 @@ public class ShooterSubsystem extends SubsystemBase {
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
   }
 
-  public void runRightShooter(double speed) {
-    m_rightShooterMotor.set(speed);
-  }
-
-  public void runFloorMotor(double speed) {
-    m_floorMotor.set(speed);
-  }
-
-  public void runIndexer(double speed) {
-    m_indexerMotor.set(speed);
-  }
-
-  public void runLeftShooter(double speed) {
-    m_leftShooterMotor.set(speed);
-  }
-
   public void runAllMotors() {
     runAllMotors(ShooterConstants.kTargetRPM);
   }
@@ -93,16 +80,29 @@ public class ShooterSubsystem extends SubsystemBase {
   public void runAllMotors(double targetRPM) {
     // Right shooter is the leader - left follows automatically (inverted)
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
+      -kTargetRPM,
       ControlType.kVelocity
     );
 
     m_floorMotor.set(-0.1);
 
     m_indexerMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
+      kTargetRPM,
       ControlType.kVelocity
     );
+
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      kTargetRPM,
+      ControlType.kVelocity
+    );
+  }
+
+  public void runFloor() {
+    m_floorMotor.set(-0.1);
+  }
+
+  public void StopFloor() {
+    m_floorMotor.set(0);
   }
 
   public void stopAll() {
@@ -139,6 +139,15 @@ public class ShooterSubsystem extends SubsystemBase {
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
       m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
+    }
+  }
+
+  public static double getKTargetRPM() {
+    return kTargetRPM;
+  }
+  public static void setKTargetRPM(double newRPM) {
+    if (newRPM <= 6784) {
+      kTargetRPM = newRPM;
     }
   }
 }

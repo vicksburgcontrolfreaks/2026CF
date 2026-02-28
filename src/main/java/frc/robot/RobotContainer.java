@@ -5,12 +5,21 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.commands.collector.DeployHopperCommand;
+import frc.robot.commands.collector.RetractHopperCommand;
+import frc.robot.commands.collector.RunCollectorCommand;
+import frc.robot.commands.collector.StopCollectorCommand;
+import frc.robot.commands.drive.RotateToTargetCommand;
+import frc.robot.commands.drive.SwerveDriveCommand;
+import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
@@ -29,6 +38,8 @@ public class RobotContainer {
   private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
+  private final CollectorSubsystem m_collector = new CollectorSubsystem();
   private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
   private final ClimberSubsystem m_climber = new ClimberSubsystem();
 
@@ -74,20 +85,10 @@ public class RobotContainer {
 
     m_driverController.y().onTrue(
       Commands.either(
-        m_swerveDrive.rotateToTarget(AutoConstants.kRedTargetX, AutoConstants.kRedTargetY),
-        m_swerveDrive.rotateToTarget(AutoConstants.kBlueTargetX, AutoConstants.kBlueTargetY),
-        () -> {
-          var alliance = DriverStation.getAlliance();
-          return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
-        }
-      ).andThen(
-        // Hold X-formation until driver gives any stick input
-        m_swerveDrive.run(() -> m_swerveDrive.setX())
-          .until(() ->
-            Math.abs(m_driverController.getLeftY()) > 0.1 ||
-            Math.abs(m_driverController.getLeftX()) > 0.1 ||
-            Math.abs(m_driverController.getRightX()) > 0.1
-          )
+        new RotateToTargetCommand(m_swerveDrive, AutoConstants.blueTarget),
+        new RotateToTargetCommand(m_swerveDrive, AutoConstants.redTarget),
+        () -> DriverStation.getAlliance().isPresent() &&
+              DriverStation.getAlliance().get() == Alliance.Blue
       )
     );
   }
@@ -96,6 +97,9 @@ public class RobotContainer {
     // A button: Run shooter with distance-based RPM
     m_mechanismController.a().whileTrue(
       Commands.run(() -> {
+        m_shooterSubsystem.runAllMotors();
+      }, m_shooterSubsystem)
+      .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
         // Get distance to speaker from vision
         double distance = m_visionSubsystem.getDistanceToSpeaker();
 
@@ -111,8 +115,38 @@ public class RobotContainer {
     // Y button: Stop all shooter motors
     m_mechanismController.y().onTrue(
       Commands.run(() -> {
-        m_testMotors.stopAll();
-      }, m_testMotors)
+        m_shooterSubsystem.stopAll();
+      }, m_shooterSubsystem)
+    );
+
+    m_mechanismController.b().onTrue(
+      new RunCollectorCommand(m_collector)
+        .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(), m_shooterSubsystem))
+    );
+
+    m_mechanismController.x().onTrue(
+      new StopCollectorCommand(m_collector)
+        .alongWith(Commands.run(() -> m_shooterSubsystem.StopFloor(), m_shooterSubsystem))
+    );
+
+    m_mechanismController.povUp().onTrue(
+      Commands.run(() -> {
+        ShooterSubsystem.setKTargetRPM(getSpeedLimit() + 1000);
+      })
+    );
+
+    m_mechanismController.povDown().onTrue(
+      Commands.run(() -> {
+        ShooterSubsystem.setKTargetRPM(getSpeedLimit() - 1000);
+      })
+    );
+
+    m_mechanismController.povLeft().onTrue(
+      new DeployHopperCommand(m_collector)
+    );
+
+    m_mechanismController.povRight().onTrue(
+      new RetractHopperCommand(m_collector)
     );
 
     // X button: Extend climber to full extension
@@ -146,7 +180,7 @@ public class RobotContainer {
     );
   }
 
-  private double getSpeedLimit() {
+  public double getSpeedLimit() {
     if (m_driverController.rightBumper().getAsBoolean()) {
       return OperatorConstants.kTurboSpeedLimit;
     } else if (m_driverController.leftBumper().getAsBoolean()) {
