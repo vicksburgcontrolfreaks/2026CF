@@ -4,6 +4,7 @@
 
 package frc.robot.commands.auto;
 
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
@@ -38,23 +39,17 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
     // Get the alliance color from the FRC Driver Station
     Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
 
-    // Determine which target coordinates to use based on alliance color
-    double targetX;
-    double targetY;
+    Translation2d target;
 
     if (alliance == Alliance.Red) {
-      targetX = AutoConstants.kRedTargetX;
-      targetY = AutoConstants.kRedTargetY;
-      System.out.println("Auto: Red Alliance - targeting speaker at (" + targetX + ", " + targetY + ")");
+      target = AutoConstants.redTarget;
     } else {
-      targetX = AutoConstants.kBlueTargetX;
-      targetY = AutoConstants.kBlueTargetY;
-      System.out.println("Auto: Blue Alliance - targeting speaker at (" + targetX + ", " + targetY + ")");
+      target = AutoConstants.blueTarget;
     }
 
     addCommands(
       // Step 1: Rotate to face the speaker target
-      new RotateToTargetCommand(swerveDrive, targetX, targetY),
+      new RotateToTargetCommand(swerveDrive, target),
 
       // Step 2: Drive toward speaker until within 2 meters
       Commands.run(() -> {
@@ -74,7 +69,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
       }, swerveDrive),
 
       // Step 4: Fine-tune rotation to face speaker
-      new RotateToTargetCommand(swerveDrive, targetX, targetY),
+      new RotateToTargetCommand(swerveDrive, target),
 
       // Step 5: Spin up shooter and shoot for 3 seconds
       Commands.run(() -> {
