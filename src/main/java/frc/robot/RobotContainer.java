@@ -20,6 +20,10 @@ import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
+import frc.robot.commands.auto.DriveAimShootCommand;
+import frc.robot.commands.drive.SwerveDriveCommand;
+import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
@@ -36,13 +40,20 @@ public class RobotContainer {
   private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
+  private final ShooterSubsystem m_testMotors = new ShooterSubsystem();
+  private final ClimberSubsystem m_climber = new ClimberSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
+  private final Command m_autoCommand;
+
   public RobotContainer() {
       m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OperatorConstants.kMechanismControllerPort);
+
+      // Create autonomous command
+      m_autoCommand = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_testMotors);
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -83,13 +94,25 @@ public class RobotContainer {
   }
 
   private void configureMechanismBindings() {
+    // A button: Run shooter with distance-based RPM
     m_mechanismController.a().whileTrue(
       Commands.run(() -> {
         m_shooterSubsystem.runAllMotors();
       }, m_shooterSubsystem)
       .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
+        // Get distance to speaker from vision
+        double distance = m_visionSubsystem.getDistanceToSpeaker();
+
+        // Calculate RPM based on distance
+        double targetRPM = ShooterConstants.getRPMForDistance(distance);
+
+        // Run motors at calculated RPM
+        m_testMotors.runAllMotors(targetRPM);
+      }, m_testMotors)
+      .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
     );
 
+    // Y button: Stop all shooter motors
     m_mechanismController.y().onTrue(
       Commands.run(() -> {
         m_shooterSubsystem.stopAll();
@@ -125,6 +148,36 @@ public class RobotContainer {
     m_mechanismController.povRight().onTrue(
       new RetractHopperCommand(m_collector)
     );
+
+    // X button: Extend climber to full extension
+    m_mechanismController.x().onTrue(
+      Commands.runOnce(() -> {
+        m_climber.extend();
+      }, m_climber)
+    );
+
+    // B button: Retract climber to full retraction
+    m_mechanismController.b().onTrue(
+      Commands.runOnce(() -> {
+        m_climber.retract();
+      }, m_climber)
+    );
+
+    // D-pad Up: Manual climber extend
+    m_mechanismController.povUp().whileTrue(
+      Commands.run(() -> {
+        m_climber.setSpeed(0.5);
+      }, m_climber)
+      .finallyDo(() -> m_climber.stop())
+    );
+
+    // D-pad Down: Manual climber retract
+    m_mechanismController.povDown().whileTrue(
+      Commands.run(() -> {
+        m_climber.setSpeed(-0.5);
+      }, m_climber)
+      .finallyDo(() -> m_climber.stop())
+    );
   }
 
   public double getSpeedLimit() {
@@ -138,9 +191,8 @@ public class RobotContainer {
   }
 
   public Command getAutonomousCommand() {
-    return null;
+    return m_autoCommand;
   }
-
 
   public SwerveDriveSubsystem getSwerveDrive() {
     return m_swerveDrive;

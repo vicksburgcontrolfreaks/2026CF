@@ -70,6 +70,24 @@ public final class Constants {
     public static final double kVelocityD = 0.0;
     public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
     
+    public static final double kTargetRPM = 3000; // Default/fallback RPM value
+    // max rpm 6784
+
+    // Shooter velocity lookup table: distance (meters) -> RPM
+    // TODO: Replace these example values with actual tested values
+    public static final double[][] kShooterVelocityTable = {
+      // {distance in meters, RPM}
+      {1.0, 2500},  // Very close shot
+      {2.0, 3000},  // Close shot
+      {3.0, 3500},  // Medium shot
+      {4.0, 4000},  // Medium-far shot
+      {5.0, 4500},  // Far shot
+      {6.0, 5000}   // Very far shot
+    };
+
+    // Default RPM when distance is unavailable
+    public static final double kDefaultRPM = 3000;
+
     public static final SparkFlexConfig config = new SparkFlexConfig();
 
     static {
@@ -79,6 +97,86 @@ public final class Constants {
           .closedLoop
             .pid(kVelocityP, kVelocityI, kVelocityD)
             .velocityFF(kVelocityFF);
+    }
+
+    /**
+     * Get shooter RPM for a given distance to target using linear interpolation
+     * @param distance Distance to target in meters
+     * @return Target RPM for the shooter wheels
+     */
+    public static double getRPMForDistance(double distance) {
+      // If distance is invalid, return default
+      if (distance <= 0) {
+        return kDefaultRPM;
+      }
+
+      // If distance is before first entry, use first RPM
+      if (distance <= kShooterVelocityTable[0][0]) {
+        return kShooterVelocityTable[0][1];
+      }
+
+      // If distance is beyond last entry, use last RPM
+      if (distance >= kShooterVelocityTable[kShooterVelocityTable.length - 1][0]) {
+        return kShooterVelocityTable[kShooterVelocityTable.length - 1][1];
+      }
+
+      // Linear interpolation between two nearest points
+      for (int i = 0; i < kShooterVelocityTable.length - 1; i++) {
+        double dist1 = kShooterVelocityTable[i][0];
+        double dist2 = kShooterVelocityTable[i + 1][0];
+
+        if (distance >= dist1 && distance <= dist2) {
+          double rpm1 = kShooterVelocityTable[i][1];
+          double rpm2 = kShooterVelocityTable[i + 1][1];
+
+          // Linear interpolation formula: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+          double ratio = (distance - dist1) / (dist2 - dist1);
+          return rpm1 + ratio * (rpm2 - rpm1);
+        }
+      }
+
+      return kDefaultRPM;
+    }
+  }
+
+  public static class ClimberConstants {
+    public static final int kLeftClimberMotorId  = 17;
+    public static final int kRightClimberMotorId = 18;
+
+    public static final int kMotorCurrentLimit = 40;
+
+    // Position control PID constants
+    public static final double kPositionP = 0.1;
+    public static final double kPositionI = 0.0;
+    public static final double kPositionD = 0.0;
+
+    // Position setpoints (in rotations)
+    // TODO: Tune these values based on your actual climber mechanism
+    public static final double kRetractedPosition = 0.0;    // Fully retracted
+    public static final double kExtendedPosition = 100.0;   // Fully extended
+
+    // Position tolerance for checking if at target
+    public static final double kPositionTolerance = 2.0;
+
+    // Maximum speed for manual control
+    public static final double kManualSpeed = 0.5;
+
+    // Soft limits (in rotations)
+    public static final double kSoftLimitMin = -5.0;   // Safety buffer below retracted
+    public static final double kSoftLimitMax = 105.0;  // Safety buffer above extended
+
+    public static final SparkMaxConfig config = new SparkMaxConfig();
+
+    static {
+      config
+          .idleMode(IdleMode.kBrake)  // Brake mode to hold position
+          .smartCurrentLimit(kMotorCurrentLimit);
+
+      config.closedLoop
+            .pid(kPositionP, kPositionI, kPositionD);
+
+      // Note: Soft limits are enforced in software in ClimberSubsystem.setSpeed()
+      // Hardware soft limits can be configured via Phoenix Tuner if needed
     }
   }
 
@@ -235,7 +333,7 @@ public final class Constants {
 
     public static final double kPRotation = 15.0;
     public static final double kIRotation = 0.25;  // Small I term to eliminate steady-state error
-    public static final double kDRotation = 0.1;  // Small D term to reduce oscillation
+    public static final double kDRotation = 0.1;   // Small D term to reduce oscillation
 
     public static final Translation2d blueTarget = new Translation2d(
       4.639,
