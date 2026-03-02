@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
  */
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
+  @SuppressWarnings("unused")
   private final RobotContainer m_robotContainer;
 
   /**
@@ -45,11 +46,7 @@ public class Robot extends TimedRobot {
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {
-    // Set all LEDs to red when robot is disabled/idle
-    m_robotContainer.getLEDSubsystem().setAllLEDsRed();
-    System.out.println(">>> DISABLED MODE - LEDs set to RED <<<");
-  }
+  public void disabledInit() {}
 
   @Override
   public void disabledPeriodic() {}
@@ -57,12 +54,12 @@ public class Robot extends TimedRobot {
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
-    //m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
-    // schedule the autonomous command (example)
-   // if (m_autonomousCommand != null) {
-    //  CommandScheduler.getInstance().schedule(m_autonomousCommand);
-   // }
+    // Schedule the autonomous command
+    if (m_autonomousCommand != null) {
+      m_autonomousCommand.schedule();
+    }
   }
 
   /** This function is called periodically during autonomous. */

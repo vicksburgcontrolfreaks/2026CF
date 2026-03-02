@@ -7,6 +7,7 @@ package frc.robot.subsystems.shooter;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
@@ -47,12 +48,19 @@ public class ShooterSubsystem extends SubsystemBase {
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
     m_indexerMotor = new SparkFlex(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
+
     m_rightShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_floorMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_indexerMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     // Left shooter configured as follower of right shooter (both on same shaft)
-    m_leftShooterMotor.configure(ShooterConstants.leftShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    // m_leftShooterMotor.configure(ShooterConstants.leftShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+
+    // Configure left shooter to follow right shooter (inverted because they're on opposite sides of the axle)
+    var leftConfig = new com.revrobotics.spark.config.SparkFlexConfig();
+    leftConfig.follow(ShooterConstants.kRightShooterId, true);
+    
+    m_leftShooterMotor.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
     m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
     m_floorMotorSpeedPub     = m_telemetryTable.getDoubleTopic("Floor Motor Speed").publish();
@@ -69,6 +77,11 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void runAllMotors() {
+    runAllMotors(ShooterConstants.kTargetRPM);
+  }
+
+  public void runAllMotors(double targetRPM) {
+    // Right shooter is the leader - left follows automatically (inverted)
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
       -kTargetRPM,
       ControlType.kVelocity
@@ -82,6 +95,14 @@ public class ShooterSubsystem extends SubsystemBase {
     );
 
     // Left shooter follows right shooter automatically, no need to set it
+  }
+
+  public void runFloor() {
+    m_floorMotor.set(-0.1);
+  }
+
+  public void StopFloor() {
+    m_floorMotor.set(0);
   }
 
   public void stopAll() {
