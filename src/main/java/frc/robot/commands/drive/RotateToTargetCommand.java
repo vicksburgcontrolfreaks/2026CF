@@ -44,6 +44,17 @@ public class RotateToTargetCommand extends Command {
     addRequirements(swerveDrive);
   }
 
+  /**
+   * Creates a new RotateToTargetCommand with individual X and Y coordinates.
+   *
+   * @param swerveDrive The swerve drive subsystem
+   * @param targetX The target X position on the field in meters
+   * @param targetY The target Y position on the field in meters
+   */
+  public RotateToTargetCommand(SwerveDriveSubsystem swerveDrive, double targetX, double targetY) {
+    this(swerveDrive, new Translation2d(targetX, targetY));
+  }
+
   @Override
   public void initialize() {
     // Reset the PID controller

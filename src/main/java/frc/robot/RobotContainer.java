@@ -5,21 +5,23 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.commands.collector.DeployHopperCommand;
+import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
-import frc.robot.subsystems.collector.CollectorSubsystem;
-import frc.robot.commands.auto.DriveAimShootCommand;
-import frc.robot.commands.drive.SwerveDriveCommand;
-import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
+import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
@@ -93,9 +95,6 @@ public class RobotContainer {
     // A button: Run shooter with distance-based RPM
     m_mechanismController.a().whileTrue(
       Commands.run(() -> {
-        m_shooterSubsystem.runAllMotors();
-      }, m_shooterSubsystem)
-      .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
         // Get distance to speaker from vision
         double distance = m_visionSubsystem.getDistanceToSpeaker();
 
@@ -108,51 +107,44 @@ public class RobotContainer {
       .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
     );
 
+    // Y button: Stop shooter
     m_mechanismController.y().onTrue(
       Commands.run(() -> {
         m_shooterSubsystem.stopAll();
       }, m_shooterSubsystem)
     );
 
+    // B button: Run collector and floor intake
     m_mechanismController.b().onTrue(
       new RunCollectorCommand(m_collector)
         .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(), m_shooterSubsystem))
     );
 
+    // X button: Stop collector and floor intake
     m_mechanismController.x().onTrue(
       new StopCollectorCommand(m_collector)
         .alongWith(Commands.run(() -> m_shooterSubsystem.StopFloor(), m_shooterSubsystem))
     );
 
-    m_mechanismController.povUp().onTrue(
-      Commands.run(() -> {
-        ShooterSubsystem.setKTargetRPM(getSpeedLimit() + 1000);
-      })
-    );
-
-    m_mechanismController.povDown().onTrue(
-      Commands.run(() -> {
-        ShooterSubsystem.setKTargetRPM(getSpeedLimit() - 1000);
-      })
-    );
-
+    // D-pad Left: Deploy hopper
     m_mechanismController.povLeft().onTrue(
       new DeployHopperCommand(m_collector)
     );
 
+    // D-pad Right: Retract hopper
     m_mechanismController.povRight().onTrue(
       new RetractHopperCommand(m_collector)
     );
 
-    // X button: Extend climber to full extension
-    m_mechanismController.x().onTrue(
+    // Left bumper: Extend climber to full extension
+    m_mechanismController.leftBumper().onTrue(
       Commands.runOnce(() -> {
         m_climber.extend();
       }, m_climber)
     );
 
-    // B button: Retract climber to full retraction
-    m_mechanismController.b().onTrue(
+    // Right bumper: Retract climber to full retraction
+    m_mechanismController.rightBumper().onTrue(
       Commands.runOnce(() -> {
         m_climber.retract();
       }, m_climber)
