@@ -50,7 +50,8 @@ public class ShooterSubsystem extends SubsystemBase {
     m_rightShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_floorMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_indexerMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_leftShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    // Left shooter configured as follower of right shooter (both on same shaft)
+    m_leftShooterMotor.configure(ShooterConstants.leftShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
     m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
@@ -80,17 +81,14 @@ public class ShooterSubsystem extends SubsystemBase {
       ControlType.kVelocity
     );
 
-    m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      kTargetRPM,
-      ControlType.kVelocity
-    );
+    // Left shooter follows right shooter automatically, no need to set it
   }
 
   public void stopAll() {
     m_rightShooterMotor.set(0);
     m_floorMotor.set(0);
     m_indexerMotor.set(0);
-    m_leftShooterMotor.set(0);
+    // Left shooter will stop automatically when right shooter stops
   }
 
   public boolean isAnyMotorOverCurrent(double threshold) {

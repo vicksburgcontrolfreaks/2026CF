@@ -4,14 +4,10 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
-import frc.robot.commands.collector.DeployHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
@@ -80,7 +76,7 @@ public class RobotContainer {
       .until(() -> m_testMotors.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit))
     );
 
-    m_mechanismController.y().onTrue(
+    m_mechanismController.y().whileTrue(
       Commands.run(() -> {
         m_testMotors.stopAll();
       }, m_testMotors)

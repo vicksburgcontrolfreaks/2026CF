@@ -69,8 +69,9 @@ public final class Constants {
     public static final double kVelocityI = 0.0;
     public static final double kVelocityD = 0.0;
     public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
-    
+
     public static final SparkFlexConfig config = new SparkFlexConfig();
+    public static final SparkFlexConfig leftShooterConfig = new SparkFlexConfig();
 
     static {
       config
@@ -79,6 +80,12 @@ public final class Constants {
           .closedLoop
             .pid(kVelocityP, kVelocityI, kVelocityD)
             .velocityFF(kVelocityFF);
+
+      // Left shooter follows right shooter (both on same shaft, opposite directions)
+      leftShooterConfig
+          .idleMode(IdleMode.kCoast)
+          .smartCurrentLimit(kMotorCurrentLimit)
+          .follow(kRightShooterId, true);
     }
   }
 
