@@ -14,7 +14,7 @@ public class RetractHopperCommand extends Command {
 
     @Override
     public void initialize() {
-        m_hopper.setHopperPosition(CollectorConstants.kHopperRetractedPosition);
+        m_hopper.setHopperPosition(CollectorConstants.kHopperPneumaticRetractedPosition);
     }
 
     @Override
@@ -25,6 +25,6 @@ public class RetractHopperCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        return m_hopper.isLimitSwitchPressed();
+        return m_hopper.isHopperAtPosition(CollectorConstants.kHopperPneumaticRetractedPosition);
     }
 }

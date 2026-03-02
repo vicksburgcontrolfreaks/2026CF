@@ -14,7 +14,7 @@ public class DeployHopperCommand extends Command {
 
     @Override
     public void initialize() {
-        m_hopper.setHopperPosition(CollectorConstants.kHopperExtendedPosition);
+        m_hopper.setHopperPosition(CollectorConstants.kHopperPneumaticExtendedPosition);
     }
 
     @Override
@@ -25,6 +25,6 @@ public class DeployHopperCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        return m_hopper.isHopperAtPosition(CollectorConstants.kHopperExtendedPosition);
+        return m_hopper.isLimitSwitchPressed();
     }
 }

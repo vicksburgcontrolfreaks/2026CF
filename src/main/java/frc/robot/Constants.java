@@ -364,9 +364,12 @@ public final class Constants {
     public static final double kCollectorSpeed = 0.5;
     public static final double kHopperMaxSpeed = 0.5;
     public static final double kHopperGearRatio = 81.0;
+    public static final double kHopperSpoolCircumferenceMM = 109.955742876;
+    public static final double kHopperExtensionInches = 12.0;
 
-    public static final double kHopperRetractedPosition = 0.0;
-    public static final double kHopperExtendedPosition = 50.0;
+    // Pneumatic positions (from pneumatic's perspective)
+    public static final double kHopperPneumaticExtendedPosition = 0.0;      // Spool unwound, pneumatic deployed
+    public static final double kHopperPneumaticRetractedPosition = 224.5;   // Spool wound, pneumatic pulled back
     public static final double kHopperDeployedPosition = 5.0;
     public static final double kHopperPositionTolerance = 0.1;
     public static final double kHopperSwitchOffsetTicks = 50.0;
