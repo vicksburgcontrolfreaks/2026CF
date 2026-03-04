@@ -70,8 +70,11 @@ public final class Constants {
     public static final double kVelocityD = 0.0;
     public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
     
-    public static final double kTargetRPM = 3000; // Default/fallback RPM value
+    public static final double kShooterTargetRPM = 3000; // Default/fallback RPM value
     // max rpm 6784
+
+    public static final double kFloorMotorSpeed = 0.5;
+    public static final double kIndexerMotorSpeed = 0.5;
 
     // Shooter velocity lookup table: distance (meters) -> RPM
     // TODO: Replace these example values with actual tested values
@@ -140,8 +143,7 @@ public final class Constants {
   }
 
   public static class ClimberConstants {
-    public static final int kLeftClimberMotorId  = 17;
-    public static final int kRightClimberMotorId = 18;
+    public static final int kClimberMotorId  = 17;
 
     public static final int kMotorCurrentLimit = 40;
 
@@ -169,7 +171,7 @@ public final class Constants {
 
     static {
       config
-          .idleMode(IdleMode.kBrake)  // Brake mode to hold position
+          .idleMode(IdleMode.kCoast)  // Brake mode to hold position
           .smartCurrentLimit(kMotorCurrentLimit);
 
       config.closedLoop
@@ -222,8 +224,8 @@ public final class Constants {
     public static final double kWheelCoefficientOfFriction = 1.2; // Wheel coefficient of friction
     public static final int kNumMotorsPerModule = 1; 
 
-    public static final double kTrackWidthMeters = Units.inchesToMeters(18.5);
-    public static final double kWheelBaseMeters = Units.inchesToMeters(18.5);
+    public static final double kTrackWidthMeters = Units.inchesToMeters(27);
+    public static final double kWheelBaseMeters = Units.inchesToMeters(27);
 
     public static final SwerveDriveKinematics kSwerveKinematics = new SwerveDriveKinematics(
       new Translation2d(kWheelBaseMeters / 2.0, kTrackWidthMeters / 2.0),
@@ -362,17 +364,12 @@ public final class Constants {
     public static final int kMotorCurrentLimit = 40;
 
     public static final double kCollectorSpeed = 0.5;
-    public static final double kHopperMaxSpeed = 0.5;
-    public static final double kHopperGearRatio = 81.0;
-    public static final double kHopperSpoolCircumferenceMM = 109.955742876;
-    public static final double kHopperExtensionInches = 12.0;
+    public static final double kHopperSpeed = 0.8;
 
     // Pneumatic positions (from pneumatic's perspective)
-    public static final double kHopperPneumaticExtendedPosition = 0.0;      // Spool unwound, pneumatic deployed
-    public static final double kHopperPneumaticRetractedPosition = 224.5;   // Spool wound, pneumatic pulled back
-    public static final double kHopperDeployedPosition = 5.0;
-    public static final double kHopperPositionTolerance = 0.1;
-    public static final double kHopperSwitchOffsetTicks = 50.0;
+    public static final double kHopperPneumaticExtendedPosition = -208.0;      // Spool unwound, pneumatic deployed
+    public static final double kHopperPneumaticRetractedPosition = 0.0;   // Spool wound, pneumatic pulled back
+    public static final double kHopperPositionTolerance = 1;
 
     public static final double kHopperP = 0.1;
     public static final double kHopperI = 0.0;
@@ -387,11 +384,11 @@ public final class Constants {
           .smartCurrentLimit(kMotorCurrentLimit);
 
       hopperConfig
-          .idleMode(IdleMode.kBrake)
+          .idleMode(IdleMode.kCoast)
           .smartCurrentLimit(kMotorCurrentLimit)
           .closedLoop
             .pid(kHopperP, kHopperI, kHopperD)
-            .outputRange(-kHopperMaxSpeed, kHopperMaxSpeed);
+            .outputRange(-kHopperSpeed, kHopperSpeed);
       hopperConfig.encoder
           .positionConversionFactor(1.0);
     }

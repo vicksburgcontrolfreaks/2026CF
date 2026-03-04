@@ -8,17 +8,20 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.collector.DeployHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
+import frc.robot.commands.collector.ManualExtendHopperCommand;
+import frc.robot.commands.collector.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.commands.shooter.ShooterSequenceCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
@@ -91,40 +94,26 @@ public class RobotContainer {
   }
 
   private void configureMechanismBindings() {
-    // A button: Run shooter with distance-based RPM
     m_mechanismController.a().whileTrue(
-      Commands.run(() -> {
-        m_shooterSubsystem.runAllMotors();
-      }, m_shooterSubsystem)
-      .until(() -> m_shooterSubsystem.isAnyMotorOverCurrent(ShooterConstants.kMotorCurrentLimit)));
-
-    // Y button: Stop all shooter motors
-    m_mechanismController.y().onTrue(
-      Commands.run(() -> {
-        m_shooterSubsystem.stopAll();
-      }, m_shooterSubsystem)
+      new RunCollectorCommand(m_collector, false).alongWith(Commands.run(() ->
+        m_shooterSubsystem.runFloor(false), m_shooterSubsystem))
     );
 
     m_mechanismController.b().onTrue(
-      new RunCollectorCommand(m_collector)
-        .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(), m_shooterSubsystem))
+      new ParallelCommandGroup(
+        new StopCollectorCommand(m_collector),
+        Commands.runOnce(() ->
+          m_shooterSubsystem.stopAll(), m_shooterSubsystem)
+      )
     );
 
     m_mechanismController.x().onTrue(
-      new StopCollectorCommand(m_collector)
-        .alongWith(Commands.run(() -> m_shooterSubsystem.StopFloor(), m_shooterSubsystem))
+      new RunCollectorCommand(m_collector, true)
+        .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(true), m_shooterSubsystem))
     );
 
-    m_mechanismController.povUp().onTrue(
-      Commands.run(() -> {
-        ShooterSubsystem.setKTargetRPM(getSpeedLimit() + 1000);
-      })
-    );
-
-    m_mechanismController.povDown().onTrue(
-      Commands.run(() -> {
-        ShooterSubsystem.setKTargetRPM(getSpeedLimit() - 1000);
-      })
+    m_mechanismController.rightTrigger().onTrue(
+      new ShooterSequenceCommand(m_shooterSubsystem)
     );
 
     m_mechanismController.povLeft().onTrue(
@@ -135,34 +124,16 @@ public class RobotContainer {
       new RetractHopperCommand(m_collector)
     );
 
-    // X button: Extend climber to full extension
-    m_mechanismController.x().onTrue(
-      Commands.runOnce(() -> {
-        m_climber.extend();
-      }, m_climber)
+    m_mechanismController.rightBumper().whileTrue(
+      new ManualExtendHopperCommand(m_collector)
     );
 
-    // B button: Retract climber to full retraction
-    m_mechanismController.b().onTrue(
-      Commands.runOnce(() -> {
-        m_climber.retract();
-      }, m_climber)
+    m_mechanismController.leftBumper().whileTrue(
+      new ManualRetractHopperCommand(m_collector)
     );
 
-    // D-pad Up: Manual climber extend
-    m_mechanismController.povUp().whileTrue(
-      Commands.run(() -> {
-        m_climber.setSpeed(0.5);
-      }, m_climber)
-      .finallyDo(() -> m_climber.stop())
-    );
-
-    // D-pad Down: Manual climber retract
-    m_mechanismController.povDown().whileTrue(
-      Commands.run(() -> {
-        m_climber.setSpeed(-0.5);
-      }, m_climber)
-      .finallyDo(() -> m_climber.stop())
+    m_mechanismController.back().onTrue(
+      Commands.runOnce(() -> m_collector.resetHopperEncoder(), m_collector)
     );
   }
 

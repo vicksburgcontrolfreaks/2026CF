@@ -25,6 +25,6 @@ public class DeployHopperCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        return m_hopper.isLimitSwitchPressed();
+        return m_hopper.isLimitSwitchPressed() || m_hopper.isLimitSwitchPressed();
     }
 }

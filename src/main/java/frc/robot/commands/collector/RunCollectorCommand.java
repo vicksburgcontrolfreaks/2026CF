@@ -5,30 +5,31 @@
 package frc.robot.commands.collector;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.Constants.CollectorConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 
 public class RunCollectorCommand extends Command {
   private final CollectorSubsystem m_collector;
+  private boolean m_reversed;
 
-  public RunCollectorCommand(CollectorSubsystem collector) {
+  public RunCollectorCommand(CollectorSubsystem collector, boolean reversed) {
     m_collector = collector;
+    m_reversed = reversed;
     addRequirements(collector);
   }
 
   @Override
-  public void initialize() {
-    m_collector.runCollector();
-  }
+  public void initialize() {}
 
   @Override
-  public void execute() {}
+  public void execute() {
+    m_collector.runCollector(m_reversed);
+  }
 
   @Override
   public void end(boolean interrupted) {}
 
   @Override
   public boolean isFinished() {
-    return m_collector.isHopperAtPosition(CollectorConstants.kHopperDeployedPosition);
+    return false;
   }
 }

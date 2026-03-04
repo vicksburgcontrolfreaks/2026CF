@@ -33,46 +33,30 @@ import frc.robot.Constants.ClimberConstants;
 import frc.robot.Constants.TelemetryConstants;
 
 public class ClimberSubsystem extends SubsystemBase {
-  private final SparkMax m_leftClimberMotor;
-  private final SparkMax m_rightClimberMotor;
+  private final SparkMax m_ClimberMotor;
 
   private double m_targetPosition = ClimberConstants.kRetractedPosition;
   private int m_telemetryCounter = 0;
 
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_leftPositionPub;
-  private final DoublePublisher m_rightPositionPub;
   private final DoublePublisher m_targetPositionPub;
   private final DoublePublisher m_leftSpeedPub;
-  private final DoublePublisher m_rightSpeedPub;
   private final DoublePublisher m_leftCurrentPub;
-  private final DoublePublisher m_rightCurrentPub;
 
   public ClimberSubsystem() {
-    m_leftClimberMotor = new SparkMax(ClimberConstants.kLeftClimberMotorId, MotorType.kBrushless);
-    m_rightClimberMotor = new SparkMax(ClimberConstants.kRightClimberMotorId, MotorType.kBrushless);
+    m_ClimberMotor = new SparkMax(ClimberConstants.kClimberMotorId, MotorType.kBrushless);
 
-    m_leftClimberMotor.configure(ClimberConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // Configure right motor to follow left motor (not inverted)
-    // TODO: Test and adjust inversion if motors need to run in opposite directions
-    var rightConfig = new com.revrobotics.spark.config.SparkMaxConfig();
-    rightConfig.follow(ClimberConstants.kLeftClimberMotorId, false);
-    rightConfig.apply(ClimberConstants.config); // Apply base config settings
-    m_rightClimberMotor.configure(rightConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_ClimberMotor.configure(ClimberConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Reset encoders to zero on startup (assumes robot starts retracted)
-    m_leftClimberMotor.getEncoder().setPosition(0.0);
-    m_rightClimberMotor.getEncoder().setPosition(0.0);
+    m_ClimberMotor.getEncoder().setPosition(0.0);
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Climber");
     m_leftPositionPub = m_telemetryTable.getDoubleTopic("Left Position").publish();
-    m_rightPositionPub = m_telemetryTable.getDoubleTopic("Right Position").publish();
     m_targetPositionPub = m_telemetryTable.getDoubleTopic("Target Position").publish();
     m_leftSpeedPub = m_telemetryTable.getDoubleTopic("Left Speed").publish();
-    m_rightSpeedPub = m_telemetryTable.getDoubleTopic("Right Speed").publish();
     m_leftCurrentPub = m_telemetryTable.getDoubleTopic("Left Current").publish();
-    m_rightCurrentPub = m_telemetryTable.getDoubleTopic("Right Current").publish();
   }
 
   /**
@@ -100,27 +84,11 @@ public class ClimberSubsystem extends SubsystemBase {
   }
 
   /**
-   * Get the current position of the left climber
+   * Get the current position of the climber
    * @return Current position in rotations
-   */
-  public double getLeftPosition() {
-    return m_leftClimberMotor.getEncoder().getPosition();
-  }
-
-  /**
-   * Get the current position of the right climber
-   * @return Current position in rotations
-   */
-  public double getRightPosition() {
-    return m_rightClimberMotor.getEncoder().getPosition();
-  }
-
-  /**
-   * Get the average position of both climbers
-   * @return Average position in rotations
    */
   public double getPosition() {
-    return (getLeftPosition() + getRightPosition()) / 2.0;
+    return m_ClimberMotor.getEncoder().getPosition();
   }
 
   /**
@@ -166,36 +134,33 @@ public class ClimberSubsystem extends SubsystemBase {
     // Check soft limits when moving manually
     double currentPosition = getPosition();
     if (speed > 0 && currentPosition >= ClimberConstants.kSoftLimitMax) {
-      m_leftClimberMotor.set(0); // Stop if at max limit
+      m_ClimberMotor.set(0); // Stop if at max limit
     } else if (speed < 0 && currentPosition <= ClimberConstants.kSoftLimitMin) {
-      m_leftClimberMotor.set(0); // Stop if at min limit
+      m_ClimberMotor.set(0); // Stop if at min limit
     } else {
-      m_leftClimberMotor.set(speed);
-      // Right motor follows left automatically
+      m_ClimberMotor.set(speed);
     }
   }
 
   /**
-   * Stop both climber motors
+   * Stop the climber motor
    */
   public void stop() {
-    m_leftClimberMotor.set(0);
-    // Right motor will stop automatically since it follows left
+    m_ClimberMotor.set(0);
   }
 
   /**
-   * Reset both encoders to zero (call this when climber is fully retracted)
+   * Reset encoder to zero (call this when climber is fully retracted)
    */
   public void resetEncoders() {
-    m_leftClimberMotor.getEncoder().setPosition(0.0);
-    m_rightClimberMotor.getEncoder().setPosition(0.0);
+    m_ClimberMotor.getEncoder().setPosition(0.0);
     m_targetPosition = 0.0;
   }
 
   @Override
   public void periodic() {
-    // Use position control to move to target position (left motor is leader)
-    m_leftClimberMotor.getClosedLoopController().setSetpoint(
+    // Use position control to move to target position
+    m_ClimberMotor.getClosedLoopController().setSetpoint(
       m_targetPosition,
       ControlType.kPosition
     );
@@ -205,13 +170,10 @@ public class ClimberSubsystem extends SubsystemBase {
     if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
       m_telemetryCounter = 0;
 
-      m_leftPositionPub.set(getLeftPosition());
-      m_rightPositionPub.set(getRightPosition());
+      m_leftPositionPub.set(getPosition());
       m_targetPositionPub.set(m_targetPosition);
-      m_leftSpeedPub.set(m_leftClimberMotor.get());
-      m_rightSpeedPub.set(m_rightClimberMotor.get());
-      m_leftCurrentPub.set(m_leftClimberMotor.getOutputCurrent());
-      m_rightCurrentPub.set(m_rightClimberMotor.getOutputCurrent());
+      m_leftSpeedPub.set(m_ClimberMotor.get());
+      m_leftCurrentPub.set(m_ClimberMotor.getOutputCurrent());
     }
   }
 }

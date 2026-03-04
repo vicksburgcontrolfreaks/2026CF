@@ -10,8 +10,8 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.drive.RotateToTargetCommand;
+import frc.robot.commands.shooter.ShooterSequenceCommand;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -72,15 +72,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
       new RotateToTargetCommand(swerveDrive, target),
 
       // Step 5: Spin up shooter and shoot for 3 seconds
-      Commands.run(() -> {
-        // Get distance and calculate RPM
-        double distance = vision.getDistanceToSpeaker();
-        double targetRPM = ShooterConstants.getRPMForDistance(distance);
-
-        // Run shooter at calculated RPM
-        shooter.runAllMotors(targetRPM);
-      }, shooter)
-      .withTimeout(3.0), // Shoot for 3 seconds
+      new ShooterSequenceCommand(shooter),
 
       // Step 6: Stop shooter
       Commands.runOnce(() -> {

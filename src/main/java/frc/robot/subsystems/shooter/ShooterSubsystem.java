@@ -39,7 +39,7 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher m_indexerVelocityPub;
   private final DoublePublisher m_leftShooterVelocityPub;
 
-  private static double kTargetRPM = 3000; // 40% of max velocity
+  //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
 
   public ShooterSubsystem() {
@@ -72,6 +72,8 @@ public class ShooterSubsystem extends SubsystemBase {
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
   }
 
+ /* 
+
   public void runAllMotors() {
     runAllMotors(ShooterConstants.kTargetRPM);
   }
@@ -96,12 +98,34 @@ public class ShooterSubsystem extends SubsystemBase {
     );
   }
 
-  public void runFloor() {
-    m_floorMotor.set(-0.1);
+  */
+
+  public void runFloor(boolean reversed) {
+    if (!reversed) {
+      m_floorMotor.set(-ShooterConstants.kFloorMotorSpeed);
+    } else {
+      m_floorMotor.set(ShooterConstants.kFloorMotorSpeed);
+    }
   }
 
   public void StopFloor() {
     m_floorMotor.set(0);
+  }
+
+  public void runShooter() {
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      -ShooterConstants.kShooterTargetRPM,
+      ControlType.kVelocity
+    );
+
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      ShooterConstants.kShooterTargetRPM,
+      ControlType.kVelocity
+    );
+  }
+
+  public void runIndexer() {
+    m_indexerMotor.set(ShooterConstants.kIndexerMotorSpeed);
   }
 
   public void stopAll() {
@@ -141,12 +165,7 @@ public class ShooterSubsystem extends SubsystemBase {
     }
   }
 
-  public static double getKTargetRPM() {
-    return kTargetRPM;
-  }
-  public static void setKTargetRPM(double newRPM) {
-    if (newRPM <= 6784) {
-      kTargetRPM = newRPM;
-    }
+  public static double getKShooterTargetRPM() {
+    return ShooterConstants.kShooterTargetRPM;
   }
 }
