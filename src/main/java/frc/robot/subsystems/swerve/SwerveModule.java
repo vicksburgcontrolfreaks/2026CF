@@ -107,4 +107,8 @@ public class SwerveModule {
   public String getModuleName() {
     return "SwerveModule";
   }
+
+  public void setDriveMotorSpeed(double speed) {
+    m_drivingSpark.set(speed);
+  }
 }

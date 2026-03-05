@@ -268,4 +268,20 @@ public class SwerveDriveSubsystem extends SubsystemBase {
     m_backLeft.resetEncoders();
     m_backRight.resetEncoders();
   }
+
+  public SwerveModule getFrontLeft() {
+    return m_frontLeft;
+  }
+
+  public SwerveModule getFrontRight() {
+    return m_frontRight;
+  }
+
+  public SwerveModule getBackLeft() {
+    return m_backLeft;
+  }
+
+  public SwerveModule getBackRight() {
+    return m_backRight;
+  }
 }

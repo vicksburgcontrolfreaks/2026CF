@@ -91,6 +91,27 @@ public class RobotContainer {
               DriverStation.getAlliance().get() == Alliance.Blue
       )
     );
+
+    // D-pad controls for individual drive motors
+    m_driverController.povUp().whileTrue(
+      Commands.run(() -> m_swerveDrive.getFrontLeft().setDriveMotorSpeed(0.3), m_swerveDrive)
+        .finallyDo(() -> m_swerveDrive.getFrontLeft().setDriveMotorSpeed(0))
+    );
+
+    m_driverController.povDown().whileTrue(
+      Commands.run(() -> m_swerveDrive.getFrontRight().setDriveMotorSpeed(0.3), m_swerveDrive)
+        .finallyDo(() -> m_swerveDrive.getFrontRight().setDriveMotorSpeed(0))
+    );
+
+    m_driverController.povLeft().whileTrue(
+      Commands.run(() -> m_swerveDrive.getBackLeft().setDriveMotorSpeed(0.3), m_swerveDrive)
+        .finallyDo(() -> m_swerveDrive.getBackLeft().setDriveMotorSpeed(0))
+    );
+
+    m_driverController.povRight().whileTrue(
+      Commands.run(() -> m_swerveDrive.getBackRight().setDriveMotorSpeed(0.3), m_swerveDrive)
+        .finallyDo(() -> m_swerveDrive.getBackRight().setDriveMotorSpeed(0))
+    );
   }
 
   private void configureMechanismBindings() {
@@ -134,6 +155,16 @@ public class RobotContainer {
 
     m_mechanismController.back().onTrue(
       Commands.runOnce(() -> m_collector.resetHopperEncoder(), m_collector)
+    );
+
+    m_mechanismController.povUp().whileTrue(
+      Commands.run(() -> m_climber.setSpeed(0.2), m_climber)
+        .finallyDo(() -> m_climber.stop())
+    );
+
+    m_mechanismController.povDown().whileTrue(
+      Commands.run(() -> m_climber.setSpeed(-0.2), m_climber)
+        .finallyDo(() -> m_climber.stop())
     );
   }
 
