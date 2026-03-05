@@ -65,12 +65,12 @@ public final class Constants {
 
     public static final int kMotorCurrentLimit = 40;
 
-    public static final double kVelocityP = 0.001;
-    public static final double kVelocityI = 0.0;
-    public static final double kVelocityD = 0.0;
-    public static final double kVelocityFF = 1.0 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
+    public static final double kVelocityP = 0.00045;
+    public static final double kVelocityI = 0.00000025;
+    public static final double kVelocityD = 0.000000;
+    public static final double kVelocityFF = 3.7 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
     
-    public static final double kShooterTargetRPM = 3000; // Default/fallback RPM value
+    public static final double kShooterTargetRPM = 4000; // Default/fallback RPM value
     // max rpm 6784
 
     public static final double kFloorMotorSpeed = 0.5;
@@ -224,8 +224,8 @@ public final class Constants {
     public static final double kWheelCoefficientOfFriction = 1.2; // Wheel coefficient of friction
     public static final int kNumMotorsPerModule = 1; 
 
-    public static final double kTrackWidthMeters = Units.inchesToMeters(27);
-    public static final double kWheelBaseMeters = Units.inchesToMeters(27);
+    public static final double kTrackWidthMeters = Units.inchesToMeters(23.375);
+    public static final double kWheelBaseMeters = Units.inchesToMeters(23.375);
 
     public static final SwerveDriveKinematics kSwerveKinematics = new SwerveDriveKinematics(
       new Translation2d(kWheelBaseMeters / 2.0, kTrackWidthMeters / 2.0),
@@ -295,24 +295,32 @@ public final class Constants {
     public static final String kCameraLeftName = "camera-left";
     public static final String kCameraRightName = "camera-right";
 
+    // Translation3d(X, Y, Z):
+    //   X: forward(+)/back(-) from robot center (in inches, converted to meters)
+    //   Y: left(+)/right(-) from robot center
+    //   Z: up(+)/down(-) from robot center
+    // Rotation3d(roll, pitch, yaw):
+    //   roll: rotation around X-axis (tilt left/right) in radians
+    //   pitch: rotation around Y-axis (tilt up/down) in radians
+    //   yaw: rotation around Z-axis (spin left/right) in radians - 0° = forward, 90° = left, 180° = back, -90° = right
     public static final Transform3d kRobotToFrontCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-4), Units.inchesToMeters(0.5), Units.inchesToMeters(14)),
-      new Rotation3d(0, Math.toRadians(6), 0)
+      new Translation3d(Units.inchesToMeters(-5.771), Units.inchesToMeters(0), Units.inchesToMeters(28.15)), 
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(0)) // roll: 0°, pitch: 6°, yaw: 0°
     );
 
     public static final Transform3d kRobotToBackCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-10), Units.inchesToMeters(0.5), Units.inchesToMeters(14)),
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(180))
+      new Translation3d(Units.inchesToMeters(-8.845), Units.inchesToMeters(7.60), Units.inchesToMeters(26.566)), 
+      new Rotation3d(0, Math.toRadians(6), Math.toRadians(180)) // roll: 0°, pitch: 6°, yaw: 180°
     );
 
     public static final Transform3d kRobotToLeftCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-7.5), Units.inchesToMeters(4.0), Units.inchesToMeters(14)),
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(90))
+      new Translation3d(Units.inchesToMeters(2.89), Units.inchesToMeters(-13.75), Units.inchesToMeters(24.61)), 
+      new Rotation3d(0, Math.toRadians(0), Math.toRadians(90)) // roll: 0°, pitch: 6°, yaw: 90°
     );
 
     public static final Transform3d kRobotToRightCamera = new Transform3d(
-      new Translation3d(Units.inchesToMeters(-7.5), Units.inchesToMeters(-3.0), Units.inchesToMeters(14)),
-      new Rotation3d(0, Math.toRadians(6), Math.toRadians(-90))
+      new Translation3d(Units.inchesToMeters(2.89), Units.inchesToMeters(13.75), Units.inchesToMeters(24.61)),
+      new Rotation3d(0, Math.toRadians(0), Math.toRadians(-90)) // roll: 0°, pitch: 6°, yaw: -90°
     );
 
     public static final double[] kSingleTagStdDevs = {1.5, 1.5, 3.0};
@@ -363,7 +371,7 @@ public final class Constants {
 
     public static final int kMotorCurrentLimit = 40;
 
-    public static final double kCollectorSpeed = 0.5;
+    public static final double kCollectorSpeed = 0.2;
     public static final double kHopperSpeed = 0.8;
 
     // Pneumatic positions (from pneumatic's perspective)

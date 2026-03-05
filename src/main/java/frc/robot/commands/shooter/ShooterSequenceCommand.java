@@ -29,7 +29,6 @@ public class ShooterSequenceCommand extends Command {
 
   @Override
   public void execute() {
-    // After 0.5 seconds, start the indexer and floor motors
     if (!m_indexerStarted && m_timer.hasElapsed(0.5)) {
       m_shooter.runIndexer();
       m_shooter.runFloor(false);

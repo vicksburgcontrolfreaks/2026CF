@@ -40,6 +40,7 @@ public class ClimberSubsystem extends SubsystemBase {
 
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_leftPositionPub;
+  private final DoublePublisher m_encoderTicksPub;
   private final DoublePublisher m_targetPositionPub;
   private final DoublePublisher m_leftSpeedPub;
   private final DoublePublisher m_leftCurrentPub;
@@ -54,6 +55,7 @@ public class ClimberSubsystem extends SubsystemBase {
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Climber");
     m_leftPositionPub = m_telemetryTable.getDoubleTopic("Left Position").publish();
+    m_encoderTicksPub = m_telemetryTable.getDoubleTopic("Encoder Ticks").publish();
     m_targetPositionPub = m_telemetryTable.getDoubleTopic("Target Position").publish();
     m_leftSpeedPub = m_telemetryTable.getDoubleTopic("Left Speed").publish();
     m_leftCurrentPub = m_telemetryTable.getDoubleTopic("Left Current").publish();
@@ -171,6 +173,7 @@ public class ClimberSubsystem extends SubsystemBase {
       m_telemetryCounter = 0;
 
       m_leftPositionPub.set(getPosition());
+      m_encoderTicksPub.set(m_ClimberMotor.getEncoder().getPosition());
       m_targetPositionPub.set(m_targetPosition);
       m_leftSpeedPub.set(m_ClimberMotor.get());
       m_leftCurrentPub.set(m_ClimberMotor.getOutputCurrent());

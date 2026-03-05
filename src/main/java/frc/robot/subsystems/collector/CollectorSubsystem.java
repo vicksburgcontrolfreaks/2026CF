@@ -28,7 +28,7 @@ public class CollectorSubsystem extends SubsystemBase {
   private double m_hopperTargetPosition = 0.0;
   private boolean m_lastSwitchState = false;
   private int m_telemetryCounter = 0;
-  private boolean m_manualMode = false;
+  private boolean m_manualMode = true;  // Start in manual mode to prevent auto-running
 
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_upperCollectorSpeedPub;
@@ -51,7 +51,11 @@ public class CollectorSubsystem extends SubsystemBase {
     m_lowerCollectorMotor.configure(CollectorConstants.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_hopperMotor.configure(CollectorConstants.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    resetHopperEncoder();
+    // Ensure hopper motor is stopped on initialization
+    m_hopperMotor.set(0);
+
+    // Save current position as the target to prevent movement on startup
+    m_hopperTargetPosition = m_hopperMotor.getEncoder().getPosition();
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Collector");
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
@@ -86,6 +90,10 @@ public class CollectorSubsystem extends SubsystemBase {
     m_hopperTargetPosition = position;
   }
 
+  public boolean isManualMode() {
+    return m_manualMode;
+  }
+
   public double getHopperPosition() {
     return m_hopperMotor.getEncoder().getPosition();
   }
@@ -110,6 +118,7 @@ public class CollectorSubsystem extends SubsystemBase {
   }
 
   public void stopHopper() {
+    m_manualMode = true;  // Prevent periodic() from reactivating the motor
     m_hopperMotor.set(0);
   }
 
@@ -127,10 +136,16 @@ public class CollectorSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     boolean currentSwitchState = isLimitSwitchPressed();
+    double currentPosition = getHopperPosition();
 
     if (currentSwitchState && !m_lastSwitchState) {
       m_hopperMotor.getEncoder().setPosition(0.0);
       m_hopperTargetPosition = CollectorConstants.kHopperPneumaticRetractedPosition;
+    }
+
+    // Stop hopper if it reaches 0 encoder ticks while in manual mode
+    if (currentPosition <= 0.0 && m_manualMode) {
+      m_hopperMotor.set(0);
     }
 
     m_lastSwitchState = currentSwitchState;

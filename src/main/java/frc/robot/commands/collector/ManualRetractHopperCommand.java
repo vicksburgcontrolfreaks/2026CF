@@ -27,6 +27,6 @@ public class ManualRetractHopperCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        return m_collector.isLimitSwitchPressed();
+        return m_collector.isLimitSwitchPressed() || m_collector.getHopperPosition() <= 0.0;
     }
 }

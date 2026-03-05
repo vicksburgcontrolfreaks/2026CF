@@ -114,12 +114,12 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public void runShooter() {
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      -ShooterConstants.kShooterTargetRPM,
+      ShooterConstants.kShooterTargetRPM,
       ControlType.kVelocity
     );
 
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kShooterTargetRPM,
+      -ShooterConstants.kShooterTargetRPM,
       ControlType.kVelocity
     );
   }
