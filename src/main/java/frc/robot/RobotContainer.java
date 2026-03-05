@@ -14,8 +14,8 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
-import frc.robot.commands.collector.ManualExtendHopperCommand;
-import frc.robot.commands.collector.ManualRetractHopperCommand;
+import frc.robot.commands.collector.hopper.ManualExtendHopperCommand;
+import frc.robot.commands.collector.hopper.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
@@ -89,27 +89,6 @@ public class RobotContainer {
               DriverStation.getAlliance().get() == Alliance.Blue
       )
     );
-
-    // D-pad controls for individual drive motors
-    m_driverController.povUp().whileTrue(
-      Commands.run(() -> m_swerveDrive.getFrontLeft().setDriveMotorSpeed(0.3), m_swerveDrive)
-        .finallyDo(() -> m_swerveDrive.getFrontLeft().setDriveMotorSpeed(0))
-    );
-
-    m_driverController.povDown().whileTrue(
-      Commands.run(() -> m_swerveDrive.getFrontRight().setDriveMotorSpeed(0.3), m_swerveDrive)
-        .finallyDo(() -> m_swerveDrive.getFrontRight().setDriveMotorSpeed(0))
-    );
-
-    m_driverController.povLeft().whileTrue(
-      Commands.run(() -> m_swerveDrive.getBackLeft().setDriveMotorSpeed(0.3), m_swerveDrive)
-        .finallyDo(() -> m_swerveDrive.getBackLeft().setDriveMotorSpeed(0))
-    );
-
-    m_driverController.povRight().whileTrue(
-      Commands.run(() -> m_swerveDrive.getBackRight().setDriveMotorSpeed(0.3), m_swerveDrive)
-        .finallyDo(() -> m_swerveDrive.getBackRight().setDriveMotorSpeed(0))
-    );
   }
 
   private void configureMechanismBindings() {
@@ -134,7 +113,7 @@ public class RobotContainer {
     m_mechanismController.rightTrigger().onTrue(
       new ShooterSequenceCommand(m_shooterSubsystem)
     );
-
+  /* 
     m_mechanismController.povUp().whileTrue(
       Commands.run(() -> m_climber.setSpeed(0.2), m_climber)
         .finallyDo(() -> m_climber.stop())
@@ -144,6 +123,7 @@ public class RobotContainer {
       Commands.run(() -> m_climber.setSpeed(-0.2), m_climber)
         .finallyDo(() -> m_climber.stop())
     );
+  */
   }
 
   public double getSpeedLimit() {
@@ -170,9 +150,5 @@ public class RobotContainer {
 
   public LEDSubsystem getLEDSubsystem() {
     return m_ledSubsystem;
-  }
-
-  public CommandXboxController getDriverControllerForDebug() {
-    return m_driverController;
   }
 }
