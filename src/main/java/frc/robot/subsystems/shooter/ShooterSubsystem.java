@@ -16,6 +16,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.Constants.TelemetryConstants;
+import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
   private final SparkFlex m_rightShooterMotor;
@@ -38,6 +39,11 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher m_floorMotorVelocityPub;
   private final DoublePublisher m_indexerVelocityPub;
   private final DoublePublisher m_leftShooterVelocityPub;
+  private final DoublePublisher m_targetRPMPub;
+  private final DoublePublisher m_distanceToTargetPub;
+
+  private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
+  private double m_lastDistanceToTarget = 0.0;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
@@ -70,6 +76,8 @@ public class ShooterSubsystem extends SubsystemBase {
     m_floorMotorVelocityPub    = m_telemetryTable.getDoubleTopic("Floor Motor Velocity").publish();
     m_indexerVelocityPub       = m_telemetryTable.getDoubleTopic("Indexer Velocity").publish();
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
+    m_targetRPMPub             = m_telemetryTable.getDoubleTopic("Target RPM").publish();
+    m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
   }
 
  /* 
@@ -112,16 +120,64 @@ public class ShooterSubsystem extends SubsystemBase {
     m_floorMotor.set(0);
   }
 
-  public void runShooter() {
+  /**
+   * Run the shooter with dynamic RPM based on distance to target from vision
+   * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
+   */
+  public void runShooter(PhotonVisionSubsystem vision) {
+    double targetRPM;
+
+    if (vision != null) {
+      double distance = vision.getDistanceToSpeaker();
+      m_lastDistanceToTarget = distance;
+
+      if (distance > 0) {
+        targetRPM = ShooterConstants.getRPMForDistance(distance);
+        System.out.println("Dynamic Shooter: Distance = " + String.format("%.2f", distance) +
+                           "m, Target RPM = " + String.format("%.0f", targetRPM));
+      } else {
+        // Fall back to default RPM if no target visible
+        targetRPM = ShooterConstants.kDefaultRPM;
+        System.out.println("Dynamic Shooter: No target visible, using default RPM = " + targetRPM);
+      }
+    } else {
+      // Use default RPM if no vision subsystem provided
+      targetRPM = ShooterConstants.kShooterTargetRPM;
+      m_lastDistanceToTarget = 0.0;
+    }
+
+    m_currentTargetRPM = targetRPM;
+
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kShooterTargetRPM,
+      targetRPM,
       ControlType.kVelocity
     );
 
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -ShooterConstants.kShooterTargetRPM,
+      -targetRPM,
       ControlType.kVelocity
     );
+  }
+
+  /**
+   * Get the current target RPM
+   * @return The current target RPM
+   */
+  public double getCurrentTargetRPM() {
+    return m_currentTargetRPM;
+  }
+
+  /**
+   * Check if the shooter is at the target velocity
+   * @param tolerance Acceptable RPM tolerance (e.g., 100 RPM)
+   * @return True if both shooter motors are within tolerance of target
+   */
+  public boolean isAtTargetVelocity(double tolerance) {
+    double rightVelocity = Math.abs(m_rightShooterMotor.getEncoder().getVelocity());
+    double leftVelocity = Math.abs(m_leftShooterMotor.getEncoder().getVelocity());
+
+    return Math.abs(rightVelocity - m_currentTargetRPM) <= tolerance &&
+           Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance;
   }
 
   public void runIndexer() {
@@ -162,6 +218,8 @@ public class ShooterSubsystem extends SubsystemBase {
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
       m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
+      m_targetRPMPub.set(m_currentTargetRPM);
+      m_distanceToTargetPub.set(m_lastDistanceToTarget);
     }
   }
 

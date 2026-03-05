@@ -36,10 +36,10 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 public class RobotContainer {
   private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
+  private final LEDSubsystem m_ledSubsystem = null;
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
-  private final ClimberSubsystem m_climber = new ClimberSubsystem();
+  private final ClimberSubsystem m_climber = null;
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -69,7 +69,7 @@ public class RobotContainer {
       )
     );
 
-    if (m_visionSubsystem != null) {
+    if (m_visionSubsystem != null && m_ledSubsystem != null) {
       m_ledSubsystem.setDefaultCommand(
         new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
       );
@@ -111,7 +111,7 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().onTrue(
-      new ShooterSequenceCommand(m_shooterSubsystem)
+      new ShooterSequenceCommand(m_shooterSubsystem, m_visionSubsystem)
     );
   /* 
     m_mechanismController.povUp().whileTrue(

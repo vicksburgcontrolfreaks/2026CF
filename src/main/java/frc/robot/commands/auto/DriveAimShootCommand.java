@@ -72,7 +72,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
       new RotateToTargetCommand(swerveDrive, target),
 
       // Step 5: Spin up shooter and shoot for 3 seconds
-      new ShooterSequenceCommand(shooter),
+      new ShooterSequenceCommand(shooter, vision),
 
       // Step 6: Stop shooter
       Commands.runOnce(() -> {

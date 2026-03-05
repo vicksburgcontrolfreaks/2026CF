@@ -77,7 +77,7 @@ public final class Constants {
     public static final double kIndexerMotorSpeed = 0.5;
 
     // Shooter velocity lookup table: distance (meters) -> RPM
-    // TODO: Replace these example values with actual tested values
+    // Replace these example values with actual tested values
     public static final double[][] kShooterVelocityTable = {
       // {distance in meters, RPM}
       {1.0, 2500},  // Very close shot
@@ -171,7 +171,7 @@ public final class Constants {
 
     static {
       config
-          .idleMode(IdleMode.kCoast)  // Brake mode to hold position
+          .idleMode(IdleMode.kCoast)
           .smartCurrentLimit(kMotorCurrentLimit);
 
       config.closedLoop
@@ -188,7 +188,7 @@ public final class Constants {
 
     public static final double kDeadband = 0.1;
 
-    public static final double kNormalSpeedLimit = 0.4;
+    public static final double kNormalSpeedLimit = 0.75;
     public static final double kTurboSpeedLimit = 0.9;
     public static final double kPrecisionSpeedLimit = 0.2;
   }
@@ -219,8 +219,8 @@ public final class Constants {
     public static final int kDriveMotorCurrentLimit = 50;
     public static final int kSteerMotorCurrentLimit = 20;
 
-    public static final double kRobotMassKg = 25.0; // Robot mass in kilograms
-    public static final double kRobotMOI = 6.0; // Robot moment of inertia (kg*m²)
+    public static final double kRobotMassKg = 55.0; // Robot mass in kilograms
+    public static final double kRobotMOI = 12.0; // Robot moment of inertia (kg*m²)
     public static final double kWheelCoefficientOfFriction = 1.2; // Wheel coefficient of friction
     public static final int kNumMotorsPerModule = 1; 
 
@@ -234,10 +234,10 @@ public final class Constants {
       new Translation2d(-kWheelBaseMeters / 2.0, -kTrackWidthMeters / 2.0)
     );
 
-    public static final double kMaxSpeedMetersPerSecond = 4.5;
+    public static final double kMaxSpeedMetersPerSecond = 45;
     public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI * 2;
 
-    public static final double kFrontLeftChassisAngularOffset = -Math.PI / 2;
+    public static final double kFrontLeftChassisAngularOffset = Math.PI / 2;
     public static final double kFrontRightChassisAngularOffset = 0;
     public static final double kBackLeftChassisAngularOffset = Math.PI;
     public static final double kBackRightChassisAngularOffset = Math.PI / 2;
@@ -252,7 +252,7 @@ public final class Constants {
     public static final double kTranslationSlewRate = 3.0;
     public static final double kRotationSlewRate = 3.0;
 
-    public static final SparkMaxConfig drivingConfig = new SparkMaxConfig();
+    public static final SparkFlexConfig drivingConfig = new SparkFlexConfig();
     public static final SparkMaxConfig turningConfig = new SparkMaxConfig();
 
     static {
@@ -262,7 +262,7 @@ public final class Constants {
         double nominalVoltage = MotorModuleConstants.kNominalVoltage;
         double drivingVelocityFeedForward = nominalVoltage / MotorModuleConstants.kDriveWheelFreeSpeedRps;
         drivingConfig
-                .idleMode(IdleMode.kBrake)
+                .idleMode(IdleMode.kCoast)
                 .smartCurrentLimit(50);
         drivingConfig.encoder
                 .positionConversionFactor(drivingFactor)
@@ -273,7 +273,7 @@ public final class Constants {
                 .outputRange(MotorModuleConstants.kMotorOutputMin, MotorModuleConstants.kMotorOutputMax)
                 .feedForward.kV(drivingVelocityFeedForward);
         turningConfig
-                .idleMode(IdleMode.kBrake)
+                .idleMode(IdleMode.kCoast)
                 .smartCurrentLimit(20);
         turningConfig.absoluteEncoder
                 .inverted(true)
