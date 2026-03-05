@@ -12,8 +12,6 @@ import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.commands.collector.DeployHopperCommand;
-import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ManualExtendHopperCommand;
@@ -137,19 +135,11 @@ public class RobotContainer {
       new ShooterSequenceCommand(m_shooterSubsystem)
     );
 
-    m_mechanismController.povLeft().onTrue(
-      new DeployHopperCommand(m_collector)
-    );
-
-    m_mechanismController.povRight().onTrue(
-      new RetractHopperCommand(m_collector)
-    );
-
-    m_mechanismController.rightBumper().whileTrue(
+    m_mechanismController.povLeft().whileTrue(
       new ManualExtendHopperCommand(m_collector)
     );
 
-    m_mechanismController.leftBumper().whileTrue(
+    m_mechanismController.povRight().whileTrue(
       new ManualRetractHopperCommand(m_collector)
     );
 

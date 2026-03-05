@@ -136,16 +136,10 @@ public class CollectorSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     boolean currentSwitchState = isLimitSwitchPressed();
-    double currentPosition = getHopperPosition();
 
     if (currentSwitchState && !m_lastSwitchState) {
       m_hopperMotor.getEncoder().setPosition(0.0);
       m_hopperTargetPosition = CollectorConstants.kHopperPneumaticRetractedPosition;
-    }
-
-    // Stop hopper if it reaches 0 encoder ticks while in manual mode
-    if (currentPosition <= 0.0 && m_manualMode) {
-      m_hopperMotor.set(0);
     }
 
     m_lastSwitchState = currentSwitchState;

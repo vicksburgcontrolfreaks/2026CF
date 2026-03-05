@@ -27,6 +27,6 @@ public class ManualExtendHopperCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        return m_collector.isLimitSwitchPressed();
+        return false;  // No limits - only stops when button is released
     }
 }

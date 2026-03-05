@@ -372,7 +372,7 @@ public final class Constants {
     public static final int kMotorCurrentLimit = 40;
 
     public static final double kCollectorSpeed = 0.2;
-    public static final double kHopperSpeed = 0.8;
+    public static final double kHopperSpeed = 0.3;
 
     // Pneumatic positions (from pneumatic's perspective)
     public static final double kHopperPneumaticExtendedPosition = -208.0;      // Spool unwound, pneumatic deployed
