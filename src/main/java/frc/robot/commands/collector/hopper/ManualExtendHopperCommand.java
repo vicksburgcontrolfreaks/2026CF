@@ -1,13 +1,13 @@
-package frc.robot.commands.collector;
+package frc.robot.commands.collector.hopper;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.CollectorConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 
-public class ManualRetractHopperCommand extends Command {
+public class ManualExtendHopperCommand extends Command {
     private final CollectorSubsystem m_collector;
 
-    public ManualRetractHopperCommand(CollectorSubsystem collector) {
+    public ManualExtendHopperCommand(CollectorSubsystem collector) {
         m_collector = collector;
         addRequirements(collector);
     }
@@ -17,7 +17,7 @@ public class ManualRetractHopperCommand extends Command {
 
     @Override
     public void execute() {
-        m_collector.setHopperManualSpeed(CollectorConstants.kHopperSpeed);
+        m_collector.setHopperManualSpeed(-CollectorConstants.kHopperSpeed);
     }
 
     @Override
@@ -27,6 +27,6 @@ public class ManualRetractHopperCommand extends Command {
 
     @Override
     public boolean isFinished() {
-        return m_collector.isLimitSwitchPressed() || m_collector.getHopperPosition() <= 0.0;
+        return false;  // No limits - only stops when button is released
     }
 }

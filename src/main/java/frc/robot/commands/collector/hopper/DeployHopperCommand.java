@@ -1,4 +1,4 @@
-package frc.robot.commands.collector;
+package frc.robot.commands.collector.hopper;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.CollectorConstants;
