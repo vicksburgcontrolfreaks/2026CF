@@ -135,18 +135,6 @@ public class RobotContainer {
       new ShooterSequenceCommand(m_shooterSubsystem)
     );
 
-    m_mechanismController.povLeft().whileTrue(
-      new ManualExtendHopperCommand(m_collector)
-    );
-
-    m_mechanismController.povRight().whileTrue(
-      new ManualRetractHopperCommand(m_collector)
-    );
-
-    m_mechanismController.back().onTrue(
-      Commands.runOnce(() -> m_collector.resetHopperEncoder(), m_collector)
-    );
-
     m_mechanismController.povUp().whileTrue(
       Commands.run(() -> m_climber.setSpeed(0.2), m_climber)
         .finallyDo(() -> m_climber.stop())
