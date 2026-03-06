@@ -71,25 +71,57 @@ public final class Constants {
 
     public static final double kFloorMotorTargetRPM = -1700; // Floor motor target RPM
     public static final double kIndexerMotorTargetRPM = 2150; // Indexer motor target RPM
+    public static final int kIndexerManualCurrentLimit = 80; // Current limit for indexer in manual mode
 
-    /* DYNAMIC RPM LOOKUP TABLE - COMMENTED OUT
+    // DYNAMIC RPM LOOKUP TABLE
     // Shooter velocity lookup table: distance (meters) -> RPM
     // Replace these example values with actual tested values
     public static final double[][] kShooterVelocityTable = {
       // {distance in meters, RPM}
-      {1.0, 2500},  // Very close shot
-      {2.0, 3000},  // Close shot
-      {3.0, 3500},  // Medium shot
-      {4.0, 4000},  // Medium-far shot
-      {5.0, 4500},  // Far shot
-      {6.0, 5000}   // Very far shot
+      {1.0, 2750},  // Very close shot
+      {2.0, 3250},  // Close shot
+      {3.0, 3750},  // Medium shot
+      {4.0, 4250},  // Medium-far shot
+      {5.0, 4750},  // Far shot
+      {6.0, 5250}   // Very far shot
     };
 
-    // Default RPM when distance is unavailable
-    public static final double kDefaultRPM = 3000;
-    */
+    /**
+     * Calculate target RPM based on distance to speaker using linear interpolation
+     * @param distance Distance to speaker in meters
+     * @return Target RPM for the shooter
+     */
+    public static double getRPMForDistance(double distance) {
+      // If distance is less than minimum, use minimum RPM
+      if (distance <= kShooterVelocityTable[0][0]) {
+        return kShooterVelocityTable[0][1];
+      }
+
+      // If distance is greater than maximum, use maximum RPM
+      int lastIndex = kShooterVelocityTable.length - 1;
+      if (distance >= kShooterVelocityTable[lastIndex][0]) {
+        return kShooterVelocityTable[lastIndex][1];
+      }
+
+      // Linear interpolation between two closest data points
+      for (int i = 0; i < kShooterVelocityTable.length - 1; i++) {
+        double d1 = kShooterVelocityTable[i][0];
+        double rpm1 = kShooterVelocityTable[i][1];
+        double d2 = kShooterVelocityTable[i + 1][0];
+        double rpm2 = kShooterVelocityTable[i + 1][1];
+
+        if (distance >= d1 && distance <= d2) {
+          // Linear interpolation: RPM = rpm1 + (rpm2 - rpm1) * (distance - d1) / (d2 - d1)
+          return rpm1 + (rpm2 - rpm1) * (distance - d1) / (d2 - d1);
+        }
+      }
+
+      // Fallback (should never reach here)
+      return kShooterTargetRPM;
+    }
 
     public static final SparkFlexConfig config = new SparkFlexConfig();
+    public static final SparkFlexConfig indexerManualConfig = new SparkFlexConfig();
 
     static {
       config
@@ -98,49 +130,14 @@ public final class Constants {
           .closedLoop
             .pid(kVelocityP, kVelocityI, kVelocityD)
             .velocityFF(kVelocityFF);
+
+      indexerManualConfig
+          .idleMode(IdleMode.kCoast)
+          .smartCurrentLimit(kIndexerManualCurrentLimit)
+          .closedLoop
+            .pid(kVelocityP, kVelocityI, kVelocityD)
+            .velocityFF(kVelocityFF);
     }
-
-    /* DYNAMIC RPM CALCULATION METHOD - COMMENTED OUT
-    /**
-     * Get shooter RPM for a given distance to target using linear interpolation
-     * @param distance Distance to target in meters
-     * @return Target RPM for the shooter wheels
-     */
-    /*
-    public static double getRPMForDistance(double distance) {
-      // If distance is invalid, return default
-      if (distance <= 0) {
-        return kDefaultRPM;
-      }
-
-      // If distance is before first entry, use first RPM
-      if (distance <= kShooterVelocityTable[0][0]) {
-        return kShooterVelocityTable[0][1];
-      }
-
-      // If distance is beyond last entry, use last RPM
-      if (distance >= kShooterVelocityTable[kShooterVelocityTable.length - 1][0]) {
-        return kShooterVelocityTable[kShooterVelocityTable.length - 1][1];
-      }
-
-      // Linear interpolation between two nearest points
-      for (int i = 0; i < kShooterVelocityTable.length - 1; i++) {
-        double dist1 = kShooterVelocityTable[i][0];
-        double dist2 = kShooterVelocityTable[i + 1][0];
-
-        if (distance >= dist1 && distance <= dist2) {
-          double rpm1 = kShooterVelocityTable[i][1];
-          double rpm2 = kShooterVelocityTable[i + 1][1];
-
-          // Linear interpolation formula: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
-          double ratio = (distance - dist1) / (dist2 - dist1);
-          return rpm1 + ratio * (rpm2 - rpm1);
-        }
-      }
-
-      return kDefaultRPM;
-    }
-    */
   }
 
   public static class ClimberConstants {
@@ -188,9 +185,9 @@ public final class Constants {
     public static final int kMechanismControllerPort = 1;
     public static final double kDriveDeadband = 0.05;
 
-    public static final double kNormalSpeedLimit = 0.75;
-    public static final double kTurboSpeedLimit = 0.9;
-    public static final double kPrecisionSpeedLimit = 0.2;
+    public static final double kNormalSpeedLimit = 0.5;
+    public static final double kTurboSpeedLimit = 0.75;
+    public static final double kPrecisionSpeedLimit = 0.25;
   }
 
   public static final class DriveConstants {

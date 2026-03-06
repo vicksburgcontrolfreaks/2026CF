@@ -48,36 +48,23 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
     }
 
     addCommands(
-      // Step 1: Rotate to face the speaker target
-      new RotateToTargetCommand(swerveDrive, target),
+      Commands.run(() -> shooter.runIndexer(true, true), shooter).withTimeout(1.5),
 
-      // Step 2: Drive toward speaker until within 2 meters
       Commands.run(() -> {
-        // Drive forward slowly toward target
-        swerveDrive.drive(0.3, 0, 0, true); // 0.3 m/s forward, field-relative
+        swerveDrive.drive(-0.3, 0, 0, true);
       }, swerveDrive)
       .until(() -> {
         double distance = vision.getDistanceToSpeaker();
-        // Stop when within 2 meters or if vision is lost
         return distance > 0 && distance <= 2.0;
       })
-      .withTimeout(5.0), // Safety timeout: 5 seconds max drive time
-
-      // Step 3: Stop driving
+      .withTimeout(1),
       Commands.runOnce(() -> {
         swerveDrive.drive(0, 0, 0, true);
       }, swerveDrive),
 
-      // Step 4: Fine-tune rotation to face speaker
       new RotateToTargetCommand(swerveDrive, target),
 
-      // Step 5: Spin up shooter and shoot for 3 seconds
-      new ShooterSequenceCommand(shooter, vision),
-
-      // Step 6: Stop shooter
-      Commands.runOnce(() -> {
-        shooter.stopAll();
-      }, shooter)
+      new ShooterSequenceCommand(shooter, vision).withTimeout(5.0)
     );
   }
 }

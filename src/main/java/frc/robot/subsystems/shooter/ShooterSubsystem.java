@@ -44,6 +44,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
   private double m_lastDistanceToTarget = 0.0;
+  private boolean m_indexerInManualMode = false;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
@@ -80,34 +81,6 @@ public class ShooterSubsystem extends SubsystemBase {
     m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
   }
 
- /* 
-
-  public void runAllMotors() {
-    runAllMotors(ShooterConstants.kTargetRPM);
-  }
-
-  public void runAllMotors(double targetRPM) {
-    // Right shooter is the leader - left follows automatically (inverted)
-    m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      -kTargetRPM,
-      ControlType.kVelocity
-    );
-
-    m_floorMotor.set(-0.1);
-
-    m_indexerMotor.getClosedLoopController().setSetpoint(
-      kTargetRPM,
-      ControlType.kVelocity
-    );
-
-    m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      kTargetRPM,
-      ControlType.kVelocity
-    );
-  }
-
-  */
-
   public void runFloor(boolean reversed) {
     double targetRPM = ShooterConstants.kFloorMotorTargetRPM;
     if (reversed) {
@@ -129,10 +102,9 @@ public class ShooterSubsystem extends SubsystemBase {
    * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
    */
   public void runShooter(PhotonVisionSubsystem vision) {
-    // Using flat RPM instead of dynamic RPM
-    double targetRPM = ShooterConstants.kShooterTargetRPM;
+    double targetRPM;
 
-    /* DYNAMIC RPM CODE - COMMENTED OUT
+    // DYNAMIC RPM CODE - Uses robot pose and speaker position to calculate distance
     if (vision != null) {
       double distance = vision.getDistanceToSpeaker();
       m_lastDistanceToTarget = distance;
@@ -142,16 +114,15 @@ public class ShooterSubsystem extends SubsystemBase {
         System.out.println("Dynamic Shooter: Distance = " + String.format("%.2f", distance) +
                            "m, Target RPM = " + String.format("%.0f", targetRPM));
       } else {
-        // Fall back to default RPM if no target visible
-        targetRPM = ShooterConstants.kDefaultRPM;
-        System.out.println("Dynamic Shooter: No target visible, using default RPM = " + targetRPM);
+        // Fall back to default RPM if distance calculation fails
+        targetRPM = ShooterConstants.kShooterTargetRPM;
+        System.out.println("Dynamic Shooter: Distance calculation failed, using default RPM = " + targetRPM);
       }
     } else {
       // Use default RPM if no vision subsystem provided
       targetRPM = ShooterConstants.kShooterTargetRPM;
       m_lastDistanceToTarget = 0.0;
     }
-    */
 
     m_currentTargetRPM = targetRPM;
 
@@ -187,11 +158,20 @@ public class ShooterSubsystem extends SubsystemBase {
            Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance;
   }
 
-  public void runIndexer() {
-    m_indexerMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kIndexerMotorTargetRPM,
-      ControlType.kVelocity
-    );
+  public void runIndexer(boolean reversed, boolean manual) {
+    double rpm = ShooterConstants.kIndexerMotorTargetRPM;
+    if (reversed) {
+      rpm = -rpm;
+    }
+
+    if (manual) {
+      m_indexerMotor.set(-0.75);
+    } else {
+      m_indexerMotor.getClosedLoopController().setSetpoint(
+        rpm,
+        ControlType.kVelocity
+      );
+    }
   }
 
   public void stopAll() {

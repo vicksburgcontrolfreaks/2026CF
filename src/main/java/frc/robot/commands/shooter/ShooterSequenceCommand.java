@@ -32,8 +32,8 @@ public class ShooterSequenceCommand extends Command {
 
   @Override
   public void execute() {
-    if (!m_indexerStarted && m_timer.hasElapsed(1.5)) {
-      m_shooter.runIndexer();
+    if (!m_indexerStarted && m_timer.hasElapsed(2.5)) {
+      m_shooter.runIndexer(false, false);
       m_shooter.runFloor(false);
       m_indexerStarted = true;
     }

@@ -60,14 +60,26 @@ public class RobotContainer {
   }
 
   private void configureDefaultCommands() {
-    // Configure default swerve drive command with field-relative control
+    // Configure default swerve drive command with field-relative control and speed modes
     m_swerveDrive.setDefaultCommand(
       new RunCommand(
-        () -> m_swerveDrive.drive(
-          -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
-          -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
-          -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband),
-          true),
+        () -> {
+          // Determine speed multiplier based on which bumper is pressed
+          double speedMultiplier;
+          if (m_driverController.rightBumper().getAsBoolean()) {
+            speedMultiplier = OIConstants.kTurboSpeedLimit; // Turbo mode
+          } else if (m_driverController.leftBumper().getAsBoolean()) {
+            speedMultiplier = OIConstants.kPrecisionSpeedLimit; // Precision mode
+          } else {
+            speedMultiplier = OIConstants.kNormalSpeedLimit; // Normal mode
+          }
+
+          m_swerveDrive.drive(
+            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * Constants.DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * Constants.DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * Constants.DriveConstants.kMaxAngularSpeed * speedMultiplier,
+            true);
+        },
         m_swerveDrive)
     );
 
@@ -112,9 +124,14 @@ public class RobotContainer {
         .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(true), m_shooterSubsystem))
     );
 
+    m_mechanismController.y().whileTrue(
+      Commands.run(() -> m_shooterSubsystem.runIndexer(true, true), m_shooterSubsystem)
+    );
+
     m_mechanismController.rightTrigger().onTrue(
       new ShooterSequenceCommand(m_shooterSubsystem, m_visionSubsystem)
     );
+
   /* 
     m_mechanismController.povUp().whileTrue(
       Commands.run(() -> m_climber.setSpeed(0.2), m_climber)
