@@ -109,11 +109,15 @@ public class ShooterSubsystem extends SubsystemBase {
   */
 
   public void runFloor(boolean reversed) {
-    if (!reversed) {
-      m_floorMotor.set(-ShooterConstants.kFloorMotorSpeed);
-    } else {
-      m_floorMotor.set(ShooterConstants.kFloorMotorSpeed);
+    double targetRPM = ShooterConstants.kFloorMotorTargetRPM;
+    if (reversed) {
+      targetRPM = -targetRPM;
     }
+
+    m_floorMotor.getClosedLoopController().setSetpoint(
+      targetRPM,
+      ControlType.kVelocity
+    );
   }
 
   public void StopFloor() {
@@ -125,8 +129,10 @@ public class ShooterSubsystem extends SubsystemBase {
    * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
    */
   public void runShooter(PhotonVisionSubsystem vision) {
-    double targetRPM;
+    // Using flat RPM instead of dynamic RPM
+    double targetRPM = ShooterConstants.kShooterTargetRPM;
 
+    /* DYNAMIC RPM CODE - COMMENTED OUT
     if (vision != null) {
       double distance = vision.getDistanceToSpeaker();
       m_lastDistanceToTarget = distance;
@@ -145,6 +151,7 @@ public class ShooterSubsystem extends SubsystemBase {
       targetRPM = ShooterConstants.kShooterTargetRPM;
       m_lastDistanceToTarget = 0.0;
     }
+    */
 
     m_currentTargetRPM = targetRPM;
 
@@ -181,7 +188,10 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void runIndexer() {
-    m_indexerMotor.set(ShooterConstants.kIndexerMotorSpeed);
+    m_indexerMotor.getClosedLoopController().setSetpoint(
+      ShooterConstants.kIndexerMotorTargetRPM,
+      ControlType.kVelocity
+    );
   }
 
   public void stopAll() {

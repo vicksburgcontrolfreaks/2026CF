@@ -9,15 +9,15 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.SwerveConstants;
-import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
+import frc.robot.Constants.DriveConstants;
+import frc.robot.subsystems.DriveSubsystem;
 
 /**
  * Command that rotates the robot to face a target position on the field using PID control.
  * The robot will calculate the angle to the target and rotate to face it.
  */
 public class RotateToTargetCommand extends Command {
-  private final SwerveDriveSubsystem m_swerveDrive;
+  private final DriveSubsystem m_swerveDrive;
   private final Translation2d m_targetPosition;
   private final PIDController m_rotationController;
 
@@ -27,7 +27,7 @@ public class RotateToTargetCommand extends Command {
    * @param swerveDrive The swerve drive subsystem
    * @param targetPosition The target position on the field (X, Y in meters)
    */
-  public RotateToTargetCommand(SwerveDriveSubsystem swerveDrive, Translation2d targetPosition) {
+  public RotateToTargetCommand(DriveSubsystem swerveDrive, Translation2d targetPosition) {
     m_swerveDrive = swerveDrive;
     m_targetPosition = targetPosition;
 
@@ -74,7 +74,7 @@ public class RotateToTargetCommand extends Command {
     m_swerveDrive.drive(
         0.0,
         0.0,
-        rotationSpeed * SwerveConstants.kMaxAngularSpeedRadiansPerSecond,
+        rotationSpeed * DriveConstants.kMaxAngularSpeed,
         false
     );
   }

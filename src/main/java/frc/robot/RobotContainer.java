@@ -4,20 +4,21 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.OIConstants;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.hopper.ManualExtendHopperCommand;
 import frc.robot.commands.collector.hopper.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
-import frc.robot.commands.drive.SwerveDriveCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
@@ -25,7 +26,7 @@ import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
-import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
+import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -34,7 +35,7 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
  * subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
-  private final SwerveDriveSubsystem m_swerveDrive = new SwerveDriveSubsystem();
+  private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = null;
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
@@ -47,8 +48,8 @@ public class RobotContainer {
   private final Command m_autoCommand;
 
   public RobotContainer() {
-      m_driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
-      m_mechanismController = new CommandXboxController(OperatorConstants.kMechanismControllerPort);
+      m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
+      m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
       // Create autonomous command
       m_autoCommand = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_shooterSubsystem);
@@ -59,14 +60,15 @@ public class RobotContainer {
   }
 
   private void configureDefaultCommands() {
+    // Configure default swerve drive command with field-relative control
     m_swerveDrive.setDefaultCommand(
-      new SwerveDriveCommand(
-        m_swerveDrive,
-        () -> -m_driverController.getLeftY(),  
-        () -> -m_driverController.getLeftX(),  
-        () -> -m_driverController.getRightX(),  
-        () -> getSpeedLimit()                   
-      )
+      new RunCommand(
+        () -> m_swerveDrive.drive(
+          -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
+          -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
+          -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband),
+          true),
+        m_swerveDrive)
     );
 
     if (m_visionSubsystem != null && m_ledSubsystem != null) {
@@ -78,7 +80,7 @@ public class RobotContainer {
 
   private void configureDriverBindings() {
     m_driverController.start().onTrue(
-      m_swerveDrive.runOnce(() -> m_swerveDrive.resetGyro())
+      m_swerveDrive.runOnce(() -> m_swerveDrive.zeroHeading())
     );
 
     m_driverController.y().onTrue(
@@ -126,21 +128,11 @@ public class RobotContainer {
   */
   }
 
-  public double getSpeedLimit() {
-    if (m_driverController.rightBumper().getAsBoolean()) {
-      return OperatorConstants.kTurboSpeedLimit;
-    } else if (m_driverController.leftBumper().getAsBoolean()) {
-      return OperatorConstants.kPrecisionSpeedLimit;
-    } else {
-      return OperatorConstants.kNormalSpeedLimit;
-    }
-  }
-
   public Command getAutonomousCommand() {
     return m_autoCommand;
   }
 
-  public SwerveDriveSubsystem getSwerveDrive() {
+  public DriveSubsystem getSwerveDrive() {
     return m_swerveDrive;
   }
 

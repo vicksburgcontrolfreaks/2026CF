@@ -6,8 +6,6 @@ package frc.robot;
 
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.spark.FeedbackSensor;
-import com.revrobotics.spark.config.AbsoluteEncoderConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -33,23 +31,21 @@ public final class Constants {
     public static final double kFreeSpeedRpm = 5676;
   }
 
-  public static final class MotorModuleConstants {
-    // MAXSwerve pinion options: 12T (~5.50:1), 13T (~5.08:1), 14T (~4.71:1)
+  public static final class ModuleConstants {
+    // The MAXSwerve module can be configured with one of three pinion gears: 12T,
+    // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
+    // more teeth will result in a robot that drives faster).
     public static final int kDrivingMotorPinionTeeth = 14;
 
-    public static final double kDrivingMotorFreeSpeedRps = NeoVortexMotorConstants.kFreeSpeedRpm / 60;
-
+    // Calculations required for driving motor conversion factors and feed forward
+    public static final double kDrivingMotorFreeSpeedRps = NeoMotorConstants.kFreeSpeedRpm / 60;
     public static final double kWheelDiameterMeters = 0.0762;
     public static final double kWheelCircumferenceMeters = kWheelDiameterMeters * Math.PI;
+    // 45 teeth on the wheel's bevel gear, 22 teeth on the first-stage spur gear, 15
+    // teeth on the bevel pinion
     public static final double kDrivingMotorReduction = (45.0 * 22) / (kDrivingMotorPinionTeeth * 15);
     public static final double kDriveWheelFreeSpeedRps = (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters)
         / kDrivingMotorReduction;
-
-    public static final double kNominalVoltage = 12.0;
-    public static final double kMotorOutputMin = -1.0;
-    public static final double kMotorOutputMax = 1.0;
-    public static final double kVelocityConversionFactor = 1.0 / 60.0;
-    public static final double kPositionConversionFactor = 2.0 * Math.PI;
   }
 
   public static class TelemetryConstants {
@@ -70,12 +66,13 @@ public final class Constants {
     public static final double kVelocityD = 0.000000;
     public static final double kVelocityFF = 3.7 / NeoVortexMotorConstants.kFreeSpeedRpm; // ~0.000147
     
-    public static final double kShooterTargetRPM = 4000; // Default/fallback RPM value
+    public static final double kShooterTargetRPM = 3200; // Flat RPM value
     // max rpm 6784
 
-    public static final double kFloorMotorSpeed = 0.5;
-    public static final double kIndexerMotorSpeed = 0.5;
+    public static final double kFloorMotorTargetRPM = -1700; // Floor motor target RPM
+    public static final double kIndexerMotorTargetRPM = 2150; // Indexer motor target RPM
 
+    /* DYNAMIC RPM LOOKUP TABLE - COMMENTED OUT
     // Shooter velocity lookup table: distance (meters) -> RPM
     // Replace these example values with actual tested values
     public static final double[][] kShooterVelocityTable = {
@@ -90,6 +87,7 @@ public final class Constants {
 
     // Default RPM when distance is unavailable
     public static final double kDefaultRPM = 3000;
+    */
 
     public static final SparkFlexConfig config = new SparkFlexConfig();
 
@@ -102,11 +100,13 @@ public final class Constants {
             .velocityFF(kVelocityFF);
     }
 
+    /* DYNAMIC RPM CALCULATION METHOD - COMMENTED OUT
     /**
      * Get shooter RPM for a given distance to target using linear interpolation
      * @param distance Distance to target in meters
      * @return Target RPM for the shooter wheels
      */
+    /*
     public static double getRPMForDistance(double distance) {
       // If distance is invalid, return default
       if (distance <= 0) {
@@ -140,6 +140,7 @@ public final class Constants {
 
       return kDefaultRPM;
     }
+    */
   }
 
   public static class ClimberConstants {
@@ -182,111 +183,51 @@ public final class Constants {
     }
   }
 
-  public static class OperatorConstants {
+  public static final class OIConstants {
     public static final int kDriverControllerPort = 0;
     public static final int kMechanismControllerPort = 1;
-
-    public static final double kDeadband = 0.1;
+    public static final double kDriveDeadband = 0.05;
 
     public static final double kNormalSpeedLimit = 0.75;
     public static final double kTurboSpeedLimit = 0.9;
     public static final double kPrecisionSpeedLimit = 0.2;
   }
 
-  public static class SwerveConstants {
-    public static final int kFrontLeftDriveMotorId = 2;
-    public static final int kFrontLeftSteerMotorId = 3;
+  public static final class DriveConstants {
+    // Driving Parameters - Note that these are not the maximum capable speeds of
+    // the robot, rather the allowed maximum speeds
+    public static final double kMaxSpeedMetersPerSecond = 4.8;
+    public static final double kMaxAngularSpeed = 2 * Math.PI; // radians per second
 
-    public static final int kFrontRightDriveMotorId = 4;
-    public static final int kFrontRightSteerMotorId = 5;
+    // Chassis configuration
+    public static final double kTrackWidth = Units.inchesToMeters(26.5);
+    // Distance between centers of right and left wheels on robot
+    public static final double kWheelBase = Units.inchesToMeters(26.5);
+    // Distance between front and back wheels on robot
+    public static final SwerveDriveKinematics kDriveKinematics = new SwerveDriveKinematics(
+        new Translation2d(kWheelBase / 2, kTrackWidth / 2),
+        new Translation2d(kWheelBase / 2, -kTrackWidth / 2),
+        new Translation2d(-kWheelBase / 2, kTrackWidth / 2),
+        new Translation2d(-kWheelBase / 2, -kTrackWidth / 2));
 
-    public static final int kBackLeftDriveMotorId = 8;
-    public static final int kBackLeftSteerMotorId = 9;
-
-    public static final int kBackRightDriveMotorId = 6;
-    public static final int kBackRightSteerMotorId = 7;
-
-    public static final int kGyroCalibrationTimeSec = 2;
-
-    public static final boolean m_fieldOriented = true;
-
-    public static final double kWheelDiameterMeters = Units.inchesToMeters(3.0);
-    public static final double kWheelCircumferenceMeters = kWheelDiameterMeters * Math.PI;
-
-    public static final double kDriveGearRatio = (45.0 * 22) / (14 * 15);
-    public static final double kSteerGearRatio = 150.0 / 7.0;
-
-    public static final int kDriveMotorCurrentLimit = 50;
-    public static final int kSteerMotorCurrentLimit = 20;
-
-    public static final double kRobotMassKg = 55.0; // Robot mass in kilograms
-    public static final double kRobotMOI = 12.0; // Robot moment of inertia (kg*m²)
-    public static final double kWheelCoefficientOfFriction = 1.2; // Wheel coefficient of friction
-    public static final int kNumMotorsPerModule = 1; 
-
-    public static final double kTrackWidthMeters = Units.inchesToMeters(23.375);
-    public static final double kWheelBaseMeters = Units.inchesToMeters(23.375);
-
-    public static final SwerveDriveKinematics kSwerveKinematics = new SwerveDriveKinematics(
-      new Translation2d(kWheelBaseMeters / 2.0, kTrackWidthMeters / 2.0),
-      new Translation2d(kWheelBaseMeters / 2.0, -kTrackWidthMeters / 2.0),
-      new Translation2d(-kWheelBaseMeters / 2.0, kTrackWidthMeters / 2.0),
-      new Translation2d(-kWheelBaseMeters / 2.0, -kTrackWidthMeters / 2.0)
-    );
-
-    public static final double kMaxSpeedMetersPerSecond = 45;
-    public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI * 2;
-
-    public static final double kFrontLeftChassisAngularOffset = Math.PI / 2;
+    // Angular offsets of the modules relative to the chassis in radians
+    public static final double kFrontLeftChassisAngularOffset = -Math.PI / 2;
     public static final double kFrontRightChassisAngularOffset = 0;
     public static final double kBackLeftChassisAngularOffset = Math.PI;
     public static final double kBackRightChassisAngularOffset = Math.PI / 2;
-    public static final double kEncoderNormalization = 2.0 * Math.PI;
-    public static final double kGyroWrapModulo = 360.0;
 
-    public static final double kXFormationAngleFrontLeft = 45.0;
-    public static final double kXFormationAngleFrontRight = -45.0;
-    public static final double kXFormationAngleBackLeft = -45.0;
-    public static final double kXFormationAngleBackRight = 45.0;
+    // SPARK MAX CAN IDs - PRESERVED FROM YOUR ORIGINAL CONFIGURATION
+    public static final int kFrontLeftDrivingCanId = 2;
+    public static final int kRearLeftDrivingCanId = 8;
+    public static final int kFrontRightDrivingCanId = 4;
+    public static final int kRearRightDrivingCanId = 6;
 
-    public static final double kTranslationSlewRate = 3.0;
-    public static final double kRotationSlewRate = 3.0;
+    public static final int kFrontLeftTurningCanId = 3;
+    public static final int kRearLeftTurningCanId = 9;
+    public static final int kFrontRightTurningCanId = 5;
+    public static final int kRearRightTurningCanId = 7;
 
-    public static final SparkFlexConfig drivingConfig = new SparkFlexConfig();
-    public static final SparkMaxConfig turningConfig = new SparkMaxConfig();
-
-    static {
-        double drivingFactor = MotorModuleConstants.kWheelDiameterMeters * Math.PI
-                / MotorModuleConstants.kDrivingMotorReduction;
-        double turningFactor = MotorModuleConstants.kPositionConversionFactor;
-        double nominalVoltage = MotorModuleConstants.kNominalVoltage;
-        double drivingVelocityFeedForward = nominalVoltage / MotorModuleConstants.kDriveWheelFreeSpeedRps;
-        drivingConfig
-                .idleMode(IdleMode.kCoast)
-                .smartCurrentLimit(50);
-        drivingConfig.encoder
-                .positionConversionFactor(drivingFactor)
-                .velocityConversionFactor(drivingFactor * MotorModuleConstants.kVelocityConversionFactor);
-        drivingConfig.closedLoop
-                .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-                .pid(0.04, 0, 0)
-                .outputRange(MotorModuleConstants.kMotorOutputMin, MotorModuleConstants.kMotorOutputMax)
-                .feedForward.kV(drivingVelocityFeedForward);
-        turningConfig
-                .idleMode(IdleMode.kCoast)
-                .smartCurrentLimit(20);
-        turningConfig.absoluteEncoder
-                .inverted(true)
-                .positionConversionFactor(turningFactor)
-                .velocityConversionFactor(turningFactor * MotorModuleConstants.kVelocityConversionFactor)
-                .apply(AbsoluteEncoderConfig.Presets.REV_ThroughBoreEncoderV2);
-        turningConfig.closedLoop
-                .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
-                .pid(1, 0, 0)
-                .outputRange(-1, 1)
-                .positionWrappingEnabled(true)
-                .positionWrappingInputRange(0, turningFactor);
-    }
+    public static final boolean kGyroReversed = false;
   }
 
   public static class PhotonVisionConstants {
@@ -336,31 +277,34 @@ public final class Constants {
   }
 
 
-  public static class AutoConstants {
+  public static final class AutoConstants {
+    public static final double kMaxSpeedMetersPerSecond = 3;
+    public static final double kMaxAccelerationMetersPerSecondSquared = 3;
+    public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI;
+    public static final double kMaxAngularSpeedRadiansPerSecondSquared = Math.PI;
+
+    public static final double kPXController = 1;
+    public static final double kPYController = 1;
+    public static final double kPThetaController = 1;
+
+    // Legacy PathPlanner constants (kept for compatibility)
     public static final double kPTranslation = 5.0;
     public static final double kITranslation = 0.0;
     public static final double kDTranslation = 0.0;
 
     public static final double kPRotation = 15.0;
-    public static final double kIRotation = 0.25;  // Small I term to eliminate steady-state error
-    public static final double kDRotation = 0.1;   // Small D term to reduce oscillation
+    public static final double kIRotation = 0.25;
+    public static final double kDRotation = 0.1;
 
-    public static final Translation2d blueTarget = new Translation2d(
-      4.639,
-      4.02
-    );
-
-    public static final Translation2d redTarget = new Translation2d(
-      11.942,
-      4.02
-    );
+    public static final Translation2d blueTarget = new Translation2d(4.639, 4.02);
+    public static final Translation2d redTarget = new Translation2d(11.942, 4.02);
 
     // RotateToTarget constants
     public static final double kRotateToTargetP = 0.02;
     public static final double kRotateToTargetI = 0.0001;
     public static final double kRotateToTargetD = 0.003;
-    public static final double kRotateToTargetTolerance = 2.0;  // degrees
-    public static final double kRotateToTargetMaxVelocity = 0.5;  // fraction of max angular velocity
+    public static final double kRotateToTargetTolerance = 2.0;
+    public static final double kRotateToTargetMaxVelocity = 0.5;
   }
 
   public static class CollectorConstants {

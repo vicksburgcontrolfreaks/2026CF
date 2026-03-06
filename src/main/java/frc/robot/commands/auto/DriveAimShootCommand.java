@@ -13,7 +13,7 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
-import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
+import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
@@ -32,7 +32,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
    * @param shooter The shooter subsystem
    */
   public DriveAimShootCommand(
-      SwerveDriveSubsystem swerveDrive,
+      DriveSubsystem swerveDrive,
       PhotonVisionSubsystem vision,
       ShooterSubsystem shooter) {
 
