@@ -17,7 +17,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.PhotonVisionConstants;
-import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
+import frc.robot.subsystems.DriveSubsystem;
 
 import org.photonvision.PhotonCamera;
 import org.photonvision.targeting.PhotonPipelineResult;
@@ -58,7 +58,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     }
   }
 
-  private final SwerveDriveSubsystem m_swerveDrive;
+  private final DriveSubsystem m_swerveDrive;
   private final List<CameraData> m_cameras = new ArrayList<>();
   private final AprilTagFieldLayout m_fieldLayout;
 
@@ -76,7 +76,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final List<BooleanPublisher> m_cameraHasTargetPubs = new ArrayList<>();
   private final List<DoublePublisher> m_cameraTagCountPubs = new ArrayList<>();
 
-  public PhotonVisionSubsystem(SwerveDriveSubsystem swerveDrive) {
+  public PhotonVisionSubsystem(DriveSubsystem swerveDrive) {
     m_swerveDrive = swerveDrive;
 
     // Load AprilTag field layout (2025 Reefscape)
@@ -565,8 +565,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
   /**
    * Get the distance to the speaker target based on alliance.
-   * Returns distance to the appropriate speaker AprilTag for red or blue alliance.
-   * @return Distance to speaker in meters, or -1.0 if tag not found or alliance unknown
+   * Uses robot pose and speaker target poses from Constants to calculate distance mathematically.
+   * @return Distance to speaker in meters, or -1.0 if alliance unknown
    */
   public double getDistanceToSpeaker() {
     var alliance = DriverStation.getAlliance();
@@ -574,21 +574,19 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       return -1.0;
     }
 
-    // 2026 Reefscape speaker tag IDs (adjust based on actual field layout)
-    // Red alliance speaker tags: 3, 4
-    // Blue alliance speaker tags: 7, 8
-    int[] speakerTags = alliance.get() == DriverStation.Alliance.Red
-      ? new int[]{3, 4}
-      : new int[]{7, 8};
+    // Get robot's current pose from the drive subsystem
+    Pose2d robotPose = m_swerveDrive.getPose();
+    Translation2d robotPosition = robotPose.getTranslation();
 
-    double closestDistance = -1.0;
-    for (int tagID : speakerTags) {
-      double distance = getDistanceToTag(tagID);
-      if (distance > 0 && (closestDistance < 0 || distance < closestDistance)) {
-        closestDistance = distance;
-      }
-    }
+    // Get the appropriate speaker target based on alliance
+    Translation2d speakerPosition = alliance.get() == DriverStation.Alliance.Red
+      ? frc.robot.Constants.AutoConstants.redTarget
+      : frc.robot.Constants.AutoConstants.blueTarget;
 
-    return closestDistance;
+    // Calculate Euclidean distance between robot and speaker
+    // distance = sqrt((x2-x1)^2 + (y2-y1)^2)
+    double distance = robotPosition.getDistance(speakerPosition);
+
+    return distance;
   }
 }
