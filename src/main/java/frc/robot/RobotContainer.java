@@ -83,6 +83,13 @@ public class RobotContainer {
         m_swerveDrive)
     );
 
+    // Configure shooter to run continuously from start of auton through teleop
+    m_shooterSubsystem.setDefaultCommand(
+      new RunCommand(
+        () -> m_shooterSubsystem.runShooter(null),
+        m_shooterSubsystem)
+    );
+
     if (m_visionSubsystem != null && m_ledSubsystem != null) {
       m_ledSubsystem.setDefaultCommand(
         new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
@@ -107,16 +114,17 @@ public class RobotContainer {
 
   private void configureMechanismBindings() {
     m_mechanismController.a().whileTrue(
-      new RunCollectorCommand(m_collector, false).alongWith(Commands.run(() ->
-        m_shooterSubsystem.runFloor(false), m_shooterSubsystem))
+      new RunCollectorCommand(m_collector, false).alongWith(Commands.run(() -> {
+        m_shooterSubsystem.runFloor(false); m_shooterSubsystem.runIndexerSlowReverse(); }, m_shooterSubsystem))
     );
 
     m_mechanismController.b().onTrue(
-      new ParallelCommandGroup(
-        new StopCollectorCommand(m_collector),
-        Commands.runOnce(() ->
-          m_shooterSubsystem.stopAll(), m_shooterSubsystem)
-      )
+        new StopCollectorCommand(m_collector).alongWith(
+            Commands.runOnce(() -> {
+            m_shooterSubsystem.StopFloor();
+            m_shooterSubsystem.StopIndexer();
+          }, m_shooterSubsystem)
+        )
     );
 
     m_mechanismController.x().onTrue(
@@ -124,8 +132,8 @@ public class RobotContainer {
         .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(true), m_shooterSubsystem))
     );
 
-    m_mechanismController.y().whileTrue(
-      Commands.run(() -> m_shooterSubsystem.runIndexer(true, true), m_shooterSubsystem)
+    m_mechanismController.y().onTrue(
+      Commands.run(() -> m_shooterSubsystem.runIndexer(true, true), m_shooterSubsystem).withTimeout(0.5)
     );
 
     m_mechanismController.rightTrigger().onTrue(

@@ -59,7 +59,7 @@ public final class Constants {
     public static final int kIndexerMotorId = 14;
     public static final int kLeftShooterId = 16;
 
-    public static final int kMotorCurrentLimit = 40;
+    public static final int kMotorCurrentLimit = 60;
 
     public static final double kVelocityP = 0.00045;
     public static final double kVelocityI = 0.00000025;

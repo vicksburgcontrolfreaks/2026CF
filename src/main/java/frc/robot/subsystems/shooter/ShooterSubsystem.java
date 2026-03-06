@@ -64,6 +64,9 @@ public class ShooterSubsystem extends SubsystemBase {
     leftConfig.follow(ShooterConstants.kRightShooterId, true);
     m_leftShooterMotor.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+    m_indexerMotor.set(0);
+    m_floorMotor.set(0);
+
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
     m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
     m_floorMotorSpeedPub     = m_telemetryTable.getDoubleTopic("Floor Motor Speed").publish();
@@ -95,6 +98,10 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public void StopFloor() {
     m_floorMotor.set(0);
+  }
+
+  public void StopIndexer() {
+    m_indexerMotor.set(0);
   }
 
   /**
@@ -172,6 +179,13 @@ public class ShooterSubsystem extends SubsystemBase {
         ControlType.kVelocity
       );
     }
+  }
+
+  /**
+   * Run the indexer slowly in reverse for collection
+   */
+  public void runIndexerSlowReverse() {
+    m_indexerMotor.set(-0.2);
   }
 
   public void stopAll() {

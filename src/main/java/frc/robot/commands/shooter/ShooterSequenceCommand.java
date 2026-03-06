@@ -4,7 +4,6 @@
 
 package frc.robot.commands.shooter;
 
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -12,36 +11,30 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 public class ShooterSequenceCommand extends Command {
   private final ShooterSubsystem m_shooter;
   private final PhotonVisionSubsystem m_vision;
-  private final Timer m_timer;
-  private boolean m_indexerStarted;
 
   public ShooterSequenceCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision) {
     m_shooter = shooter;
     m_vision = vision;
-    m_timer = new Timer();
     addRequirements(shooter);
   }
 
   @Override
   public void initialize() {
-    m_timer.restart();
-    m_indexerStarted = false;
-    // Start shooter motors immediately with dynamic RPM based on distance
-    m_shooter.runShooter(m_vision);
+    // Start floor and indexer immediately
+    m_shooter.runIndexer(false, false);
+    m_shooter.runFloor(false);
   }
 
   @Override
   public void execute() {
-    if (!m_indexerStarted && m_timer.hasElapsed(2.5)) {
-      m_shooter.runIndexer(false, false);
-      m_shooter.runFloor(false);
-      m_indexerStarted = true;
-    }
+    // Floor and indexer run continuously during the command
   }
 
   @Override
   public void end(boolean interrupted) {
-    m_shooter.stopAll();
+    // Stop floor and indexer, but shooter keeps running via default command
+    m_shooter.StopFloor();
+    m_shooter.StopIndexer();
   }
 
   @Override
