@@ -39,7 +39,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
 
     // Get the alliance color from the FRC Driver Station
     Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
     Translation2d target;
 
     if (alliance == Alliance.Red) {
@@ -49,10 +49,6 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
     }
 
     addCommands(
-      new InstantCommand(() -> swerveDrive.zeroHeading(), swerveDrive),
-
-      new WaitCommand(0.1),
-
       new InstantCommand(() -> shooter.runIndexer(true, true), shooter),
 
       new WaitCommand(0.5),
@@ -62,14 +58,14 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
       new WaitCommand(0.1),
 
       new InstantCommand(() -> {
-        swerveDrive.drive(-0.3, 0.0, 0.0, true);
+        swerveDrive.drive(-0.6, 0.0, 0.0, true);
       }, swerveDrive),
       //.until(() -> {
        // double distance = vision.getDistanceToSpeaker();
       //  return distance > 0 && distance <= 2.0;
      // }),
 
-      new WaitCommand(1.0),
+      new WaitCommand(1.5),
 
       new InstantCommand(() -> {
         swerveDrive.drive(0, 0, 0, true);
@@ -81,7 +77,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
 
       new WaitCommand(0.1),
 
-      new ShooterSequenceCommand(shooter, vision),
+      new ShooterSequenceCommand(shooter),
 
       new WaitCommand(10),
 

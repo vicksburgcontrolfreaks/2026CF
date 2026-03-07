@@ -19,6 +19,8 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import frc.robot.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -47,10 +49,13 @@ public class DriveSubsystem extends SubsystemBase {
   // The gyro sensor
   private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
 
+  // NetworkTable for gyro logging
+  private final NetworkTable m_gyroTable = NetworkTableInstance.getDefault().getTable("Gyro");
+
   // Pose estimator for tracking robot pose with vision fusion
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
       DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
       new SwerveModulePosition[] {
           m_frontLeft.getPosition(),
           m_frontRight.getPosition(),
@@ -69,13 +74,22 @@ public class DriveSubsystem extends SubsystemBase {
   public void periodic() {
     // Update the pose estimator in the periodic block
     m_poseEstimator.update(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
             m_rearLeft.getPosition(),
             m_rearRight.getPosition()
         });
+
+    // Log all gyro axes to NetworkTables
+    m_gyroTable.getEntry("X Angle").setDouble(m_gyro.getAngle(IMUAxis.kX));
+    m_gyroTable.getEntry("Y Angle").setDouble(m_gyro.getAngle(IMUAxis.kY));
+    m_gyroTable.getEntry("Z Angle").setDouble(m_gyro.getAngle(IMUAxis.kZ));
+    m_gyroTable.getEntry("X Rate").setDouble(m_gyro.getRate(IMUAxis.kX));
+    m_gyroTable.getEntry("Y Rate").setDouble(m_gyro.getRate(IMUAxis.kY));
+    m_gyroTable.getEntry("Z Rate").setDouble(m_gyro.getRate(IMUAxis.kZ));
+    m_gyroTable.getEntry("Current Heading").setDouble(getHeading());
   }
 
   /**
@@ -94,7 +108,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     m_poseEstimator.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -134,7 +148,7 @@ public class DriveSubsystem extends SubsystemBase {
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
         fieldRelative
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
-                Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)))
+                Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)))
             : new ChassisSpeeds(xSpeed, ySpeed, rot));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
@@ -187,7 +201,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)).getDegrees();
+    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)).getDegrees();
   }
 
   /**
@@ -196,7 +210,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return The turn rate of the robot, in degrees per second
    */
   public double getTurnRate() {
-    return m_gyro.getRate(IMUAxis.kZ) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+    return m_gyro.getRate(IMUAxis.kY) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
   }
 
   /**

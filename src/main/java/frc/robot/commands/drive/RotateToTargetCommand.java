@@ -58,7 +58,7 @@ public class RotateToTargetCommand extends Command {
     // Calculate the angle to the target
     double deltaX = m_targetPosition.getX() - currentPose.getX();
     double deltaY = m_targetPosition.getY() - currentPose.getY();
-    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX)) + 180.0;
+    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
 
     // Get current heading
     double currentHeading = m_swerveDrive.getHeading();
@@ -75,7 +75,7 @@ public class RotateToTargetCommand extends Command {
         0.0,
         0.0,
         rotationSpeed * DriveConstants.kMaxAngularSpeed,
-        false
+        true
     );
   }
 

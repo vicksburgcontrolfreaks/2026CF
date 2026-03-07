@@ -137,7 +137,9 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().onTrue(
-      new ShooterSequenceCommand(m_shooterSubsystem, m_visionSubsystem)
+      new ShooterSequenceCommand(m_shooterSubsystem
+      
+      )
     );
 
   /* 
