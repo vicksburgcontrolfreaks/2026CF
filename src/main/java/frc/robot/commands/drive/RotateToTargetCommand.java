@@ -8,9 +8,9 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.DriveConstants;
-import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.constants.Constants.AutoConstants;
+import frc.robot.constants.Constants.DriveConstants;
+import frc.robot.subsystems.drive.DriveSubsystem;
 
 /**
  * Command that rotates the robot to face a target position on the field using PID control.

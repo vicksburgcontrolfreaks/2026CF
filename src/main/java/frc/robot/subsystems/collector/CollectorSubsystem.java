@@ -16,8 +16,8 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.CollectorConstants;
-import frc.robot.Constants.TelemetryConstants;
+import frc.robot.constants.Constants.CollectorConstants;
+import frc.robot.constants.Constants.TelemetryConstants;
 
 public class CollectorSubsystem extends SubsystemBase {
   private final SparkFlex m_upperCollectorMotor;
@@ -34,7 +34,6 @@ public class CollectorSubsystem extends SubsystemBase {
   private final DoublePublisher m_upperCollectorSpeedPub;
   private final DoublePublisher m_lowerCollectorSpeedPub;
   private final DoublePublisher m_hopperPositionPub;
-  private final DoublePublisher m_hopperEncoderTicks;
   private final DoublePublisher m_hopperSpeedPub;
   private final DoublePublisher m_upperCollectorCurrentPub;
   private final DoublePublisher m_lowerCollectorCurrentPub;
@@ -61,7 +60,6 @@ public class CollectorSubsystem extends SubsystemBase {
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
     m_lowerCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Lower Collector Speed").publish();
     m_hopperPositionPub = m_telemetryTable.getDoubleTopic("Hopper Position").publish();
-    m_hopperEncoderTicks = m_telemetryTable.getDoubleTopic("Hopper Encoder Ticks").publish();
     m_hopperSpeedPub = m_telemetryTable.getDoubleTopic("Hopper Speed").publish();
     m_upperCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Upper Collector Current").publish();
     m_lowerCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Lower Collector Current").publish();
@@ -156,7 +154,6 @@ public class CollectorSubsystem extends SubsystemBase {
       m_lowerCollectorSpeedPub.set(m_lowerCollectorMotor.get());
       m_hopperPositionPub.set(getHopperPosition());
       m_hopperSpeedPub.set(m_hopperMotor.get());
-      m_hopperEncoderTicks.set(m_hopperMotor.getEncoder().getPosition());
       m_upperCollectorCurrentPub.set(m_upperCollectorMotor.getOutputCurrent());
       m_lowerCollectorCurrentPub.set(m_lowerCollectorMotor.getOutputCurrent());
       m_hopperCurrentPub.set(m_hopperMotor.getOutputCurrent());

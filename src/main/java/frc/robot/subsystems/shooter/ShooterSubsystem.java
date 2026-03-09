@@ -13,9 +13,10 @@ import com.revrobotics.PersistMode;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.ShooterConstants;
-import frc.robot.Constants.TelemetryConstants;
+import frc.robot.constants.Constants.ShooterConstants;
+import frc.robot.constants.Constants.TelemetryConstants;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
@@ -41,10 +42,10 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher m_leftShooterVelocityPub;
   private final DoublePublisher m_targetRPMPub;
   private final DoublePublisher m_distanceToTargetPub;
+  private final StringPublisher m_debugMessagePub;
 
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
   private double m_lastDistanceToTarget = 0.0;
-  private boolean m_indexerInManualMode = false;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
@@ -82,6 +83,7 @@ public class ShooterSubsystem extends SubsystemBase {
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
     m_targetRPMPub             = m_telemetryTable.getDoubleTopic("Target RPM").publish();
     m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
+    m_debugMessagePub          = m_telemetryTable.getStringTopic("Debug Message").publish();
   }
 
   public void runFloor(boolean reversed) {
@@ -118,12 +120,12 @@ public class ShooterSubsystem extends SubsystemBase {
 
       if (distance > 0) {
         targetRPM = ShooterConstants.getRPMForDistance(distance);
-        System.out.println("Dynamic Shooter: Distance = " + String.format("%.2f", distance) +
-                           "m, Target RPM = " + String.format("%.0f", targetRPM));
+        m_debugMessagePub.set("Dynamic Shooter: Distance = " + String.format("%.2f", distance) +
+                              "m, Target RPM = " + String.format("%.0f", targetRPM));
       } else {
         // Fall back to default RPM if distance calculation fails
         targetRPM = ShooterConstants.kShooterTargetRPM;
-        System.out.println("Dynamic Shooter: Distance calculation failed, using default RPM = " + targetRPM);
+        m_debugMessagePub.set("Dynamic Shooter: Distance calculation failed, using default RPM = " + targetRPM);
       }
     } else {
       // Use default RPM if no vision subsystem provided

@@ -2,7 +2,7 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.subsystems;
+package frc.robot.subsystems.drive;
 
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
@@ -19,10 +19,12 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import frc.robot.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.constants.Constants.DriveConstants;
+import frc.robot.constants.Constants.TelemetryConstants;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
@@ -49,8 +51,17 @@ public class DriveSubsystem extends SubsystemBase {
   // The gyro sensor
   private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
 
+  private int m_telemetryCounter = 0;
+
   // NetworkTable for gyro logging
   private final NetworkTable m_gyroTable = NetworkTableInstance.getDefault().getTable("Gyro");
+  private final DoublePublisher m_xAnglePub;
+  private final DoublePublisher m_yAnglePub;
+  private final DoublePublisher m_zAnglePub;
+  private final DoublePublisher m_xRatePub;
+  private final DoublePublisher m_yRatePub;
+  private final DoublePublisher m_zRatePub;
+  private final DoublePublisher m_headingPub;
 
   // Pose estimator for tracking robot pose with vision fusion
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
@@ -68,6 +79,15 @@ public class DriveSubsystem extends SubsystemBase {
   public DriveSubsystem() {
     // Usage reporting for MAXSwerve template
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
+
+    // Initialize telemetry publishers
+    m_xAnglePub = m_gyroTable.getDoubleTopic("X Angle").publish();
+    m_yAnglePub = m_gyroTable.getDoubleTopic("Y Angle").publish();
+    m_zAnglePub = m_gyroTable.getDoubleTopic("Z Angle").publish();
+    m_xRatePub = m_gyroTable.getDoubleTopic("X Rate").publish();
+    m_yRatePub = m_gyroTable.getDoubleTopic("Y Rate").publish();
+    m_zRatePub = m_gyroTable.getDoubleTopic("Z Rate").publish();
+    m_headingPub = m_gyroTable.getDoubleTopic("Heading").publish();
   }
 
   @Override
@@ -82,14 +102,19 @@ public class DriveSubsystem extends SubsystemBase {
             m_rearRight.getPosition()
         });
 
-    // Log all gyro axes to NetworkTables
-    m_gyroTable.getEntry("X Angle").setDouble(m_gyro.getAngle(IMUAxis.kX));
-    m_gyroTable.getEntry("Y Angle").setDouble(m_gyro.getAngle(IMUAxis.kY));
-    m_gyroTable.getEntry("Z Angle").setDouble(m_gyro.getAngle(IMUAxis.kZ));
-    m_gyroTable.getEntry("X Rate").setDouble(m_gyro.getRate(IMUAxis.kX));
-    m_gyroTable.getEntry("Y Rate").setDouble(m_gyro.getRate(IMUAxis.kY));
-    m_gyroTable.getEntry("Z Rate").setDouble(m_gyro.getRate(IMUAxis.kZ));
-    m_gyroTable.getEntry("Current Heading").setDouble(getHeading());
+    // Throttled telemetry updates
+    m_telemetryCounter++;
+    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+      m_telemetryCounter = 0;
+
+      m_xAnglePub.set(m_gyro.getAngle(IMUAxis.kX));
+      m_yAnglePub.set(m_gyro.getAngle(IMUAxis.kY));
+      m_zAnglePub.set(m_gyro.getAngle(IMUAxis.kZ));
+      m_xRatePub.set(m_gyro.getRate(IMUAxis.kX));
+      m_yRatePub.set(m_gyro.getRate(IMUAxis.kY));
+      m_zRatePub.set(m_gyro.getRate(IMUAxis.kZ));
+      m_headingPub.set(getHeading());
+    }
   }
 
   /**

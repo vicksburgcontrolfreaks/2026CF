@@ -9,11 +9,8 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.OIConstants;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.hopper.ManualExtendHopperCommand;
@@ -21,19 +18,17 @@ import frc.robot.commands.collector.hopper.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
+import frc.robot.constants.Constants;
+import frc.robot.constants.Constants.AutoConstants;
+import frc.robot.constants.Constants.OIConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
+import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
-import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
-/**
- * This class is where the bulk of the robot should be declared. Since Command-based is a
- * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
- * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
- * subsystems, commands, and trigger mappings) should be declared here.
- */
+
 public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
@@ -51,8 +46,7 @@ public class RobotContainer {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
-      // Create autonomous command
-      m_autoCommand = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_shooterSubsystem);
+      m_autoCommand = null;
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -60,18 +54,16 @@ public class RobotContainer {
   }
 
   private void configureDefaultCommands() {
-    // Configure default swerve drive command with field-relative control and speed modes
     m_swerveDrive.setDefaultCommand(
       new RunCommand(
         () -> {
-          // Determine speed multiplier based on which bumper is pressed
           double speedMultiplier;
           if (m_driverController.rightBumper().getAsBoolean()) {
-            speedMultiplier = OIConstants.kTurboSpeedLimit; // Turbo mode
+            speedMultiplier = OIConstants.kTurboSpeedLimit;
           } else if (m_driverController.leftBumper().getAsBoolean()) {
-            speedMultiplier = OIConstants.kPrecisionSpeedLimit; // Precision mode
+            speedMultiplier = OIConstants.kPrecisionSpeedLimit;
           } else {
-            speedMultiplier = OIConstants.kNormalSpeedLimit; // Normal mode
+            speedMultiplier = OIConstants.kNormalSpeedLimit;
           }
 
           m_swerveDrive.drive(
@@ -83,7 +75,6 @@ public class RobotContainer {
         m_swerveDrive)
     );
 
-    // Configure shooter to run continuously from start of auton through teleop
     m_shooterSubsystem.setDefaultCommand(
       new RunCommand(
         () -> m_shooterSubsystem.runShooter(null),
@@ -137,9 +128,7 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().onTrue(
-      new ShooterSequenceCommand(m_shooterSubsystem
-      
-      )
+      new ShooterSequenceCommand(m_shooterSubsystem)
     );
 
   /* 

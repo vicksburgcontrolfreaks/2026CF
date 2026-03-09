@@ -2,8 +2,9 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot;
+package frc.robot.constants;
 
+import com.fasterxml.jackson.annotation.JsonCreator.Mode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
@@ -58,7 +59,6 @@ public final class Constants {
     public static final int kFloorMotorId = 13;
     public static final int kIndexerMotorId = 14;
     public static final int kLeftShooterId = 16;
-
     public static final int kMotorCurrentLimit = 60;
 
     public static final double kVelocityP = 0.00045;
@@ -69,8 +69,8 @@ public final class Constants {
     public static final double kShooterTargetRPM = 3200; // Flat RPM value
     // max rpm 6784
 
-    public static final double kFloorMotorTargetRPM = -1700; // Floor motor target RPM
-    public static final double kIndexerMotorTargetRPM = 2150; // Indexer motor target RPM
+    public static final double kFloorMotorTargetRPM = -1200; // Floor motor target RPM
+    public static final double kIndexerMotorTargetRPM = 2200; // Indexer motor target RPM
     public static final int kIndexerManualCurrentLimit = 80; // Current limit for indexer in manual mode
 
     // DYNAMIC RPM LOOKUP TABLE

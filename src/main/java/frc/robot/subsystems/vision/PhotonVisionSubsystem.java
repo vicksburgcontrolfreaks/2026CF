@@ -16,8 +16,9 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.PhotonVisionConstants;
-import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.constants.Constants.PhotonVisionConstants;
+import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.subsystems.drive.DriveSubsystem;
 
 import org.photonvision.PhotonCamera;
 import org.photonvision.targeting.PhotonPipelineResult;
@@ -62,6 +63,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final List<CameraData> m_cameras = new ArrayList<>();
   private final AprilTagFieldLayout m_fieldLayout;
 
+  private int m_telemetryCounter = 0;
+
   // Telemetry publishers
   private final NetworkTable m_telemetryTable;
   private final BooleanPublisher m_hasTargetPub;
@@ -71,6 +74,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final StringPublisher m_rejectionReasonPub;
   private final BooleanPublisher m_measurementAcceptedPub;
   private final DoublePublisher m_latencyPub;
+  private final StringPublisher m_cameraInitStatusPub;
 
   // Per-camera publishers
   private final List<BooleanPublisher> m_cameraHasTargetPubs = new ArrayList<>();
@@ -86,6 +90,17 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       DriverStation.reportError("Failed to load AprilTag field layout!", e.getStackTrace());
       throw new RuntimeException("Failed to load AprilTag field layout", e);
     }
+
+    // Initialize NetworkTables publishers BEFORE initializing cameras
+    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Vision");
+    m_hasTargetPub = m_telemetryTable.getBooleanTopic("Has Target").publish();
+    m_totalTagCountPub = m_telemetryTable.getDoubleTopic("Total Tag Count").publish();
+    m_activeCamerasPub = m_telemetryTable.getDoubleTopic("Active Cameras").publish();
+    m_bestCameraPub = m_telemetryTable.getStringTopic("Best Camera").publish();
+    m_rejectionReasonPub = m_telemetryTable.getStringTopic("Rejection Reason").publish();
+    m_measurementAcceptedPub = m_telemetryTable.getBooleanTopic("Measurement Accepted").publish();
+    m_latencyPub = m_telemetryTable.getDoubleTopic("Latency").publish();
+    m_cameraInitStatusPub = m_telemetryTable.getStringTopic("Camera Init Status").publish();
 
     // Initialize all 4 cameras
     initializeCamera(
@@ -105,16 +120,6 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       PhotonVisionConstants.kRobotToRightCamera
     );
 
-    // Initialize NetworkTables publishers
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Vision");
-    m_hasTargetPub = m_telemetryTable.getBooleanTopic("Has Target").publish();
-    m_totalTagCountPub = m_telemetryTable.getDoubleTopic("Total Tag Count").publish();
-    m_activeCamerasPub = m_telemetryTable.getDoubleTopic("Active Cameras").publish();
-    m_bestCameraPub = m_telemetryTable.getStringTopic("Best Camera").publish();
-    m_rejectionReasonPub = m_telemetryTable.getStringTopic("Rejection Reason").publish();
-    m_measurementAcceptedPub = m_telemetryTable.getBooleanTopic("Measurement Accepted").publish();
-    m_latencyPub = m_telemetryTable.getDoubleTopic("Latency").publish();
-
     // Initialize per-camera publishers
     for (CameraData camData : m_cameras) {
       m_cameraHasTargetPubs.add(
@@ -133,9 +138,10 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     try {
       CameraData camData = new CameraData(cameraName, robotToCamera, m_fieldLayout);
       m_cameras.add(camData);
-      System.out.println("PhotonVision: Initialized camera: " + cameraName);
+      m_cameraInitStatusPub.set("Initialized camera: " + cameraName);
     } catch (Exception e) {
       DriverStation.reportWarning("Failed to initialize camera: " + cameraName, e.getStackTrace());
+      m_cameraInitStatusPub.set("Failed to initialize camera: " + cameraName);
     }
   }
 
@@ -163,10 +169,6 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
       boolean hasTarget = camData.lastResult.hasTargets();
       int tagCount = hasTarget ? camData.lastResult.getTargets().size() : 0;
-
-      // Update per-camera telemetry
-      m_cameraHasTargetPubs.get(i).set(hasTarget);
-      m_cameraTagCountPubs.get(i).set(tagCount);
 
       // OPTIMIZATION: Skip pose estimation if no tags detected
       if (!hasTarget) {
@@ -198,19 +200,9 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       }
     }
 
-    // Update overall telemetry
-    m_hasTargetPub.set(hasAnyTarget);
-    m_totalTagCountPub.set(totalTagCount);
-    m_activeCamerasPub.set(activeCameras);
-
     // MULTI-CAMERA POSE FUSION: Fuse all valid poses
     if (!validPoses.isEmpty()) {
       FusedPoseResult fusedResult = fusePoses(validPoses);
-
-      m_bestCameraPub.set(fusedResult.primaryCamera);
-      m_rejectionReasonPub.set("None - Accepted (Fused from " + validPoses.size() + " camera(s))");
-      m_measurementAcceptedPub.set(true);
-      m_latencyPub.set(fusedResult.timestamp);
 
       // Add fused measurement to pose estimator
       m_swerveDrive.addVisionMeasurement(
@@ -218,10 +210,46 @@ public class PhotonVisionSubsystem extends SubsystemBase {
         fusedResult.timestamp,
         fusedResult.stdDevs
       );
+
+      // Throttled telemetry updates
+      m_telemetryCounter++;
+      if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+        m_telemetryCounter = 0;
+
+        m_bestCameraPub.set(fusedResult.primaryCamera);
+        m_rejectionReasonPub.set("None - Accepted (Fused from " + validPoses.size() + " camera(s))");
+        m_measurementAcceptedPub.set(true);
+        m_latencyPub.set(fusedResult.timestamp);
+      }
     } else {
-      m_bestCameraPub.set("None");
-      m_rejectionReasonPub.set(hasAnyTarget ? "No valid pose estimate" : "No targets");
-      m_measurementAcceptedPub.set(false);
+      // Throttled telemetry updates even when no valid poses
+      m_telemetryCounter++;
+      if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+        m_telemetryCounter = 0;
+
+        m_bestCameraPub.set("None");
+        m_rejectionReasonPub.set(hasAnyTarget ? "No valid pose estimate" : "No targets");
+        m_measurementAcceptedPub.set(false);
+      }
+    }
+
+    // Throttled telemetry updates (consolidated outside the if/else to avoid duplication)
+    if (m_telemetryCounter == 0) {
+      // Update overall telemetry
+      m_hasTargetPub.set(hasAnyTarget);
+      m_totalTagCountPub.set(totalTagCount);
+      m_activeCamerasPub.set(activeCameras);
+
+      // Update per-camera telemetry
+      for (int i = 0; i < m_cameras.size(); i++) {
+        CameraData camData = m_cameras.get(i);
+        if (camData.lastResult != null) {
+          boolean hasTarget = camData.lastResult.hasTargets();
+          int tagCount = hasTarget ? camData.lastResult.getTargets().size() : 0;
+          m_cameraHasTargetPubs.get(i).set(hasTarget);
+          m_cameraTagCountPubs.get(i).set(tagCount);
+        }
+      }
     }
   }
 
@@ -580,8 +608,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Get the appropriate speaker target based on alliance
     Translation2d speakerPosition = alliance.get() == DriverStation.Alliance.Red
-      ? frc.robot.Constants.AutoConstants.redTarget
-      : frc.robot.Constants.AutoConstants.blueTarget;
+      ? frc.robot.constants.Constants.AutoConstants.redTarget
+      : frc.robot.constants.Constants.AutoConstants.blueTarget;
 
     // Calculate Euclidean distance between robot and speaker
     // distance = sqrt((x2-x1)^2 + (y2-y1)^2)

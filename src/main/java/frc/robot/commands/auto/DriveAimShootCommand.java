@@ -10,11 +10,11 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-import frc.robot.Constants.AutoConstants;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
+import frc.robot.constants.Constants.AutoConstants;
+import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
-import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
@@ -49,11 +49,9 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
     }
 
     addCommands(
-      new InstantCommand(() -> shooter.runIndexer(true, true), shooter),
+      new InstantCommand(() -> shooter.runShooter(null)),
 
-      new WaitCommand(0.5),
-
-      new InstantCommand(() -> shooter.StopIndexer(), shooter),
+      new WaitCommand(0.1),
 
       new WaitCommand(0.1),
 
@@ -73,9 +71,16 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
 
       new WaitCommand(0.1),
 
-      new RotateToTargetCommand(swerveDrive, target),
+      //deploy hopper
+      new InstantCommand(() -> shooter.runIndexer(true, true), shooter),
 
-      new WaitCommand(0.1),
+      new WaitCommand(0.5),
+
+      new InstantCommand(() -> shooter.StopIndexer(), shooter),
+
+      // new RotateToTargetCommand(swerveDrive, target),
+
+      // new WaitCommand(0.1),
 
       new ShooterSequenceCommand(shooter),
 

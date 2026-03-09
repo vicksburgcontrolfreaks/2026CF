@@ -9,7 +9,8 @@
       "Bash(./gradlew compileJava:*)",
       "Bash(./gradlew build:*)",
       "Bash(gradlew.bat compileJava:*)",
-      "Bash(cmd /c gradlew.bat compileJava)"
+      "Bash(cmd /c gradlew.bat compileJava)",
+      "Bash(git checkout:*)"
     ]
   }
 }
