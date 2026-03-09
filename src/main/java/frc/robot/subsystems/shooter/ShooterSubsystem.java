@@ -13,9 +13,11 @@ import com.revrobotics.PersistMode;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.ShooterConstants;
-import frc.robot.Constants.TelemetryConstants;
+import frc.robot.constants.Constants.ShooterConstants;
+import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
   private final SparkFlex m_rightShooterMotor;
@@ -38,6 +40,12 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher m_floorMotorVelocityPub;
   private final DoublePublisher m_indexerVelocityPub;
   private final DoublePublisher m_leftShooterVelocityPub;
+  private final DoublePublisher m_targetRPMPub;
+  private final DoublePublisher m_distanceToTargetPub;
+  private final StringPublisher m_debugMessagePub;
+
+  private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
+  private double m_lastDistanceToTarget = 0.0;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
@@ -57,6 +65,9 @@ public class ShooterSubsystem extends SubsystemBase {
     leftConfig.follow(ShooterConstants.kRightShooterId, true);
     m_leftShooterMotor.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+    m_indexerMotor.set(0);
+    m_floorMotor.set(0);
+
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
     m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
     m_floorMotorSpeedPub     = m_telemetryTable.getDoubleTopic("Floor Motor Speed").publish();
@@ -70,62 +81,113 @@ public class ShooterSubsystem extends SubsystemBase {
     m_floorMotorVelocityPub    = m_telemetryTable.getDoubleTopic("Floor Motor Velocity").publish();
     m_indexerVelocityPub       = m_telemetryTable.getDoubleTopic("Indexer Velocity").publish();
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
+    m_targetRPMPub             = m_telemetryTable.getDoubleTopic("Target RPM").publish();
+    m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
+    m_debugMessagePub          = m_telemetryTable.getStringTopic("Debug Message").publish();
   }
-
- /* 
-
-  public void runAllMotors() {
-    runAllMotors(ShooterConstants.kTargetRPM);
-  }
-
-  public void runAllMotors(double targetRPM) {
-    // Right shooter is the leader - left follows automatically (inverted)
-    m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      -kTargetRPM,
-      ControlType.kVelocity
-    );
-
-    m_floorMotor.set(-0.1);
-
-    m_indexerMotor.getClosedLoopController().setSetpoint(
-      kTargetRPM,
-      ControlType.kVelocity
-    );
-
-    m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      kTargetRPM,
-      ControlType.kVelocity
-    );
-  }
-
-  */
 
   public void runFloor(boolean reversed) {
-    if (!reversed) {
-      m_floorMotor.set(-ShooterConstants.kFloorMotorSpeed);
-    } else {
-      m_floorMotor.set(ShooterConstants.kFloorMotorSpeed);
+    double targetRPM = ShooterConstants.kFloorMotorTargetRPM;
+    if (reversed) {
+      targetRPM = -targetRPM;
     }
+
+    m_floorMotor.getClosedLoopController().setSetpoint(
+      targetRPM,
+      ControlType.kVelocity
+    );
   }
 
   public void StopFloor() {
     m_floorMotor.set(0);
   }
 
-  public void runShooter() {
+  public void StopIndexer() {
+    m_indexerMotor.set(0);
+  }
+
+  /**
+   * Run the shooter with dynamic RPM based on distance to target from vision
+   * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
+   */
+  public void runShooter(PhotonVisionSubsystem vision) {
+    double targetRPM;
+
+    // DYNAMIC RPM CODE - Uses robot pose and speaker position to calculate distance
+    if (vision != null) {
+      double distance = vision.getDistanceToSpeaker();
+      m_lastDistanceToTarget = distance;
+
+      if (distance > 0) {
+        targetRPM = ShooterConstants.getRPMForDistance(distance);
+        m_debugMessagePub.set("Dynamic Shooter: Distance = " + String.format("%.2f", distance) +
+                              "m, Target RPM = " + String.format("%.0f", targetRPM));
+      } else {
+        // Fall back to default RPM if distance calculation fails
+        targetRPM = ShooterConstants.kShooterTargetRPM;
+        m_debugMessagePub.set("Dynamic Shooter: Distance calculation failed, using default RPM = " + targetRPM);
+      }
+    } else {
+      // Use default RPM if no vision subsystem provided
+      targetRPM = ShooterConstants.kShooterTargetRPM;
+      m_lastDistanceToTarget = 0.0;
+    }
+
+    m_currentTargetRPM = targetRPM;
+
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      ShooterConstants.kShooterTargetRPM,
+      targetRPM,
       ControlType.kVelocity
     );
 
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -ShooterConstants.kShooterTargetRPM,
+      -targetRPM,
       ControlType.kVelocity
     );
   }
 
-  public void runIndexer() {
-    m_indexerMotor.set(ShooterConstants.kIndexerMotorSpeed);
+  /**
+   * Get the current target RPM
+   * @return The current target RPM
+   */
+  public double getCurrentTargetRPM() {
+    return m_currentTargetRPM;
+  }
+
+  /**
+   * Check if the shooter is at the target velocity
+   * @param tolerance Acceptable RPM tolerance (e.g., 100 RPM)
+   * @return True if both shooter motors are within tolerance of target
+   */
+  public boolean isAtTargetVelocity(double tolerance) {
+    double rightVelocity = Math.abs(m_rightShooterMotor.getEncoder().getVelocity());
+    double leftVelocity = Math.abs(m_leftShooterMotor.getEncoder().getVelocity());
+
+    return Math.abs(rightVelocity - m_currentTargetRPM) <= tolerance &&
+           Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance;
+  }
+
+  public void runIndexer(boolean reversed, boolean manual) {
+    double rpm = ShooterConstants.kIndexerMotorTargetRPM;
+    if (reversed) {
+      rpm = -rpm;
+    }
+
+    if (manual) {
+      m_indexerMotor.set(-0.75);
+    } else {
+      m_indexerMotor.getClosedLoopController().setSetpoint(
+        rpm,
+        ControlType.kVelocity
+      );
+    }
+  }
+
+  /**
+   * Run the indexer slowly in reverse for collection
+   */
+  public void runIndexerSlowReverse() {
+    m_indexerMotor.set(-0.2);
   }
 
   public void stopAll() {
@@ -162,6 +224,8 @@ public class ShooterSubsystem extends SubsystemBase {
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
       m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
+      m_targetRPMPub.set(m_currentTargetRPM);
+      m_distanceToTargetPub.set(m_lastDistanceToTarget);
     }
   }
 

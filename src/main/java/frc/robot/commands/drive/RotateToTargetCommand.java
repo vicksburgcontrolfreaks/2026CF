@@ -8,16 +8,16 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.SwerveConstants;
-import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
+import frc.robot.constants.Constants.AutoConstants;
+import frc.robot.constants.Constants.DriveConstants;
+import frc.robot.subsystems.drive.DriveSubsystem;
 
 /**
  * Command that rotates the robot to face a target position on the field using PID control.
  * The robot will calculate the angle to the target and rotate to face it.
  */
 public class RotateToTargetCommand extends Command {
-  private final SwerveDriveSubsystem m_swerveDrive;
+  private final DriveSubsystem m_swerveDrive;
   private final Translation2d m_targetPosition;
   private final PIDController m_rotationController;
 
@@ -27,7 +27,7 @@ public class RotateToTargetCommand extends Command {
    * @param swerveDrive The swerve drive subsystem
    * @param targetPosition The target position on the field (X, Y in meters)
    */
-  public RotateToTargetCommand(SwerveDriveSubsystem swerveDrive, Translation2d targetPosition) {
+  public RotateToTargetCommand(DriveSubsystem swerveDrive, Translation2d targetPosition) {
     m_swerveDrive = swerveDrive;
     m_targetPosition = targetPosition;
 
@@ -58,7 +58,7 @@ public class RotateToTargetCommand extends Command {
     // Calculate the angle to the target
     double deltaX = m_targetPosition.getX() - currentPose.getX();
     double deltaY = m_targetPosition.getY() - currentPose.getY();
-    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX)) + 180.0;
+    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
 
     // Get current heading
     double currentHeading = m_swerveDrive.getHeading();
@@ -74,8 +74,8 @@ public class RotateToTargetCommand extends Command {
     m_swerveDrive.drive(
         0.0,
         0.0,
-        rotationSpeed * SwerveConstants.kMaxAngularSpeedRadiansPerSecond,
-        false
+        rotationSpeed * DriveConstants.kMaxAngularSpeed,
+        true
     );
   }
 

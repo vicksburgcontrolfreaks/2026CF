@@ -8,12 +8,13 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
-import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.Constants.AutoConstants;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
+import frc.robot.constants.Constants.AutoConstants;
+import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
-import frc.robot.subsystems.swerve.SwerveDriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
@@ -32,13 +33,13 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
    * @param shooter The shooter subsystem
    */
   public DriveAimShootCommand(
-      SwerveDriveSubsystem swerveDrive,
+      DriveSubsystem swerveDrive,
       PhotonVisionSubsystem vision,
       ShooterSubsystem shooter) {
 
     // Get the alliance color from the FRC Driver Station
     Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
     Translation2d target;
 
     if (alliance == Alliance.Red) {
@@ -48,36 +49,44 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
     }
 
     addCommands(
-      // Step 1: Rotate to face the speaker target
-      new RotateToTargetCommand(swerveDrive, target),
+      new InstantCommand(() -> shooter.runShooter(null)),
 
-      // Step 2: Drive toward speaker until within 2 meters
-      Commands.run(() -> {
-        // Drive forward slowly toward target
-        swerveDrive.drive(0.3, 0, 0, true); // 0.3 m/s forward, field-relative
-      }, swerveDrive)
-      .until(() -> {
-        double distance = vision.getDistanceToSpeaker();
-        // Stop when within 2 meters or if vision is lost
-        return distance > 0 && distance <= 2.0;
-      })
-      .withTimeout(5.0), // Safety timeout: 5 seconds max drive time
+      new WaitCommand(0.1),
 
-      // Step 3: Stop driving
-      Commands.runOnce(() -> {
+      new WaitCommand(0.1),
+
+      new InstantCommand(() -> {
+        swerveDrive.drive(-0.6, 0.0, 0.0, true);
+      }, swerveDrive),
+      //.until(() -> {
+       // double distance = vision.getDistanceToSpeaker();
+      //  return distance > 0 && distance <= 2.0;
+     // }),
+
+      new WaitCommand(1.5),
+
+      new InstantCommand(() -> {
         swerveDrive.drive(0, 0, 0, true);
       }, swerveDrive),
 
-      // Step 4: Fine-tune rotation to face speaker
-      new RotateToTargetCommand(swerveDrive, target),
+      new WaitCommand(0.1),
 
-      // Step 5: Spin up shooter and shoot for 3 seconds
+      //deploy hopper
+      new InstantCommand(() -> shooter.runIndexer(true, true), shooter),
+
+      new WaitCommand(0.5),
+
+      new InstantCommand(() -> shooter.StopIndexer(), shooter),
+
+      // new RotateToTargetCommand(swerveDrive, target),
+
+      // new WaitCommand(0.1),
+
       new ShooterSequenceCommand(shooter),
 
-      // Step 6: Stop shooter
-      Commands.runOnce(() -> {
-        shooter.stopAll();
-      }, shooter)
+      new WaitCommand(10),
+
+      new InstantCommand(() -> {shooter.StopFloor(); shooter.StopIndexer();}, shooter)
     );
   }
 }
