@@ -15,8 +15,9 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.constants.Constants.ShooterConstants;
-import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.configs.ShooterConfig;
+import frc.robot.constants.ShooterConstants;
+import frc.robot.constants.TelemetryConstants;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
@@ -56,9 +57,9 @@ public class ShooterSubsystem extends SubsystemBase {
     m_indexerMotor = new SparkFlex(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
 
-    m_rightShooterMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_floorMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_indexerMotor.configure(ShooterConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_rightShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_floorMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_indexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Configure left shooter to follow right shooter (inverted because they're on opposite sides of the axle)
     var leftConfig = new com.revrobotics.spark.config.SparkFlexConfig();

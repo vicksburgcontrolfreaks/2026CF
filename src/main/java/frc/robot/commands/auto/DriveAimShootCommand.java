@@ -12,7 +12,7 @@ import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
-import frc.robot.constants.Constants.AutoConstants;
+import frc.robot.constants.AutoConstants;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;

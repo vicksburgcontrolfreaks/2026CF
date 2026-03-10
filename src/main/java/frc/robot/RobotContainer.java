@@ -18,9 +18,9 @@ import frc.robot.commands.collector.hopper.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
-import frc.robot.constants.Constants;
-import frc.robot.constants.Constants.AutoConstants;
-import frc.robot.constants.Constants.OIConstants;
+import frc.robot.constants.AutoConstants;
+import frc.robot.constants.DriveConstants;
+import frc.robot.constants.OIConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.commands.auto.DriveAimShootCommand;
@@ -67,9 +67,9 @@ public class RobotContainer {
           }
 
           m_swerveDrive.drive(
-            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * Constants.DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
-            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * Constants.DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
-            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * Constants.DriveConstants.kMaxAngularSpeed * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * DriveConstants.kMaxAngularSpeed * speedMultiplier,
             true);
         },
         m_swerveDrive)

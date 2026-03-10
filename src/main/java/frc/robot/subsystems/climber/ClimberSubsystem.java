@@ -29,8 +29,9 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.constants.Constants.ClimberConstants;
-import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.configs.ClimberConfig;
+import frc.robot.constants.ClimberConstants;
+import frc.robot.constants.TelemetryConstants;
 
 public class ClimberSubsystem extends SubsystemBase {
   private final SparkMax m_ClimberMotor;
@@ -47,7 +48,7 @@ public class ClimberSubsystem extends SubsystemBase {
   public ClimberSubsystem() {
     m_ClimberMotor = new SparkMax(ClimberConstants.kClimberMotorId, MotorType.kBrushless);
 
-    m_ClimberMotor.configure(ClimberConstants.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_ClimberMotor.configure(ClimberConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Reset encoders to zero on startup (assumes robot starts retracted)
     m_ClimberMotor.getEncoder().setPosition(0.0);
