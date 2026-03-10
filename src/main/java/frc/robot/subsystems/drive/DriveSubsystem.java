@@ -25,6 +25,8 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.TelemetryConstants;
+import choreo.trajectory.SwerveSample;
+import edu.wpi.first.math.controller.PIDController;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
@@ -62,7 +64,8 @@ public class DriveSubsystem extends SubsystemBase {
   private final DoublePublisher m_yRatePub;
   private final DoublePublisher m_zRatePub;
   private final DoublePublisher m_headingPub;
-
+  private final DoublePublisher m_currentXPub;
+  private final DoublePublisher m_currentYPub;
   // Pose estimator for tracking robot pose with vision fusion
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
       DriveConstants.kDriveKinematics,
@@ -74,6 +77,11 @@ public class DriveSubsystem extends SubsystemBase {
           m_rearRight.getPosition()
       },
       new Pose2d());
+
+  // PID controllers for Choreo trajectory following
+  private final PIDController m_xController = new PIDController(5.0, 0, 0);
+  private final PIDController m_yController = new PIDController(5.0, 0, 0);
+  private final PIDController m_thetaController = new PIDController(3.0, 0, 0);
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
@@ -88,6 +96,10 @@ public class DriveSubsystem extends SubsystemBase {
     m_yRatePub = m_gyroTable.getDoubleTopic("Y Rate").publish();
     m_zRatePub = m_gyroTable.getDoubleTopic("Z Rate").publish();
     m_headingPub = m_gyroTable.getDoubleTopic("Heading").publish();
+    m_currentXPub = m_gyroTable.getDoubleTopic("Current X").publish();
+    m_currentYPub = m_gyroTable.getDoubleTopic("Current Y").publish();
+    // Configure theta controller for continuous input
+    m_thetaController.enableContinuousInput(-Math.PI, Math.PI);
   }
 
   @Override
@@ -114,6 +126,8 @@ public class DriveSubsystem extends SubsystemBase {
       m_yRatePub.set(m_gyro.getRate(IMUAxis.kY));
       m_zRatePub.set(m_gyro.getRate(IMUAxis.kZ));
       m_headingPub.set(getHeading());
+      m_currentXPub.set(getPose().getX());
+      m_currentYPub.set(getPose().getY());
     }
   }
 
@@ -246,5 +260,61 @@ public class DriveSubsystem extends SubsystemBase {
     m_frontRight.setDesiredState(new SwerveModuleState(0, new Rotation2d()));
     m_rearLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d()));
     m_rearRight.setDesiredState(new SwerveModuleState(0, new Rotation2d()));
+  }
+
+  /**
+   * Sets the chassis speeds for autonomous path following.
+   * Used by Choreo for trajectory following.
+   *
+   * @param speeds The desired chassis speeds.
+   */
+  public void setChassisSpeeds(ChassisSpeeds speeds) {
+    var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(speeds);
+    SwerveDriveKinematics.desaturateWheelSpeeds(
+        swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
+    setModuleStates(swerveModuleStates);
+  }
+
+  /**
+   * Returns the current robot ChassisSpeeds.
+   *
+   * @return The current chassis speeds.
+   */
+  public ChassisSpeeds getChassisSpeeds() {
+    return DriveConstants.kDriveKinematics.toChassisSpeeds(
+        m_frontLeft.getState(),
+        m_frontRight.getState(),
+        m_rearLeft.getState(),
+        m_rearRight.getState()
+    );
+  }
+
+  /**
+   * Follows a Choreo trajectory sample.
+   * This method is called by the AutoFactory to control the robot.
+   *
+   * @param sample The current trajectory sample to follow.
+   */
+  public void followTrajectory(SwerveSample sample) {
+    // Get current robot pose
+    Pose2d currentPose = getPose();
+
+    // Calculate PID feedback
+    double xFeedback = m_xController.calculate(currentPose.getX(), sample.x);
+    double yFeedback = m_yController.calculate(currentPose.getY(), sample.y);
+    double thetaFeedback = m_thetaController.calculate(
+        currentPose.getRotation().getRadians(),
+        sample.heading
+    );
+
+    // Combine feedforward from trajectory with PID feedback
+    ChassisSpeeds speeds = new ChassisSpeeds(
+        sample.vx + xFeedback,
+        sample.vy + yFeedback,
+        sample.omega + thetaFeedback
+    );
+
+    // Send speeds to the drivetrain
+    setChassisSpeeds(speeds);
   }
 }

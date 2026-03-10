@@ -13,8 +13,6 @@ import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
-import frc.robot.commands.collector.hopper.ManualExtendHopperCommand;
-import frc.robot.commands.collector.hopper.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterSequenceCommand;
@@ -23,11 +21,11 @@ import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
-import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
+import choreo.auto.AutoFactory;
 
 public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
@@ -40,13 +38,24 @@ public class RobotContainer {
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
-  private final Command m_autoCommand;
+  private final AutoFactory autoFactory;
+  private Command m_autoCommand;
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
-      m_autoCommand = null;
+      // Initialize Choreo AutoFactory
+      autoFactory = new AutoFactory(
+          m_swerveDrive::getPose,
+          m_swerveDrive::resetOdometry,
+          m_swerveDrive::followTrajectory,
+          true, // Enable alliance flipping
+          m_swerveDrive
+      );
+
+      // Configure autonomous commands
+      configureAutos();
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -142,6 +151,38 @@ public class RobotContainer {
         .finallyDo(() -> m_climber.stop())
     );
   */
+  }
+
+  /**
+   * Configures autonomous commands using Choreo trajectories.
+   * Place your .traj files in src/main/deploy/choreo/
+   *
+   * Example trajectory names you can use:
+   * - "ExamplePath" for a file named ExamplePath.traj
+   * - "MyAuto" for a file named MyAuto.traj
+   */
+  private void configureAutos() {
+    try {
+      // Create a trajectory command
+      // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
+      Command trajectoryCommand = autoFactory.trajectoryCmd("TestPath");
+
+      // Use it as your auto command
+      m_autoCommand = trajectoryCommand;
+
+      // Alternative: You can also create more complex routines
+      // m_autoCommand = autoFactory.newRoutine("My Auto")
+          // .running(() -> System.out.println("Auto started"))
+          // .deadlineFor(trajectoryCommand)
+          // .onlyIf(() -> true)
+          // .cmd();
+
+    } catch (Exception e) {
+      System.err.println("Failed to load Choreo trajectory: " + e.getMessage());
+      System.err.println("Make sure you have .traj files in src/main/deploy/choreo/");
+      e.printStackTrace();
+      m_autoCommand = Commands.none();
+    }
   }
 
   public Command getAutonomousCommand() {
