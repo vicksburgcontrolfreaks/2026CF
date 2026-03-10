@@ -151,7 +151,7 @@ public final class Constants {
     public static final double kPositionD = 0.0;
 
     // Position setpoints (in rotations)
-    // TODO: Tune these values based on your actual climber mechanism
+    // do Tune these values based on your actual climber mechanism
     public static final double kRetractedPosition = 0.0;    // Fully retracted
     public static final double kExtendedPosition = 100.0;   // Fully extended
 
