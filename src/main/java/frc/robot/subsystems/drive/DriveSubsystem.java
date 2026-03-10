@@ -23,8 +23,8 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.constants.Constants.DriveConstants;
-import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.constants.DriveConstants;
+import frc.robot.constants.TelemetryConstants;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules

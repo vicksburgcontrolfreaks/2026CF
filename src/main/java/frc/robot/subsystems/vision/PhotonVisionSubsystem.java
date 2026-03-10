@@ -16,8 +16,9 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.constants.Constants.PhotonVisionConstants;
-import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.constants.AutoConstants;
+import frc.robot.constants.PhotonVisionConstants;
+import frc.robot.constants.TelemetryConstants;
 import frc.robot.subsystems.drive.DriveSubsystem;
 
 import org.photonvision.PhotonCamera;
@@ -608,8 +609,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Get the appropriate speaker target based on alliance
     Translation2d speakerPosition = alliance.get() == DriverStation.Alliance.Red
-      ? frc.robot.constants.Constants.AutoConstants.redTarget
-      : frc.robot.constants.Constants.AutoConstants.blueTarget;
+      ? AutoConstants.redTarget
+      : AutoConstants.blueTarget;
 
     // Calculate Euclidean distance between robot and speaker
     // distance = sqrt((x2-x1)^2 + (y2-y1)^2)
