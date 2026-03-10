@@ -16,8 +16,9 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.constants.Constants.CollectorConstants;
-import frc.robot.constants.Constants.TelemetryConstants;
+import frc.robot.configs.CollectorConfig;
+import frc.robot.constants.CollectorConstants;
+import frc.robot.constants.TelemetryConstants;
 
 public class CollectorSubsystem extends SubsystemBase {
   private final SparkFlex m_upperCollectorMotor;
@@ -46,9 +47,9 @@ public class CollectorSubsystem extends SubsystemBase {
     m_hopperMotor = new SparkMax(CollectorConstants.kHopperMotorId, MotorType.kBrushless);
     m_limitSwitch = m_hopperMotor.getReverseLimitSwitch();
 
-    m_upperCollectorMotor.configure(CollectorConstants.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_lowerCollectorMotor.configure(CollectorConstants.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_hopperMotor.configure(CollectorConstants.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_upperCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_lowerCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_hopperMotor.configure(CollectorConfig.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Ensure hopper motor is stopped on initialization
     m_hopperMotor.set(0);
