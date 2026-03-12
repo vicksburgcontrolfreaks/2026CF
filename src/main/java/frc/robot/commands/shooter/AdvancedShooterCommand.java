@@ -9,63 +9,64 @@ import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
- * ShooterCalibrationCommand - Continuously calculates and updates shooter RPM
- * based on real-time vision distance to the hub during teleop.
+ * AdvancedShooterCommand - Combined ShooterCalibrationCommand and ShooterSequenceCommand.
  *
- * This command:
- * - Runs continuously as the shooter's default command
- * - Uses PhotonVision multi-camera pose estimation and fusion
- * - Calculates distance to alliance-specific hub/speaker
- * - Applies RPM lookup table interpolation from ShooterConstants
- * - Updates shooter velocity in real-time for maximum accuracy
+ * Uses linear regression to calculate optimal RPM based on vision distance,
+ * then runs the complete shooter sequence (shooter + floor + indexer).
+ *
+ * The ShooterSubsystem.periodic() method continuously calculates the target RPM
+ * based on vision distance. This command simply activates the shooter motors
+ * to use the pre-calculated RPM.
+ *
+ * Replaces both the old ShooterSequenceCommand and ShooterCalibrationCommand.
+ * Bound to right trigger - runs while button is held.
  */
-public class ShooterCalibrationCommand extends Command {
+public class AdvancedShooterCommand extends Command {
   private final ShooterSubsystem m_shooter;
-  private final PhotonVisionSubsystem m_vision;
 
   /**
-   * Creates a new ShooterCalibrationCommand.
+   * Creates a new AdvancedShooterCommand.
    *
    * @param shooter ShooterSubsystem to control
-   * @param vision PhotonVisionSubsystem for distance calculation
+   * @param vision PhotonVisionSubsystem (unused - kept for compatibility, subsystem handles vision internally)
    */
-  public ShooterCalibrationCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision) {
+  public AdvancedShooterCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision) {
     m_shooter = shooter;
-    m_vision = vision;
+    // vision parameter kept for backwards compatibility but not used
+    // ShooterSubsystem.periodic() handles continuous vision-based RPM calculation
     addRequirements(shooter);
   }
 
   @Override
   public void initialize() {
-    // No initialization needed - command runs continuously
+    // Activate shooter at calculated RPM (periodic() continuously updates the calculation)
+    m_shooter.activateShooter();
+
+    // Start floor and indexer immediately (same as old ShooterSequenceCommand)
+    m_shooter.runIndexer(false, false);
+    m_shooter.runFloor(false);
   }
 
   @Override
   public void execute() {
-    // Update target RPM calculation WITHOUT spinning motors
-    // PhotonVisionSubsystem.periodic() handles:
-    // - Multi-camera AprilTag detection (4 cameras for 360° coverage)
-    // - Multi-tag PNP pose estimation for each camera
-    // - Pose fusion across all cameras for improved accuracy
-    // - Continuous pose updates to drive subsystem odometry
-    //
-    // getDistanceToSpeaker() uses the fused pose to calculate
-    // distance to the alliance-specific hub/speaker target
-    //
-    // updateTargetRPM() calculates optimal RPM using lookup table interpolation
-    // but does NOT command the motors - they remain idle until activated
-    m_shooter.updateTargetRPM(m_vision);
+    // ShooterSubsystem.periodic() continuously calculates target RPM from vision distance
+    // We just need to keep activating the shooter to use the latest calculated value
+    m_shooter.activateShooter();
+
+    // Floor and indexer continue running
   }
 
   @Override
   public void end(boolean interrupted) {
-    // This is a default command - it never ends
-    // Calculations continue running in the background
+    // Stop all motors when button is released
+    m_shooter.stopShooter();
+    m_shooter.StopFloor();
+    m_shooter.StopIndexer();
   }
 
   @Override
   public boolean isFinished() {
-    // Never finish - runs continuously during teleop
+    // Command runs while button is held
     return false;
   }
 }

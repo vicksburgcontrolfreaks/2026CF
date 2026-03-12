@@ -17,7 +17,7 @@ import frc.robot.commands.collector.hopper.ManualExtendHopperCommand;
 import frc.robot.commands.collector.hopper.ManualRetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
-import frc.robot.commands.shooter.ShooterSequenceCommand;
+import frc.robot.commands.shooter.AdvancedShooterCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
@@ -45,6 +45,9 @@ public class RobotContainer {
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
+
+      // Set vision subsystem for continuous target RPM calculation
+      m_shooterSubsystem.setVisionSubsystem(m_visionSubsystem);
 
       m_autoCommand = null;
 
@@ -75,11 +78,8 @@ public class RobotContainer {
         m_swerveDrive)
     );
 
-    m_shooterSubsystem.setDefaultCommand(
-      new RunCommand(
-        () -> m_shooterSubsystem.runShooter(null),
-        m_shooterSubsystem)
-    );
+    // No default command for shooter - let periodic() handle continuous RPM calculation
+    // Motors stay idle until AdvancedShooterCommand is triggered
 
     if (m_visionSubsystem != null && m_ledSubsystem != null) {
       m_ledSubsystem.setDefaultCommand(
@@ -127,8 +127,8 @@ public class RobotContainer {
       Commands.run(() -> m_shooterSubsystem.runIndexer(true, true), m_shooterSubsystem).withTimeout(0.5)
     );
 
-    m_mechanismController.rightTrigger().onTrue(
-      new ShooterSequenceCommand(m_shooterSubsystem)
+    m_mechanismController.rightTrigger().whileTrue(
+      new AdvancedShooterCommand(m_shooterSubsystem, m_visionSubsystem)
     );
 
   /* 
