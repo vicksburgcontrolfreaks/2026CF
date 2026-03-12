@@ -49,7 +49,7 @@ public class RobotContainer {
           m_swerveDrive::getPose,
           m_swerveDrive::resetOdometry,
           m_swerveDrive::followTrajectory,
-          true, 
+          false,  // Don't mirror - Red_Right_Loop is already designed for red alliance
           m_swerveDrive
       );
 
