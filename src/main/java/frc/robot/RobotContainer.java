@@ -31,7 +31,7 @@ public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = null;
-  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
   private final ClimberSubsystem m_climber = null;
 
@@ -45,16 +45,14 @@ public class RobotContainer {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
-      // Initialize Choreo AutoFactory
       autoFactory = new AutoFactory(
           m_swerveDrive::getPose,
           m_swerveDrive::resetOdometry,
           m_swerveDrive::followTrajectory,
-          true, // Enable alliance flipping
+          true, 
           m_swerveDrive
       );
 
-      // Configure autonomous commands
       configureAutos();
 
       configureDefaultCommands();
@@ -83,9 +81,6 @@ public class RobotContainer {
         },
         m_swerveDrive)
     );
-
-    // No default command for shooter - let periodic() handle continuous RPM calculation
-    // Motors stay idle until AdvancedShooterCommand is triggered
 
     if (m_visionSubsystem != null && m_ledSubsystem != null) {
       m_ledSubsystem.setDefaultCommand(
@@ -166,13 +161,6 @@ public class RobotContainer {
 
       // Use it as your auto command
       m_autoCommand = trajectoryCommand;
-
-      // Alternative: You can also create more complex routines
-      // m_autoCommand = autoFactory.newRoutine("My Auto")
-          // .running(() -> System.out.println("Auto started"))
-          // .deadlineFor(trajectoryCommand)
-          // .onlyIf(() -> true)
-          // .cmd();
 
     } catch (Exception e) {
       System.err.println("Failed to load Choreo trajectory: " + e.getMessage());

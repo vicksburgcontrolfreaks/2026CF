@@ -48,12 +48,13 @@ public class ShooterSubsystem extends SubsystemBase {
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
   private double m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM; // Always reflects linear regression calculation
   private double m_lastDistanceToTarget = 0.0;
-  private PhotonVisionSubsystem m_visionSubsystem = null;
+  private final PhotonVisionSubsystem m_visionSubsystem;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
 
-  public ShooterSubsystem() {
+  public ShooterSubsystem(PhotonVisionSubsystem visionSubsystem) {
+    m_visionSubsystem = visionSubsystem;
     m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
     m_indexerMotor = new SparkFlex(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
@@ -242,15 +243,6 @@ public class ShooterSubsystem extends SubsystemBase {
 
     return Math.abs(rightVelocity - m_currentTargetRPM) <= tolerance &&
            Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance;
-  }
-
-  /**
-   * Set the vision subsystem to use for continuous target RPM calculation.
-   * Call this from RobotContainer after both subsystems are created.
-   * @param vision The PhotonVisionSubsystem to use
-   */
-  public void setVisionSubsystem(PhotonVisionSubsystem vision) {
-    m_visionSubsystem = vision;
   }
 
   public void runIndexer(boolean reversed, boolean manual) {
