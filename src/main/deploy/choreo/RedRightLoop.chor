@@ -1,5 +1,5 @@
 {
- "name":"2026autonB",
+ "name":"RedRightLoop",
  "version":2,
  "type":"Swerve",
  "variables":{
@@ -32,8 +32,8 @@
    "val":52.16312255
   },
   "inertia":{
-   "exp":"6 kg m ^ 2",
-   "val":6.0
+   "exp":"4.138 kg m ^ 2",
+   "val":4.138
   },
   "gearing":{
    "exp":"4.71",
@@ -76,7 +76,7 @@
  },
  "generationFeatures":[],
  "codegen":{
-  "root":"New folder/2026CF/src/main/deploy",
+  "root":"../C:/Users/Vicksburg FTC/Documents/CF2026/2026CF/src/main/deploy/choreo",
   "genVars":true,
   "genTrajData":true,
   "useChoreoLib":true
