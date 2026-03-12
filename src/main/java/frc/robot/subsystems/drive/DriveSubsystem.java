@@ -310,7 +310,7 @@ public class DriveSubsystem extends SubsystemBase {
     // Get current robot pose
     Pose2d currentPose = getPose();
 
-    // Calculate PID feedback
+    // Calculate PID feedback (in field coordinates)
     double xFeedback = m_xController.calculate(currentPose.getX(), sample.x);
     double yFeedback = m_yController.calculate(currentPose.getY(), sample.y);
     double thetaFeedback = m_thetaController.calculate(
@@ -318,20 +318,21 @@ public class DriveSubsystem extends SubsystemBase {
         sample.heading
     );
 
-    // Combine feedforward from trajectory with PID feedback (field-relative)
-    ChassisSpeeds fieldRelativeSpeeds = new ChassisSpeeds(
-        sample.vx + xFeedback,
-        sample.vy + yFeedback,
-        sample.omega + thetaFeedback
-    );
-
-    // Convert field-relative speeds to robot-relative speeds
-    ChassisSpeeds robotRelativeSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        fieldRelativeSpeeds,
+    // Convert field-relative PID feedback to robot-relative
+    ChassisSpeeds feedbackSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+        xFeedback, yFeedback, thetaFeedback,
         currentPose.getRotation()
     );
 
-    // Send speeds to the drivetrain
-    setChassisSpeeds(robotRelativeSpeeds);
+    // Combine robot-relative feedforward from Choreo with robot-relative PID feedback
+    // Note: Choreo provides robot-relative velocities (vx, vy, omega)
+    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
+        sample.vx + feedbackSpeeds.vxMetersPerSecond,
+        sample.vy + feedbackSpeeds.vyMetersPerSecond,
+        sample.omega + feedbackSpeeds.omegaRadiansPerSecond
+    );
+
+    // Send robot-relative speeds to the drivetrain
+    setChassisSpeeds(targetSpeeds);
   }
 }
