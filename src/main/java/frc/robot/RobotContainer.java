@@ -165,7 +165,7 @@ public class RobotContainer {
     try {
       // Create a trajectory command
       // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
-      Command trajectoryCommand = autoFactory.trajectoryCmd("TestPath");
+      Command trajectoryCommand = autoFactory.trajectoryCmd("NewPath");
 
       // Use it as your auto command
       m_autoCommand = trajectoryCommand;

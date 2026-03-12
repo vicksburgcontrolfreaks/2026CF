@@ -19,6 +19,8 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -52,6 +54,9 @@ public class DriveSubsystem extends SubsystemBase {
 
   // The gyro sensor
   private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
+
+  // Field2d for visualizing robot pose in Glass
+  private final Field2d m_field = new Field2d();
 
   private int m_telemetryCounter = 0;
 
@@ -100,6 +105,9 @@ public class DriveSubsystem extends SubsystemBase {
     m_currentYPub = m_gyroTable.getDoubleTopic("Current Y").publish();
     // Configure theta controller for continuous input
     m_thetaController.enableContinuousInput(-Math.PI, Math.PI);
+
+    // Publish Field2d to SmartDashboard for Glass visualization
+    SmartDashboard.putData("Field", m_field);
   }
 
   @Override
@@ -113,6 +121,9 @@ public class DriveSubsystem extends SubsystemBase {
             m_rearLeft.getPosition(),
             m_rearRight.getPosition()
         });
+
+    // Update Field2d with current robot pose for Glass visualization
+    m_field.setRobotPose(getPose());
 
     // Throttled telemetry updates
     m_telemetryCounter++;
@@ -307,14 +318,20 @@ public class DriveSubsystem extends SubsystemBase {
         sample.heading
     );
 
-    // Combine feedforward from trajectory with PID feedback
-    ChassisSpeeds speeds = new ChassisSpeeds(
+    // Combine feedforward from trajectory with PID feedback (field-relative)
+    ChassisSpeeds fieldRelativeSpeeds = new ChassisSpeeds(
         sample.vx + xFeedback,
         sample.vy + yFeedback,
         sample.omega + thetaFeedback
     );
 
+    // Convert field-relative speeds to robot-relative speeds
+    ChassisSpeeds robotRelativeSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+        fieldRelativeSpeeds,
+        currentPose.getRotation()
+    );
+
     // Send speeds to the drivetrain
-    setChassisSpeeds(speeds);
+    setChassisSpeeds(robotRelativeSpeeds);
   }
 }
