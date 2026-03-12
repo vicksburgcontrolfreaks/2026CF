@@ -46,7 +46,9 @@ public class ShooterSubsystem extends SubsystemBase {
   private final StringPublisher m_debugMessagePub;
 
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
+  private double m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM; // Always reflects linear regression calculation
   private double m_lastDistanceToTarget = 0.0;
+  private PhotonVisionSubsystem m_visionSubsystem = null;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784 
@@ -148,10 +150,84 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
-   * Get the current target RPM
-   * @return The current target RPM
+   * Calculate optimal RPM based on vision distance WITHOUT spinning the motors.
+   * This allows continuous calculation while motors remain idle.
+   * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
+   */
+  public void updateTargetRPM(PhotonVisionSubsystem vision) {
+    double targetRPM;
+
+    // DYNAMIC RPM CODE - Uses robot pose and speaker position to calculate distance
+    if (vision != null) {
+      double distance = vision.getDistanceToSpeaker();
+      m_lastDistanceToTarget = distance;
+
+      if (distance > 0) {
+        targetRPM = ShooterConstants.getRPMForDistance(distance);
+        m_debugMessagePub.set("Shooter Calibration: Distance = " + String.format("%.2f", distance) +
+                              "m, Target RPM = " + String.format("%.0f", targetRPM) + " (IDLE)");
+      } else {
+        // Fall back to default RPM if distance calculation fails
+        targetRPM = ShooterConstants.kShooterTargetRPM;
+        m_debugMessagePub.set("Shooter Calibration: Distance calculation failed, using default RPM = " + targetRPM + " (IDLE)");
+      }
+    } else {
+      // Use default RPM if no vision subsystem provided
+      targetRPM = ShooterConstants.kShooterTargetRPM;
+      m_lastDistanceToTarget = 0.0;
+    }
+
+    m_currentTargetRPM = targetRPM;
+    // NOTE: Motors are NOT commanded here - just updating the calculated target
+  }
+
+  /**
+   * Spin up the shooter motors to the continuously-calculated target RPM.
+   * This uses m_calculatedTargetRPM which is ALWAYS updated by periodic()
+   * based on the linear regression calculation from vision distance.
+   * Call this when you want to actually activate the shooter.
+   */
+  public void activateShooter() {
+    // Use the calculated RPM (from continuous linear regression in periodic())
+    m_currentTargetRPM = m_calculatedTargetRPM;
+
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      -m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+
+    m_debugMessagePub.set("Shooter ACTIVE at " + String.format("%.0f", m_currentTargetRPM) + " RPM");
+  }
+
+  /**
+   * Stop the shooter motors (set to 0).
+   */
+  public void stopShooter() {
+    m_rightShooterMotor.set(0);
+    m_leftShooterMotor.set(0);
+    m_debugMessagePub.set("Shooter STOPPED");
+  }
+
+  /**
+   * Get the calculated target RPM (from linear regression)
+   * This is the RPM calculated by periodic() based on vision distance,
+   * NOT necessarily the RPM currently being commanded to the motors.
+   * @return The calculated target RPM from linear regression
    */
   public double getCurrentTargetRPM() {
+    return m_calculatedTargetRPM;
+  }
+
+  /**
+   * Get the RPM currently being commanded to the motors
+   * @return The motor command RPM
+   */
+  public double getMotorTargetRPM() {
     return m_currentTargetRPM;
   }
 
@@ -166,6 +242,15 @@ public class ShooterSubsystem extends SubsystemBase {
 
     return Math.abs(rightVelocity - m_currentTargetRPM) <= tolerance &&
            Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance;
+  }
+
+  /**
+   * Set the vision subsystem to use for continuous target RPM calculation.
+   * Call this from RobotContainer after both subsystems are created.
+   * @param vision The PhotonVisionSubsystem to use
+   */
+  public void setVisionSubsystem(PhotonVisionSubsystem vision) {
+    m_visionSubsystem = vision;
   }
 
   public void runIndexer(boolean reversed, boolean manual) {
@@ -207,6 +292,27 @@ public class ShooterSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
+    // This updates m_calculatedTargetRPM which is published to Elastic dashboard
+    if (m_visionSubsystem != null) {
+      double distance = m_visionSubsystem.getDistanceToSpeaker();
+      m_lastDistanceToTarget = distance;
+
+      if (distance > 0) {
+        m_calculatedTargetRPM = ShooterConstants.getRPMForDistance(distance);
+      } else {
+        // Fall back to default RPM if distance calculation fails
+        m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
+      }
+    } else {
+      // No vision subsystem, use default
+      m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
+    }
+
+    // ALWAYS publish Target RPM and Distance (no throttling) so Elastic updates in real-time
+    m_targetRPMPub.set(m_calculatedTargetRPM);
+    m_distanceToTargetPub.set(m_lastDistanceToTarget);
+
     m_telemetryCounter++;
     if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
       m_telemetryCounter = 0;
@@ -225,8 +331,6 @@ public class ShooterSubsystem extends SubsystemBase {
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
       m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
-      m_targetRPMPub.set(m_currentTargetRPM);
-      m_distanceToTargetPub.set(m_lastDistanceToTarget);
     }
   }
 
