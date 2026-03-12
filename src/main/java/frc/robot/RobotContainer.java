@@ -165,7 +165,7 @@ public class RobotContainer {
     try {
       // Create a trajectory command
       // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
-      Command trajectoryCommand = autoFactory.trajectoryCmd("NewPath");
+      Command trajectoryCommand = autoFactory.trajectoryCmd("Red_Right_Loop");
 
       // Use it as your auto command
       m_autoCommand = trajectoryCommand;
