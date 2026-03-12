@@ -12,7 +12,7 @@ public class ShooterConstants {
   public static final double kVelocityI = 0.00000025;
   public static final double kVelocityD = 0.000000;
   // max rpm 6784
-  public static final double kVelocityFF = 3.7 / MotorConstants.NeoVortex.kFreeSpeedRpm;
+  public static final double kVelocityFF = 3.0 / MotorConstants.NeoVortex.kFreeSpeedRpm;
 
   public static final double kShooterTargetRPM = 3200;
 
@@ -21,13 +21,14 @@ public class ShooterConstants {
   public static final int kIndexerManualCurrentLimit = 80;
 
   // Shooter velocity lookup table: distance (meters) -> RPM
+  // Reduced by ~18% to lower power output
   public static final double[][] kShooterVelocityTable = {
-    {1.0, 2750},
-    {2.0, 3250},
-    {3.0, 3750},
-    {4.0, 4250},
-    {5.0, 4750},
-    {6.0, 5250}
+    {1.0, 1850},//2250
+    {2.0, 2275},//2700
+    {3.0, 2575},//3100
+    {4.0, 2875},//3500
+    {5.0, 3175},//3900
+    {6.0, 3475}//4300
   };
 
   /**

@@ -11,7 +11,11 @@
       "Bash(gradlew.bat compileJava:*)",
       "Bash(cmd /c gradlew.bat compileJava)",
       "Bash(git checkout:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(.gradlew build:*)",
+      "Bash(./gradlew.bat build:*)",
+      "Bash(Select-Object -Last 50)",
+      "Bash(gradlew.bat build:*)"
     ]
   }
 }

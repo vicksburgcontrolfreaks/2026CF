@@ -11,7 +11,7 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
-import frc.robot.commands.shooter.ShooterSequenceCommand;
+import frc.robot.commands.shooter.AdvancedShooterCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
@@ -82,9 +82,7 @@ public class DriveAimShootCommand extends SequentialCommandGroup {
 
       // new WaitCommand(0.1),
 
-      new ShooterSequenceCommand(shooter),
-
-      new WaitCommand(10),
+      new AdvancedShooterCommand(shooter, vision).withTimeout(10),
 
       new InstantCommand(() -> {shooter.StopFloor(); shooter.StopIndexer();}, shooter)
     );
