@@ -12,7 +12,7 @@ public class ShooterConstants {
   public static final double kVelocityI = 0.00000025;
   public static final double kVelocityD = 0.000000;
   // max rpm 6784
-  public static final double kVelocityFF = 3.0 / MotorConstants.NeoVortex.kFreeSpeedRpm;
+  public static final double kVelocityFF = 3.7 / MotorConstants.NeoVortex.kFreeSpeedRpm;
 
   public static final double kShooterTargetRPM = 3200;
 

@@ -206,6 +206,26 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
+   * Set the shooter to a specific RPM (overrides vision-based calculation)
+   * @param rpm Target RPM for the shooter
+   */
+  public void setShooterRPM(double rpm) {
+    m_currentTargetRPM = rpm;
+
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      -rpm,
+      ControlType.kVelocity
+    );
+
+    m_debugMessagePub.set("Shooter OVERRIDE at " + String.format("%.0f", rpm) + " RPM");
+  }
+
+  /**
    * Stop the shooter motors (set to 0).
    */
   public void stopShooter() {

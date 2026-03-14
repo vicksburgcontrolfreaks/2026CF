@@ -7,10 +7,14 @@ package frc.robot;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.commands.auto.BackupAndShootCommand;
+import frc.robot.commands.auto.DriveAimShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
@@ -39,7 +43,7 @@ public class RobotContainer {
   private final CommandXboxController m_mechanismController;
 
   private final AutoFactory autoFactory;
-  private Command m_autoCommand;
+  private final SendableChooser<Command> m_autoChooser = new SendableChooser<>();
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
@@ -146,32 +150,37 @@ public class RobotContainer {
   }
 
   /**
-   * Configures autonomous commands using Choreo trajectories.
-   * Place your .traj files in src/main/deploy/choreo/
-   *
-   * Example trajectory names you can use:
-   * - "ExamplePath" for a file named ExamplePath.traj
-   * - "MyAuto" for a file named MyAuto.traj
+   * Configures autonomous commands and adds them to the chooser.
+   * The chooser will appear in Shuffleboard/SmartDashboard for selection.
    */
   private void configureAutos() {
+    // Option 1: Simple Backup and Shoot (DEFAULT)
+    Command backupAndShoot = new BackupAndShootCommand(m_swerveDrive, m_shooterSubsystem);
+    m_autoChooser.setDefaultOption("Backup and Shoot", backupAndShoot);
+
+    // Option 2: Drive Aim Shoot
+    Command driveAimShoot = new DriveAimShootCommand(m_swerveDrive, m_visionSubsystem, m_shooterSubsystem);
+    m_autoChooser.addOption("Drive Aim Shoot", driveAimShoot);
+
+    // Option 3: Red Right Loop (Choreo trajectory)
     try {
-      // Create a trajectory command
-      // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
       Command trajectoryCommand = autoFactory.trajectoryCmd("RedRightLoop");
-
-      // Use it as your auto command
-      m_autoCommand = trajectoryCommand;
-
+      m_autoChooser.addOption("Red Right Loop", trajectoryCommand);
     } catch (Exception e) {
-      System.err.println("Failed to load Choreo trajectory: " + e.getMessage());
+      System.err.println("Failed to load Choreo trajectory 'RedRightLoop': " + e.getMessage());
       System.err.println("Make sure you have .traj files in src/main/deploy/choreo/");
       e.printStackTrace();
-      m_autoCommand = Commands.none();
     }
+
+    // Option 4: Do Nothing
+    m_autoChooser.addOption("Do Nothing", Commands.none());
+
+    // Add the chooser to the dashboard
+    SmartDashboard.putData("Auto Mode", m_autoChooser);
   }
 
   public Command getAutonomousCommand() {
-    return m_autoCommand;
+    return m_autoChooser.getSelected();
   }
 
   public DriveSubsystem getSwerveDrive() {
