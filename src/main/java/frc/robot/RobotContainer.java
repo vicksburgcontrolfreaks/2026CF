@@ -145,19 +145,16 @@ public class RobotContainer {
   */
   }
 
-  /**
+  /*
    * Configures autonomous commands using Choreo trajectories.
    * Place your .traj files in src/main/deploy/choreo/
-   *
-   * Example trajectory names you can use:
-   * - "ExamplePath" for a file named ExamplePath.traj
-   * - "MyAuto" for a file named MyAuto.traj
    */
+ 
   private void configureAutos() {
     try {
       // Create a trajectory command
       // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
-      Command trajectoryCommand = autoFactory.trajectoryCmd("RedRightLoop");
+      Command trajectoryCommand = autoFactory.trajectoryCmd("RedRightLoopUPD");
 
       // Use it as your auto command
       m_autoCommand = trajectoryCommand;

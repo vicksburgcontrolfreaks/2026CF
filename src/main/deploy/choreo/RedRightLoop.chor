@@ -3,7 +3,57 @@
  "version":2,
  "type":"Swerve",
  "variables":{
-  "expressions":{},
+  "expressions":{
+   "collectX":{
+    "dimension":"Length",
+    "var":{
+     "exp":"8.75 m",
+     "val":8.75
+    }
+   },
+   "postTrenchX":{
+    "dimension":"Length",
+    "var":{
+     "exp":"11 m",
+     "val":11.0
+    }
+   },
+   "shootAngle":{
+    "dimension":"Angle",
+    "var":{
+     "exp":"40 deg",
+     "val":0.6981317007977318
+    }
+   },
+   "shootX":{
+    "dimension":"Length",
+    "var":{
+     "exp":"14 m",
+     "val":14.0
+    }
+   },
+   "shootY":{
+    "dimension":"Length",
+    "var":{
+     "exp":"5.8 m",
+     "val":5.8
+    }
+   },
+   "startX":{
+    "dimension":"Length",
+    "var":{
+     "exp":"13 m",
+     "val":13.0
+    }
+   },
+   "startY":{
+    "dimension":"Length",
+    "var":{
+     "exp":"7.4 m",
+     "val":7.4
+    }
+   }
+  },
   "poses":{}
  },
  "config":{
@@ -40,8 +90,8 @@
    "val":4.71
   },
   "radius":{
-   "exp":"2 in",
-   "val":0.0508
+   "exp":"1.5 in",
+   "val":0.038099999999999995
   },
   "vmax":{
    "exp":"6000 RPM",
