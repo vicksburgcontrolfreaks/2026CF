@@ -7,6 +7,8 @@ package frc.robot;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
@@ -39,7 +41,7 @@ public class RobotContainer {
   private final CommandXboxController m_mechanismController;
 
   private final AutoFactory autoFactory;
-  private Command m_autoCommand;
+  private SendableChooser<Command> m_autoChooser;
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
@@ -49,7 +51,7 @@ public class RobotContainer {
           m_swerveDrive::getPose,
           m_swerveDrive::resetOdometry,
           m_swerveDrive::followTrajectory,
-          false,  // Don't mirror - Red_Right_Loop is already designed for red alliance
+          false,  
           m_swerveDrive
       );
 
@@ -132,7 +134,7 @@ public class RobotContainer {
       new AdvancedShooterCommand(m_shooterSubsystem, m_visionSubsystem)
     );
 
-  /* 
+  /*
     m_mechanismController.povUp().whileTrue(
       Commands.run(() -> m_climber.setSpeed(0.2), m_climber)
         .finallyDo(() -> m_climber.stop())
@@ -148,27 +150,36 @@ public class RobotContainer {
   /*
    * Configures autonomous commands using Choreo trajectories.
    * Place your .traj files in src/main/deploy/choreo/
+   *
+   * Example trajectory names you can use:
+   * - "ExamplePath" for a file named ExamplePath.traj
+   * - "MyAuto" for a file named MyAuto.traj
    */
  
   private void configureAutos() {
+    m_autoChooser = new SendableChooser<>();
+
     try {
       // Create a trajectory command
       // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
-      Command trajectoryCommand = autoFactory.trajectoryCmd("RedRightLoopUPD");
+      Command trajectoryCommand = autoFactory.trajectoryCmd("RedRightLoop");
 
-      // Use it as your auto command
-      m_autoCommand = trajectoryCommand;
+      m_autoChooser.setDefaultOption("Red Right Loop", autoFactory.trajectoryCmd("RedRightLoop"));
+      m_autoChooser.addOption("Do Nothing", Commands.none());
 
     } catch (Exception e) {
       System.err.println("Failed to load Choreo trajectory: " + e.getMessage());
       System.err.println("Make sure you have .traj files in src/main/deploy/choreo/");
       e.printStackTrace();
-      m_autoCommand = Commands.none();
+      m_autoChooser.setDefaultOption("Do Nothing", Commands.none());
     }
+
+    // Send the chooser to SmartDashboard (which uses NetworkTables under the hood)
+    SmartDashboard.putData("Auto/Chooser", m_autoChooser);
   }
 
   public Command getAutonomousCommand() {
-    return m_autoCommand;
+    return m_autoChooser.getSelected();
   }
 
   public DriveSubsystem getSwerveDrive() {

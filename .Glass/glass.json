@@ -58,11 +58,12 @@
   "NetworkTables Info": {
     "visible": true
   },
-  "NetworkTables Log": {
-    "visible": true
-  },
   "NetworkTables Settings": {
     "mode": "Client (NT4)",
-    "serverTeam": "8126"
+    "serverTeam": "8126",
+    "visible": false
+  },
+  "NetworkTables View": {
+    "visible": false
   }
 }
