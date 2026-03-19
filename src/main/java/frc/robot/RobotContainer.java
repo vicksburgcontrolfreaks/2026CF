@@ -162,9 +162,9 @@ public class RobotContainer {
     try {
       // Create a trajectory command
       // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
-      Command trajectoryCommand = autoFactory.trajectoryCmd("RedRightLoop");
+      Command trajectoryCommand = autoFactory.trajectoryCmd("Double");
 
-      m_autoChooser.setDefaultOption("Red Right Loop", autoFactory.trajectoryCmd("RedRightLoop"));
+      m_autoChooser.setDefaultOption("Double", autoFactory.trajectoryCmd("Double"));
       m_autoChooser.addOption("Do Nothing", Commands.none());
 
     } catch (Exception e) {
