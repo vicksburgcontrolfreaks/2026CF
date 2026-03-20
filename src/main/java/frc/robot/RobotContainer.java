@@ -160,8 +160,6 @@ public class RobotContainer {
     m_autoChooser = new SendableChooser<>();
 
     try {
-      // Create a trajectory command
-      // Replace "ExamplePath" with your actual trajectory name (without .traj extension)
       Command trajectoryCommand = autoFactory.trajectoryCmd("Double");
 
       m_autoChooser.setDefaultOption("Double", autoFactory.trajectoryCmd("Double"));
@@ -174,7 +172,6 @@ public class RobotContainer {
       m_autoChooser.setDefaultOption("Do Nothing", Commands.none());
     }
 
-    // Send the chooser to SmartDashboard (which uses NetworkTables under the hood)
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
   }
 
