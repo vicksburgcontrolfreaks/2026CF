@@ -5,6 +5,7 @@
 package frc.robot.subsystems.shooter;
 
 import com.revrobotics.spark.SparkFlex;
+import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.ResetMode;
@@ -21,10 +22,13 @@ import frc.robot.constants.TelemetryConstants;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
-  private final SparkFlex m_rightShooterMotor;
   private final SparkFlex m_floorMotor;
-  private final SparkFlex m_indexerMotor;
+  private final SparkMax m_leftIndexerMotor;
+  private final SparkMax m_rightIndexerMotor;
+  private final SparkMax m_middleIndexerMotor;
+  private final SparkFlex m_rightShooterMotor;
   private final SparkFlex m_leftShooterMotor;
+  private final SparkFlex m_middleShooterMotor;
 
   private int m_telemetryCounter = 0;
 
@@ -55,21 +59,28 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public ShooterSubsystem(PhotonVisionSubsystem visionSubsystem) {
     m_visionSubsystem = visionSubsystem;
-    m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
-    m_indexerMotor = new SparkFlex(ShooterConstants.kIndexerMotorId, MotorType.kBrushless);
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
+    m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
+    m_middleShooterMotor = new SparkFlex(ShooterConstants.kMiddleShooterId, MotorType.kBrushless);
+    m_leftIndexerMotor = new SparkMax(ShooterConstants.kLIndexerMotorId, MotorType.kBrushless);
+    m_rightIndexerMotor = new SparkMax(ShooterConstants.kRIndexerMotorId, MotorType.kBrushless);
+    m_middleIndexerMotor = new SparkMax(ShooterConstants.kMIndexerMotorId, MotorType.kBrushless);
 
+
+    m_leftShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_rightShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_middleShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_floorMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_indexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_leftIndexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_rightIndexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_middleIndexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // Configure left shooter to follow right shooter (inverted because they're on opposite sides of the axle)
-    var leftConfig = new com.revrobotics.spark.config.SparkFlexConfig();
-    leftConfig.follow(ShooterConstants.kRightShooterId, true);
-    m_leftShooterMotor.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    
 
-    m_indexerMotor.set(0);
+    m_leftIndexerMotor.set(0);
+    m_rightIndexerMotor.set(0);
+    m_middleIndexerMotor.set(0);
     m_floorMotor.set(0);
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
@@ -107,7 +118,9 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void StopIndexer() {
-    m_indexerMotor.set(0);
+    m_leftIndexerMotor.set(0);
+    m_rightIndexerMotor.set(0);
+    m_middleIndexerMotor.set(0);
   }
 
   /**
@@ -145,7 +158,12 @@ public class ShooterSubsystem extends SubsystemBase {
     );
 
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -targetRPM,
+      targetRPM,
+      ControlType.kVelocity
+    );
+
+    m_middleShooterMotor.getClosedLoopController().setSetpoint(
+      targetRPM,
       ControlType.kVelocity
     );
   }
@@ -192,13 +210,18 @@ public class ShooterSubsystem extends SubsystemBase {
     // Use the calculated RPM (from continuous linear regression in periodic())
     m_currentTargetRPM = m_calculatedTargetRPM;
 
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+
     m_rightShooterMotor.getClosedLoopController().setSetpoint(
       m_currentTargetRPM,
       ControlType.kVelocity
     );
 
-    m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      -m_currentTargetRPM,
+    m_middleShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
       ControlType.kVelocity
     );
 
@@ -209,8 +232,10 @@ public class ShooterSubsystem extends SubsystemBase {
    * Stop the shooter motors (set to 0).
    */
   public void stopShooter() {
-    m_rightShooterMotor.set(0);
     m_leftShooterMotor.set(0);
+    m_rightShooterMotor.set(0);
+    m_middleShooterMotor.set(0);
+
     m_debugMessagePub.set("Shooter STOPPED");
   }
 
@@ -238,11 +263,13 @@ public class ShooterSubsystem extends SubsystemBase {
    * @return True if both shooter motors are within tolerance of target
    */
   public boolean isAtTargetVelocity(double tolerance) {
-    double rightVelocity = Math.abs(m_rightShooterMotor.getEncoder().getVelocity());
     double leftVelocity = Math.abs(m_leftShooterMotor.getEncoder().getVelocity());
+    double rightVelocity = Math.abs(m_rightShooterMotor.getEncoder().getVelocity());
+    double middleVelocity = Math.abs(m_middleShooterMotor.getEncoder().getVelocity());
 
-    return Math.abs(rightVelocity - m_currentTargetRPM) <= tolerance &&
-           Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance;
+    return Math.abs(leftVelocity - m_currentTargetRPM) <= tolerance &&
+           Math.abs(rightVelocity - m_currentTargetRPM) <= tolerance && 
+           Math.abs(middleVelocity - m_currentTargetRPM) <= tolerance;
   }
 
   public void runIndexer(boolean reversed, boolean manual) {
@@ -252,9 +279,21 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     if (manual) {
-      m_indexerMotor.set(-0.75);
+      m_leftIndexerMotor.set(-0.75);
+      m_rightIndexerMotor.set(-0.75);
+      m_middleIndexerMotor.set(-0.75);
     } else {
-      m_indexerMotor.getClosedLoopController().setSetpoint(
+      m_leftIndexerMotor.getClosedLoopController().setSetpoint(
+        rpm,
+        ControlType.kVelocity
+      );
+
+      m_rightIndexerMotor.getClosedLoopController().setSetpoint(
+        rpm,
+        ControlType.kVelocity
+      );
+
+      m_middleIndexerMotor.getClosedLoopController().setSetpoint(
         rpm,
         ControlType.kVelocity
       );
@@ -265,21 +304,33 @@ public class ShooterSubsystem extends SubsystemBase {
    * Run the indexer slowly in reverse for collection
    */
   public void runIndexerSlowReverse() {
-    m_indexerMotor.set(-0.2);
+    m_leftIndexerMotor.set(-0.2);
+    m_rightIndexerMotor.set(-0.2);
+    m_middleIndexerMotor.set(-0.2);
   }
 
   public void stopAll() {
-    m_rightShooterMotor.set(0);
     m_floorMotor.set(0);
-    m_indexerMotor.set(0);
+
     m_leftShooterMotor.set(0);
+    m_rightShooterMotor.set(0);
+    m_middleShooterMotor.set(0);
+
+    m_leftIndexerMotor.set(0);
+    m_rightIndexerMotor.set(0);
+    m_middleIndexerMotor.set(0);
   }
 
   public boolean isAnyMotorOverCurrent(double threshold) {
-    return m_rightShooterMotor.getOutputCurrent() > threshold ||
-           m_floorMotor.getOutputCurrent() > threshold ||
-           m_indexerMotor.getOutputCurrent() > threshold ||
-           m_leftShooterMotor.getOutputCurrent() > threshold;
+    return m_floorMotor.getOutputCurrent() > threshold ||
+
+           m_leftIndexerMotor.getOutputCurrent() > threshold ||
+           m_rightIndexerMotor.getOutputCurrent() > threshold ||
+           m_middleIndexerMotor.getOutputCurrent() > threshold ||
+
+           m_leftShooterMotor.getOutputCurrent() > threshold ||
+           m_rightShooterMotor.getOutputCurrent() > threshold ||
+           m_middleShooterMotor.getOutputCurrent() > threshold;
   }
 
   @Override
@@ -309,19 +360,22 @@ public class ShooterSubsystem extends SubsystemBase {
     if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
       m_telemetryCounter = 0;
 
-      m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
       m_floorMotorSpeedPub.set(m_floorMotor.get());
-      m_indexerSpeedPub.set(m_indexerMotor.get());
+      // m_indexerSpeedPub.set(m_indexerMotor.get());
       m_leftShooterSpeedPub.set(m_leftShooterMotor.get());
+      m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
+      m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
+
+
 
       m_rightShooterCurrentPub.set(m_rightShooterMotor.getOutputCurrent());
       m_floorMotorCurrentPub.set(m_floorMotor.getOutputCurrent());
-      m_indexerCurrentPub.set(m_indexerMotor.getOutputCurrent());
+      // m_indexerCurrentPub.set(m_indexerMotor.getOutputCurrent());
       m_leftShooterCurrentPub.set(m_leftShooterMotor.getOutputCurrent());
 
       m_rightShooterVelocityPub.set(m_rightShooterMotor.getEncoder().getVelocity());
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
-      m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
+      // m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
     }
   }

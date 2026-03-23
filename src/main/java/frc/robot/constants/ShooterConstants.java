@@ -2,10 +2,13 @@ package frc.robot.constants;
 
 @SuppressWarnings("removal")
 public class ShooterConstants {
-  public static final int kRightShooterId = 15;
   public static final int kFloorMotorId = 13;
-  public static final int kIndexerMotorId = 14;
-  public static final int kLeftShooterId = 16;
+  public static final int kRIndexerMotorId = 14;
+  public static final int kLIndexerMotorId = 15;
+  public static final int kMIndexerMotorId = 16;
+  public static final int kRightShooterId = 17;
+  public static final int kLeftShooterId = 18;
+  public static final int kMiddleShooterId = 19;
   public static final int kMotorCurrentLimit = 60;
 
   public static final double kVelocityP = 0.00045;

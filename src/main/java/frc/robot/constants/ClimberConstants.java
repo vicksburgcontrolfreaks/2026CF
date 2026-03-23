@@ -1,7 +1,7 @@
 package frc.robot.constants;
 
 public class ClimberConstants {
-  public static final int kClimberMotorId = 17;
+  public static final int kClimberMotorId = 170;
   public static final int kMotorCurrentLimit = 40;
 
   public static final double kPositionP = 0.1;
