@@ -21,7 +21,7 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
  * Replaces both the old ShooterSequenceCommand and ShooterCalibrationCommand.
  * Bound to right trigger - runs while button is held.
  */
-public class AdvancedShooterCommand extends Command {
+public class ShooterCommand extends Command {
   private final ShooterSubsystem m_shooter;
 
   /**
@@ -30,7 +30,7 @@ public class AdvancedShooterCommand extends Command {
    * @param shooter ShooterSubsystem to control
    * @param vision PhotonVisionSubsystem (unused - kept for compatibility, subsystem handles vision internally)
    */
-  public AdvancedShooterCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision) {
+  public ShooterCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision) {
     m_shooter = shooter;
     // vision parameter kept for backwards compatibility but not used
     // ShooterSubsystem.periodic() handles continuous vision-based RPM calculation

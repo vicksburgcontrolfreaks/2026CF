@@ -17,7 +17,7 @@ import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
-import frc.robot.commands.shooter.AdvancedShooterCommand;
+import frc.robot.commands.shooter.ShooterCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
@@ -126,12 +126,8 @@ public class RobotContainer {
         .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(true), m_shooterSubsystem))
     );
 
-    m_mechanismController.y().onTrue(
-      Commands.run(() -> m_shooterSubsystem.runIndexer(true, true), m_shooterSubsystem).withTimeout(0.5)
-    );
-
     m_mechanismController.rightTrigger().whileTrue(
-      new AdvancedShooterCommand(m_shooterSubsystem, m_visionSubsystem)
+      new ShooterCommand(m_shooterSubsystem, m_visionSubsystem)
     );
 
   /*
