@@ -28,6 +28,9 @@ import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import choreo.auto.AutoFactory;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.geometry.Rotation2d;
+
 
 public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
@@ -104,7 +107,34 @@ public class RobotContainer {
               DriverStation.getAlliance().get() == Alliance.Blue
       )
     );
+
+    //Can Id Motor Test Remove when you are sure you got the CAN ids correct 
+    //MAKE SURE YOU DONT GET LEFT AND RIGHT CONFUSED
+    m_driverController.povUp().whileTrue(
+      Commands.run(() -> m_swerveDrive.getFrontLeftDriveMotor().setDesiredState(
+          new SwerveModuleState(0.2, new Rotation2d(0))
+      ), m_swerveDrive)
+    );
+
+     m_driverController.povDown().whileTrue(
+      Commands.run(() -> m_swerveDrive.getFrontRightDriveMotor().setDesiredState(
+          new SwerveModuleState(0.2, new Rotation2d(0))
+      ), m_swerveDrive)
+    );
+
+      m_driverController.povLeft().whileTrue(
+      Commands.run(() -> m_swerveDrive.getRearLeftDriveMotor().setDesiredState(
+          new SwerveModuleState(0.2, new Rotation2d(0))
+      ), m_swerveDrive)
+    );
+
+    m_driverController.povRight().whileTrue(
+      Commands.run(() -> m_swerveDrive.getRearRightDriveMotor().setDesiredState(
+          new SwerveModuleState(0.2, new Rotation2d(0))
+      ), m_swerveDrive)
+    );
   }
+
 
   private void configureMechanismBindings() {
     m_mechanismController.a().whileTrue(

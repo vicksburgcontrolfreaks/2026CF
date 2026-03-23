@@ -370,4 +370,21 @@ public class DriveSubsystem extends SubsystemBase {
     // Send robot-relative speeds to the drivetrain
     setChassisSpeeds(targetSpeeds);
   }
+
+  public MAXSwerveModule getFrontLeftDriveMotor() {
+    return m_frontLeft;
+  }
+
+  public MAXSwerveModule getFrontRightDriveMotor() {
+    return m_frontRight;
+  }
+
+  public MAXSwerveModule getRearLeftDriveMotor() {
+    return m_rearLeft;
+  }
+
+  public MAXSwerveModule getRearRightDriveMotor() {
+    return m_rearRight;
+  }
+
 }
