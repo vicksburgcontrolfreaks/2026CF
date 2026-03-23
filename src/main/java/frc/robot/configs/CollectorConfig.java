@@ -14,14 +14,5 @@ public final class CollectorConfig {
     collectorConfig
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(CollectorConstants.kMotorCurrentLimit);
-
-    hopperConfig
-        .idleMode(IdleMode.kCoast)
-        .smartCurrentLimit(CollectorConstants.kMotorCurrentLimit)
-        .closedLoop
-          .pid(CollectorConstants.kHopperP, CollectorConstants.kHopperI, CollectorConstants.kHopperD)
-          .outputRange(-CollectorConstants.kHopperSpeed, CollectorConstants.kHopperSpeed);
-    hopperConfig.encoder
-        .positionConversionFactor(1.0);
   }
 }
