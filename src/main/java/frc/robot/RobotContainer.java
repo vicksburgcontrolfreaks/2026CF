@@ -118,13 +118,13 @@ public class RobotContainer {
       ), m_swerveDrive)
     );
 
-     m_driverController.povDown().whileTrue(
+    m_driverController.povDown().whileTrue(
       Commands.run(() -> m_swerveDrive.getFrontRightDriveMotor().setDesiredState(
           new SwerveModuleState(0.2, new Rotation2d(0))
       ), m_swerveDrive)
     );
 
-      m_driverController.povLeft().whileTrue(
+    m_driverController.povLeft().whileTrue(
       Commands.run(() -> m_swerveDrive.getRearLeftDriveMotor().setDesiredState(
           new SwerveModuleState(0.2, new Rotation2d(0))
       ), m_swerveDrive)
