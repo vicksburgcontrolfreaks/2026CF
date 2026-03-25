@@ -7,7 +7,7 @@ public class CollectorConstants {
 
   public static final int kMotorCurrentLimit = 60;
 
-  public static final double kCollectorSpeed = 0.2;
+  public static final double kCollectorSpeed = 0.4;
 
   public static final double kUpPosition = 0;
   public static final double kDownPosition = 0.180;
