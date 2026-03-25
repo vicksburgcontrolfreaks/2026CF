@@ -15,6 +15,8 @@ import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
+import frc.robot.commands.collector.ExtendHopperCommand;
+import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterCommand;
@@ -149,7 +151,11 @@ public class RobotContainer {
         )
     );
 
-    m_mechanismController.x().onTrue(
+    m_mechanismController.povUp().onTrue(
+      new RetractHopperCommand(m_collector)
+    );
+
+    m_mechanismController.povDown().onTrue(
       new RunCollectorCommand(m_collector, true)
         .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(true), m_shooterSubsystem))
     );
@@ -171,7 +177,7 @@ public class RobotContainer {
   */
   }
 
-  /**
+  /*
    * Configures autonomous commands using Choreo trajectories.
    * Place your .traj files in src/main/deploy/choreo/
    *
