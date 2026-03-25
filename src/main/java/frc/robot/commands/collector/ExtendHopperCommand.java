@@ -13,7 +13,7 @@ public class ExtendHopperCommand extends Command {
   private final double m_tolerance;
 
   public ExtendHopperCommand(CollectorSubsystem collector) {
-    this(collector, 0.01); // Default tolerance of 0.01 rotations
+    this(collector, 0.05); // Default tolerance of 0.01 rotations
   }
 
   public ExtendHopperCommand(CollectorSubsystem collector, double tolerance) {

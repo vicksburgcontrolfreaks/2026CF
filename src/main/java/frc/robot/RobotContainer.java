@@ -156,8 +156,7 @@ public class RobotContainer {
     );
 
     m_mechanismController.povDown().onTrue(
-      new RunCollectorCommand(m_collector, true)
-        .alongWith(Commands.run(() -> m_shooterSubsystem.runFloor(true), m_shooterSubsystem))
+      new ExtendHopperCommand(m_collector)
     );
 
     m_mechanismController.rightTrigger().whileTrue(
