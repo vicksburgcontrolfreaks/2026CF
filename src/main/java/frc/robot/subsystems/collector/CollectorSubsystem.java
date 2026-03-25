@@ -47,7 +47,6 @@ public class CollectorSubsystem extends SubsystemBase {
     m_upperCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Upper Collector Current").publish();
     m_lowerCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Lower Collector Current").publish();
     m_hopperMotorPosiotionPub = m_telemetryTable.getDoubleTopic("Hopper Position").publish();
-
   }
 
   public void runCollector(boolean reversed) {
@@ -94,6 +93,7 @@ public class CollectorSubsystem extends SubsystemBase {
       m_lowerCollectorSpeedPub.set(m_lowerCollectorMotor.get());
       m_upperCollectorCurrentPub.set(m_upperCollectorMotor.getOutputCurrent());
       m_lowerCollectorCurrentPub.set(m_lowerCollectorMotor.getOutputCurrent());
+      m_hopperMotorPosiotionPub.set(m_hopperMotor.getAbsoluteEncoder().getPosition());
     }
     double CurrentHopperPose = m_hopperMotor.getAbsoluteEncoder().getPosition();
   }
