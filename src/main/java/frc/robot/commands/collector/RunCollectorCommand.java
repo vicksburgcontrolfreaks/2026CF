@@ -18,12 +18,12 @@ public class RunCollectorCommand extends Command {
   }
 
   @Override
-  public void initialize() {}
-
-  @Override
-  public void execute() {
+  public void initialize() {
     m_collector.runCollector(m_reversed);
   }
+
+  @Override
+  public void execute() {}
 
   @Override
   public void end(boolean interrupted) {}

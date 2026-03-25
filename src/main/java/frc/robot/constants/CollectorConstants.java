@@ -5,7 +5,7 @@ public class CollectorConstants {
   public static final int kLowerCollectorMotorId = 11;
   public static final int kHopperMotorId = 12;
 
-  public static final int kMotorCurrentLimit = 40;
+  public static final int kMotorCurrentLimit = 60;
 
   public static final double kCollectorSpeed = 0.2;
 

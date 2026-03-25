@@ -23,6 +23,7 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
  */
 public class ShooterCommand extends Command {
   private final ShooterSubsystem m_shooter;
+  private boolean m_feedingStarted = false;
 
   /**
    * Creates a new AdvancedShooterCommand.
@@ -39,21 +40,19 @@ public class ShooterCommand extends Command {
 
   @Override
   public void initialize() {
-    // Activate shooter at calculated RPM (periodic() continuously updates the calculation)
+    m_feedingStarted = false;
+    // Activate shooter wheels - wait for them to reach speed before feeding
     m_shooter.activateShooter();
-
-    // Start floor and indexer immediately (same as old ShooterSequenceCommand)
-    m_shooter.runIndexer(false, false);
-    m_shooter.runFloor(false);
   }
 
   @Override
   public void execute() {
-    // ShooterSubsystem.periodic() continuously calculates target RPM from vision distance
-    // We just need to keep activating the shooter to use the latest calculated value
-    m_shooter.activateShooter();
-
-    // Floor and indexer continue running
+    // Once shooter reaches target velocity, start feeding game pieces
+    if (!m_feedingStarted && m_shooter.isAtTargetVelocity(100)) {
+      m_shooter.runIndexer(false);
+      m_shooter.runFloor(false);
+      m_feedingStarted = true;
+    }
   }
 
   @Override

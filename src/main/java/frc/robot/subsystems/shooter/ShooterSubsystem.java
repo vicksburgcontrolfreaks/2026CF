@@ -5,7 +5,6 @@
 package frc.robot.subsystems.shooter;
 
 import com.revrobotics.spark.SparkFlex;
-import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.ResetMode;
@@ -23,9 +22,9 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
   private final SparkFlex m_floorMotor;
-  private final SparkMax m_leftIndexerMotor;
-  private final SparkMax m_rightIndexerMotor;
-  private final SparkMax m_middleIndexerMotor;
+  private final SparkFlex m_leftIndexerMotor;
+  private final SparkFlex m_rightIndexerMotor;
+  private final SparkFlex m_middleIndexerMotor;
   private final SparkFlex m_rightShooterMotor;
   private final SparkFlex m_leftShooterMotor;
   private final SparkFlex m_middleShooterMotor;
@@ -52,6 +51,7 @@ public class ShooterSubsystem extends SubsystemBase {
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
   private double m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM; // Always reflects linear regression calculation
   private double m_lastDistanceToTarget = 0.0;
+  private boolean m_isShooterActive = false; // Track if shooter is actively running
   private final PhotonVisionSubsystem m_visionSubsystem;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
@@ -63,21 +63,20 @@ public class ShooterSubsystem extends SubsystemBase {
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
     m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
     m_middleShooterMotor = new SparkFlex(ShooterConstants.kMiddleShooterId, MotorType.kBrushless);
-    m_leftIndexerMotor = new SparkMax(ShooterConstants.kLIndexerMotorId, MotorType.kBrushless);
-    m_rightIndexerMotor = new SparkMax(ShooterConstants.kRIndexerMotorId, MotorType.kBrushless);
-    m_middleIndexerMotor = new SparkMax(ShooterConstants.kMIndexerMotorId, MotorType.kBrushless);
+    m_leftIndexerMotor = new SparkFlex(ShooterConstants.kLIndexerMotorId, MotorType.kBrushless);
+    m_rightIndexerMotor = new SparkFlex(ShooterConstants.kRIndexerMotorId, MotorType.kBrushless);
+    m_middleIndexerMotor = new SparkFlex(ShooterConstants.kMIndexerMotorId, MotorType.kBrushless);
 
 
-    m_leftShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_middleShooterMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_floorMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_leftIndexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightIndexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_middleIndexerMotor.configure(ShooterConfig.config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_leftShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_rightShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_middleShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_floorMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_leftIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_rightIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_middleIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     
-
     m_leftIndexerMotor.set(0);
     m_rightIndexerMotor.set(0);
     m_middleIndexerMotor.set(0);
@@ -124,92 +123,44 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
-   * Run the shooter with dynamic RPM based on distance to target from vision
-   * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
+   * Calculate target RPM based on distance to speaker using linear interpolation
+   * @param distance Distance to speaker in meters
+   * @return Target RPM for the shooter
    */
-  public void runShooter(PhotonVisionSubsystem vision) {
-    double targetRPM;
-
-    // DYNAMIC RPM CODE - Uses robot pose and speaker position to calculate distance
-    if (vision != null) {
-      double distance = vision.getDistanceToSpeaker();
-      m_lastDistanceToTarget = distance;
-
-      if (distance > 0) {
-        targetRPM = ShooterConstants.getRPMForDistance(distance);
-        m_debugMessagePub.set("Dynamic Shooter: Distance = " + String.format("%.2f", distance) +
-                              "m, Target RPM = " + String.format("%.0f", targetRPM));
-      } else {
-        // Fall back to default RPM if distance calculation fails
-        targetRPM = ShooterConstants.kShooterTargetRPM;
-        m_debugMessagePub.set("Dynamic Shooter: Distance calculation failed, using default RPM = " + targetRPM);
-      }
-    } else {
-      // Use default RPM if no vision subsystem provided
-      targetRPM = ShooterConstants.kShooterTargetRPM;
-      m_lastDistanceToTarget = 0.0;
+  private double getRPMForDistance(double distance) {
+    if (distance <= ShooterConstants.kShooterVelocityTable[0][0]) {
+      return ShooterConstants.kShooterVelocityTable[0][1];
     }
 
-    m_currentTargetRPM = targetRPM;
+    int lastIndex = ShooterConstants.kShooterVelocityTable.length - 1;
+    if (distance >= ShooterConstants.kShooterVelocityTable[lastIndex][0]) {
+      return ShooterConstants.kShooterVelocityTable[lastIndex][1];
+    }
 
-    m_rightShooterMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
-      ControlType.kVelocity
-    );
+    for (int i = 0; i < ShooterConstants.kShooterVelocityTable.length - 1; i++) {
+      double d1 = ShooterConstants.kShooterVelocityTable[i][0];
+      double rpm1 = ShooterConstants.kShooterVelocityTable[i][1];
+      double d2 = ShooterConstants.kShooterVelocityTable[i + 1][0];
+      double rpm2 = ShooterConstants.kShooterVelocityTable[i + 1][1];
 
-    m_leftShooterMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
-      ControlType.kVelocity
-    );
+      if (distance >= d1 && distance <= d2) {
+        return rpm1 + (rpm2 - rpm1) * (distance - d1) / (d2 - d1);
+      }
+    }
 
-    m_middleShooterMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
-      ControlType.kVelocity
-    );
+    return ShooterConstants.kShooterTargetRPM;
   }
 
   /**
-   * Calculate optimal RPM based on vision distance WITHOUT spinning the motors.
-   * This allows continuous calculation while motors remain idle.
-   * @param vision PhotonVisionSubsystem to get distance from (pass null to use default RPM)
-   */
-  public void updateTargetRPM(PhotonVisionSubsystem vision) {
-    double targetRPM;
-
-    // DYNAMIC RPM CODE - Uses robot pose and speaker position to calculate distance
-    if (vision != null) {
-      double distance = vision.getDistanceToSpeaker();
-      m_lastDistanceToTarget = distance;
-
-      if (distance > 0) {
-        targetRPM = ShooterConstants.getRPMForDistance(distance);
-        m_debugMessagePub.set("Shooter Calibration: Distance = " + String.format("%.2f", distance) +
-                              "m, Target RPM = " + String.format("%.0f", targetRPM) + " (IDLE)");
-      } else {
-        // Fall back to default RPM if distance calculation fails
-        targetRPM = ShooterConstants.kShooterTargetRPM;
-        m_debugMessagePub.set("Shooter Calibration: Distance calculation failed, using default RPM = " + targetRPM + " (IDLE)");
-      }
-    } else {
-      // Use default RPM if no vision subsystem provided
-      targetRPM = ShooterConstants.kShooterTargetRPM;
-      m_lastDistanceToTarget = 0.0;
-    }
-
-    m_currentTargetRPM = targetRPM;
-    // NOTE: Motors are NOT commanded here - just updating the calculated target
-  }
-
-  /**
-   * Spin up the shooter motors to the continuously-calculated target RPM.
-   * This uses m_calculatedTargetRPM which is ALWAYS updated by periodic()
-   * based on the linear regression calculation from vision distance.
-   * Call this when you want to actually activate the shooter.
+   * Activate the shooter motors. The RPM will be continuously updated by periodic()
+   * based on the robot's distance to the speaker (when dynamic RPM is enabled).
+   * This allows shooting while moving - the RPM adjusts in real-time.
    */
   public void activateShooter() {
-    // Use the calculated RPM (from continuous linear regression in periodic())
+    m_isShooterActive = true;
     m_currentTargetRPM = m_calculatedTargetRPM;
 
+    // Immediately command motors to start spinning up
     m_leftShooterMotor.getClosedLoopController().setSetpoint(
       m_currentTargetRPM,
       ControlType.kVelocity
@@ -224,19 +175,17 @@ public class ShooterSubsystem extends SubsystemBase {
       m_currentTargetRPM,
       ControlType.kVelocity
     );
-
-    m_debugMessagePub.set("Shooter ACTIVE at " + String.format("%.0f", m_currentTargetRPM) + " RPM");
   }
 
   /**
    * Stop the shooter motors (set to 0).
    */
   public void stopShooter() {
+    m_isShooterActive = false;
+
     m_leftShooterMotor.set(0);
     m_rightShooterMotor.set(0);
     m_middleShooterMotor.set(0);
-
-    m_debugMessagePub.set("Shooter STOPPED");
   }
 
   /**
@@ -258,6 +207,14 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
+   * Check if the shooter is currently active
+   * @return True if shooter is active and running
+   */
+  public boolean isShooterActive() {
+    return m_isShooterActive;
+  }
+
+  /**
    * Check if the shooter is at the target velocity
    * @param tolerance Acceptable RPM tolerance (e.g., 100 RPM)
    * @return True if both shooter motors are within tolerance of target
@@ -272,53 +229,26 @@ public class ShooterSubsystem extends SubsystemBase {
            Math.abs(middleVelocity - m_currentTargetRPM) <= tolerance;
   }
 
-  public void runIndexer(boolean reversed, boolean manual) {
+  public void runIndexer(boolean reversed) {
     double rpm = ShooterConstants.kIndexerMotorTargetRPM;
     if (reversed) {
       rpm = -rpm;
     }
 
-    if (manual) {
-      m_leftIndexerMotor.set(-0.75);
-      m_rightIndexerMotor.set(-0.75);
-      m_middleIndexerMotor.set(-0.75);
-    } else {
-      m_leftIndexerMotor.getClosedLoopController().setSetpoint(
-        rpm,
-        ControlType.kVelocity
-      );
+    m_leftIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
 
-      m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-        rpm,
-        ControlType.kVelocity
-      );
+    m_rightIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
 
-      m_middleIndexerMotor.getClosedLoopController().setSetpoint(
-        rpm,
-        ControlType.kVelocity
-      );
-    }
-  }
-
-  /**
-   * Run the indexer slowly in reverse for collection
-   */
-  public void runIndexerSlowReverse() {
-    m_leftIndexerMotor.set(-0.2);
-    m_rightIndexerMotor.set(-0.2);
-    m_middleIndexerMotor.set(-0.2);
-  }
-
-  public void stopAll() {
-    m_floorMotor.set(0);
-
-    m_leftShooterMotor.set(0);
-    m_rightShooterMotor.set(0);
-    m_middleShooterMotor.set(0);
-
-    m_leftIndexerMotor.set(0);
-    m_rightIndexerMotor.set(0);
-    m_middleIndexerMotor.set(0);
+    m_middleIndexerMotor.getClosedLoopController().setSetpoint(
+      -rpm,
+      ControlType.kVelocity
+    );
   }
 
   public boolean isAnyMotorOverCurrent(double threshold) {
@@ -335,6 +265,10 @@ public class ShooterSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // DYNAMIC RPM DISABLED - Using constant RPM
+    m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
+
+    /* DYNAMIC RPM CODE - COMMENTED OUT
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
     // This updates m_calculatedTargetRPM which is published to Elastic dashboard
     if (m_visionSubsystem != null) {
@@ -342,7 +276,7 @@ public class ShooterSubsystem extends SubsystemBase {
       m_lastDistanceToTarget = distance;
 
       if (distance > 0) {
-        m_calculatedTargetRPM = ShooterConstants.getRPMForDistance(distance);
+        m_calculatedTargetRPM = getRPMForDistance(distance);
       } else {
         // Fall back to default RPM if distance calculation fails
         m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
@@ -351,10 +285,36 @@ public class ShooterSubsystem extends SubsystemBase {
       // No vision subsystem, use default
       m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
     }
+    */
+
+    // Update distance for telemetry purposes
+    if (m_visionSubsystem != null) {
+      m_lastDistanceToTarget = m_visionSubsystem.getDistanceToSpeaker();
+    }
 
     // ALWAYS publish Target RPM and Distance (no throttling) so Elastic updates in real-time
     m_targetRPMPub.set(m_calculatedTargetRPM);
     m_distanceToTargetPub.set(m_lastDistanceToTarget);
+
+    // If shooter is active, continuously update motor commands with calculated RPM
+    if (m_isShooterActive) {
+      m_currentTargetRPM = m_calculatedTargetRPM;
+
+      m_leftShooterMotor.getClosedLoopController().setSetpoint(
+        m_currentTargetRPM,
+        ControlType.kVelocity
+      );
+
+      m_rightShooterMotor.getClosedLoopController().setSetpoint(
+        m_currentTargetRPM,
+        ControlType.kVelocity
+      );
+
+      m_middleShooterMotor.getClosedLoopController().setSetpoint(
+        -m_currentTargetRPM,
+        ControlType.kVelocity
+      );
+    }
 
     m_telemetryCounter++;
     if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {

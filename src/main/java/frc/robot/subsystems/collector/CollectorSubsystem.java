@@ -53,10 +53,10 @@ public class CollectorSubsystem extends SubsystemBase {
     if (!reversed)
     {
       m_upperCollectorMotor.set(-CollectorConstants.kCollectorSpeed);
-      m_lowerCollectorMotor.set(CollectorConstants.kCollectorSpeed);
+      m_lowerCollectorMotor.set(-CollectorConstants.kCollectorSpeed);
     } else {
       m_upperCollectorMotor.set(CollectorConstants.kCollectorSpeed);
-      m_lowerCollectorMotor.set(-CollectorConstants.kCollectorSpeed);
+      m_lowerCollectorMotor.set(CollectorConstants.kCollectorSpeed);
     }
   }
 
