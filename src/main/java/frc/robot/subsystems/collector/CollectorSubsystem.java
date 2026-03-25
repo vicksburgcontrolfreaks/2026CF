@@ -39,7 +39,7 @@ public class CollectorSubsystem extends SubsystemBase {
 
     m_upperCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_lowerCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_hopperMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_hopperMotor.configure(CollectorConfig.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Collector");
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
@@ -66,14 +66,14 @@ public class CollectorSubsystem extends SubsystemBase {
   }
 
   public void retractHopper() {
-    m_hopperMotor.getClosedLoopController().setReference(
+    m_hopperMotor.getClosedLoopController().setSetpoint(
       CollectorConstants.kUpPosition,
       SparkMax.ControlType.kPosition
     );
   }
 
   public void extendHopper() {
-    m_hopperMotor.getClosedLoopController().setReference(
+    m_hopperMotor.getClosedLoopController().setSetpoint(
       CollectorConstants.kDownPosition,
       SparkMax.ControlType.kPosition
     );

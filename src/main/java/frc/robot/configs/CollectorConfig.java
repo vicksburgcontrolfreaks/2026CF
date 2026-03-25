@@ -15,12 +15,12 @@ public final class CollectorConfig {
     collectorConfig
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(CollectorConstants.kMotorCurrentLimit);
-  }
 
-  static {
     hopperConfig
-        .idleMode(IdleMode.kCoast)
+      .idleMode(IdleMode.kCoast)
+      .smartCurrentLimit(CollectorConstants.kMotorCurrentLimit);
 
+    hopperConfig
       .absoluteEncoder
         .positionConversionFactor(1.0)
         .velocityConversionFactor(1.0);
@@ -28,11 +28,8 @@ public final class CollectorConfig {
     hopperConfig
       .closedLoop
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
-        .pid(0.5, 0.0, 0.0)
-        .outputRange(-0.1, 0.1)
-        .maxMotion
-          .maxVelocity(50)
-          .maxAcceleration(100);
-      
+        .pid(CollectorConstants.kHopperP, CollectorConstants.kHopperI, CollectorConstants.kHopperD)
+        .positionWrappingEnabled(true)
+        .positionWrappingInputRange(0, 1);
   }
 }
