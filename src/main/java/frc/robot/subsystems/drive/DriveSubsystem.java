@@ -88,11 +88,6 @@ public class DriveSubsystem extends SubsystemBase {
   private final PIDController m_yController = new PIDController(5.0, 0, 0);
   private final PIDController m_thetaController = new PIDController(3.0, 0, 0);
 
-  // PID controller for heading lock to prevent drift
-  private final PIDController m_headingController = new PIDController(0.04, 0, 0);
-  private double m_targetHeading = 0;
-  private boolean m_wasRotating = false;
-
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
     // Usage reporting for MAXSwerve template
@@ -110,9 +105,6 @@ public class DriveSubsystem extends SubsystemBase {
     m_currentYPub = m_gyroTable.getDoubleTopic("Current Y").publish();
     // Configure theta controller for continuous input
     m_thetaController.enableContinuousInput(-Math.PI, Math.PI);
-
-    // Configure heading controller for continuous input (handles 0-360 wraparound)
-    m_headingController.enableContinuousInput(-180, 180);
 
     // Publish Field2d to SmartDashboard for Glass visualization
     SmartDashboard.putData("Field", m_field);
@@ -203,26 +195,6 @@ public class DriveSubsystem extends SubsystemBase {
    *                      field.
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
-    // Apply heading lock only when there's no rotation input AND robot is moving
-    // This prevents drift while driving straight
-    if (Math.abs(rot) < 0.05) { // If rotation input is within deadband
-      // If we just stopped rotating, update target to current heading before locking
-      if (m_wasRotating) {
-        m_targetHeading = m_gyro.getAngle(IMUAxis.kY);
-        m_wasRotating = false;
-      }
-
-      // Only apply heading correction if the robot is actually moving
-      if (Math.abs(xSpeed) > 0.1 || Math.abs(ySpeed) > 0.1) {
-        double currentHeading = m_gyro.getAngle(IMUAxis.kY);
-        rot = m_headingController.calculate(currentHeading, m_targetHeading);
-      }
-    } else {
-      // Driver is actively rotating
-      m_wasRotating = true;
-      m_targetHeading = m_gyro.getAngle(IMUAxis.kY);
-    }
-
     // Create chassis speeds from inputs
     ChassisSpeeds speeds = fieldRelative
         ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
@@ -277,7 +249,6 @@ public class DriveSubsystem extends SubsystemBase {
   /** Zeroes the heading of the robot. */
   public void zeroHeading() {
     m_gyro.reset();
-    m_targetHeading = 0;
   }
 
   /**

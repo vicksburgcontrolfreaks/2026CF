@@ -28,8 +28,6 @@ import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import choreo.auto.AutoFactory;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.geometry.Rotation2d;
 
 
 public class RobotContainer {
@@ -54,7 +52,7 @@ public class RobotContainer {
           m_swerveDrive::getPose,
           m_swerveDrive::resetOdometry,
           m_swerveDrive::followTrajectory,
-          false,  
+          false,
           m_swerveDrive
       );
 
@@ -110,19 +108,19 @@ public class RobotContainer {
 
     //Can Id Motor Test Remove when you are sure you got the CAN ids correct 
     //MAKE SURE YOU DONT GET LEFT AND RIGHT CONFUSED
-    m_driverController.povUp().whileTrue(
+/*     m_driverController.povUp().whileTrue(
       Commands.run(() -> m_swerveDrive.getFrontLeftDriveMotor().setDesiredState(
           new SwerveModuleState(0.2, new Rotation2d(0))
       ), m_swerveDrive)
     );
 
-     m_driverController.povDown().whileTrue(
+    m_driverController.povDown().whileTrue(
       Commands.run(() -> m_swerveDrive.getFrontRightDriveMotor().setDesiredState(
           new SwerveModuleState(0.2, new Rotation2d(0))
       ), m_swerveDrive)
     );
 
-      m_driverController.povLeft().whileTrue(
+    m_driverController.povLeft().whileTrue(
       Commands.run(() -> m_swerveDrive.getRearLeftDriveMotor().setDesiredState(
           new SwerveModuleState(0.2, new Rotation2d(0))
       ), m_swerveDrive)
@@ -132,21 +130,21 @@ public class RobotContainer {
       Commands.run(() -> m_swerveDrive.getRearRightDriveMotor().setDesiredState(
           new SwerveModuleState(0.2, new Rotation2d(0))
       ), m_swerveDrive)
-    );
+    ); */
   }
 
 
   private void configureMechanismBindings() {
     m_mechanismController.a().whileTrue(
       new RunCollectorCommand(m_collector, false).alongWith(Commands.run(() -> {
-        m_shooterSubsystem.runFloor(false); m_shooterSubsystem.runIndexerSlowReverse(); }, m_shooterSubsystem))
+        m_shooterSubsystem.runFloor(false); m_shooterSubsystem.runIndexer(true); }, m_shooterSubsystem))
     );
 
     m_mechanismController.b().onTrue(
-        new StopCollectorCommand(m_collector).alongWith(
+      new StopCollectorCommand(m_collector).alongWith(
             Commands.runOnce(() -> {
-            m_shooterSubsystem.StopFloor();
-            m_shooterSubsystem.StopIndexer();
+              m_shooterSubsystem.StopFloor();
+              m_shooterSubsystem.StopIndexer();
           }, m_shooterSubsystem)
         )
     );

@@ -6,22 +6,22 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import frc.robot.constants.ShooterConstants;
 
 public final class ShooterConfig {
-  public static final SparkFlexConfig config = new SparkFlexConfig();
-  public static final SparkFlexConfig indexerManualConfig = new SparkFlexConfig();
+  public static final SparkFlexConfig shooterConfig = new SparkFlexConfig();
+  public static final SparkFlexConfig indexerConfig = new SparkFlexConfig();
 
   static {
-    config
+    shooterConfig
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
         .closedLoop
-          .pid(ShooterConstants.kVelocityP, ShooterConstants.kVelocityI, ShooterConstants.kVelocityD)
-          .velocityFF(ShooterConstants.kVelocityFF);
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
 
-    indexerManualConfig
+    indexerConfig
         .idleMode(IdleMode.kCoast)
-        .smartCurrentLimit(ShooterConstants.kIndexerManualCurrentLimit)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
         .closedLoop
-          .pid(ShooterConstants.kVelocityP, ShooterConstants.kVelocityI, ShooterConstants.kVelocityD)
-          .velocityFF(ShooterConstants.kVelocityFF);
+          .pid(ShooterConstants.kIndexerP, ShooterConstants.kIndexerI, ShooterConstants.kIndexerD)
+          .velocityFF(ShooterConstants.kIndexerFF);
   }
 }

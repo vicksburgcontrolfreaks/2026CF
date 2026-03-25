@@ -16,12 +16,12 @@ public class StopCollectorCommand extends Command {
   }
 
   @Override
-  public void initialize() {}
-
-  @Override
-  public void execute() {
+  public void initialize() {
     m_collector.stopCollector();
   }
+
+  @Override
+  public void execute() {}
 
   @Override
   public void end(boolean interrupted) {}
