@@ -15,7 +15,9 @@
       "Bash(.gradlew build:*)",
       "Bash(./gradlew.bat build:*)",
       "Bash(Select-Object -Last 50)",
-      "Bash(gradlew.bat build:*)"
+      "Bash(gradlew.bat build:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash pop:*)"
     ]
   }
 }

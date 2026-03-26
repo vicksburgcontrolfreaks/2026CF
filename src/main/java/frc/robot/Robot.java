@@ -46,6 +46,9 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+
+    // Spin up shooter on teleop enable (uses current before driving starts)
+    m_robotContainer.spinUpShooter();
   }
 
   @Override
