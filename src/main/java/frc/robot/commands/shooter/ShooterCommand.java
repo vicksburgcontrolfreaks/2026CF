@@ -48,7 +48,7 @@ public class ShooterCommand extends Command {
   @Override
   public void execute() {
     // Once shooter reaches target velocity, start feeding game pieces
-    if (!m_feedingStarted && m_shooter.isAtTargetVelocity(100)) {
+    if (!m_feedingStarted && m_shooter.isAtTargetVelocity(75)) {
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
       m_feedingStarted = true;

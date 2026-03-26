@@ -26,7 +26,9 @@ public class RunCollectorCommand extends Command {
   public void execute() {}
 
   @Override
-  public void end(boolean interrupted) {}
+  public void end(boolean interrupted) {
+    new StopCollectorCommand(m_collector);
+  }
 
   @Override
   public boolean isFinished() {

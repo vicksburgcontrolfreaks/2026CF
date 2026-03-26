@@ -15,28 +15,25 @@ public class ShooterConstants {
 
   public static final double kShooterP = 0.00045;
   public static final double kShooterI = 0.00000025;
-  public static final double kShooterD = 0.000000;
+  public static final double kShooterD = 0.0001;
   public static final double kShooterFF = 3.0 / MotorConstants.NeoVortex.kFreeSpeedRpm;
 
   // Indexer PID values
   public static final double kIndexerP = 0.00045;
   public static final double kIndexerI = 0.00000025;
-  public static final double kIndexerD = 0.0;
+  public static final double kIndexerD = 0.0001;
   public static final double kIndexerFF = 3.0 / MotorConstants.NeoVortex.kFreeSpeedRpm;
 
-  // max rpm 6784
-  public static final double kShooterTargetRPM = 4500;
-  public static final double kFloorMotorTargetRPM = -1500;
-  public static final double kIndexerMotorTargetRPM = 1500;
+  // max rpm 6784+
+  public static final double kShooterTargetRPM = 3000;
+  public static final double kFloorMotorTargetRPM = -1000;
+  public static final double kIndexerMotorTargetRPM = 1000;
 
   // Shooter velocity lookup table: distance (meters) -> RPM
   // Reduced by ~18% to lower power output
   public static final double[][] kShooterVelocityTable = {
-    {1.0, 1850},
-    {2.0, 2275},
-    {3.0, 2575},
-    {4.0, 2875},
-    {5.0, 3175},
-    {6.0, 3475}
+    {1.75, 2950},
+    {2.69, 3450},
+    {3.3, 4000},
   };
 }

@@ -22,22 +22,22 @@ public class PhotonVisionConstants {
   //   yaw: rotation around Z-axis (spin left/right) in radians - 0° = forward, 90° = left, 180° = back, -90° = right
 
   public static final Transform3d kRobotToFrontCamera = new Transform3d(
-    new Translation3d(Units.inchesToMeters(-5.771), Units.inchesToMeters(0), Units.inchesToMeters(28.15)),
+    new Translation3d(Units.inchesToMeters(-7.17), Units.inchesToMeters(0), Units.inchesToMeters(20.28)),
     new Rotation3d(0, Math.toRadians(6), Math.toRadians(0)) // roll: 0°, pitch: 6° (tilted up), yaw: 0° (forward)
   );
 
   public static final Transform3d kRobotToBackCamera = new Transform3d(
-    new Translation3d(Units.inchesToMeters(-8.845), Units.inchesToMeters(7.60), Units.inchesToMeters(26.566)),
+    new Translation3d(Units.inchesToMeters(-10), Units.inchesToMeters(8.27), Units.inchesToMeters(20.28)),
     new Rotation3d(0, Math.toRadians(6), Math.toRadians(180)) // roll: 0°, pitch: 6° (tilted up), yaw: 180° (backward)
   );
 
   public static final Transform3d kRobotToLeftCamera = new Transform3d(
-    new Translation3d(Units.inchesToMeters(2.89), Units.inchesToMeters(13.75), Units.inchesToMeters(24.61)),
+    new Translation3d(Units.inchesToMeters(3.35), Units.inchesToMeters(13.75), Units.inchesToMeters(20.28)),
     new Rotation3d(0, Math.toRadians(0), Math.toRadians(90)) // roll: 0°, pitch: 0°, yaw: 90° (left)
   );
 
   public static final Transform3d kRobotToRightCamera = new Transform3d(
-    new Translation3d(Units.inchesToMeters(2.89), Units.inchesToMeters(-13.75), Units.inchesToMeters(24.61)),
+    new Translation3d(Units.inchesToMeters(3.35), Units.inchesToMeters(-13.75), Units.inchesToMeters(20.28)),
     new Rotation3d(0, Math.toRadians(0), Math.toRadians(-90)) // roll: 0°, pitch: 0°, yaw: -90° (right)
   );
 

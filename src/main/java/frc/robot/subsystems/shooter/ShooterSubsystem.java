@@ -34,16 +34,25 @@ public class ShooterSubsystem extends SubsystemBase {
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_rightShooterSpeedPub;
   private final DoublePublisher m_floorMotorSpeedPub;
-  private final DoublePublisher m_indexerSpeedPub;
+  private final DoublePublisher m_leftIndexerSpeedPub;
+  private final DoublePublisher m_rightIndexerSpeedPub;
+  private final DoublePublisher m_middleIndexerSpeedPub;
   private final DoublePublisher m_leftShooterSpeedPub;
+  private final DoublePublisher m_middleShooterSpeedPub;
   private final DoublePublisher m_rightShooterCurrentPub;
   private final DoublePublisher m_floorMotorCurrentPub;
-  private final DoublePublisher m_indexerCurrentPub;
+  private final DoublePublisher m_leftIndexerCurrentPub;
+  private final DoublePublisher m_rightIndexerCurrentPub;
+  private final DoublePublisher m_middleIndexerCurrentPub;
   private final DoublePublisher m_leftShooterCurrentPub;
+  private final DoublePublisher m_middleShooterCurrentPub;
   private final DoublePublisher m_rightShooterVelocityPub;
   private final DoublePublisher m_floorMotorVelocityPub;
-  private final DoublePublisher m_indexerVelocityPub;
+  private final DoublePublisher m_leftIndexerVelocityPub;
+  private final DoublePublisher m_rightIndexerVelocityPub;
+  private final DoublePublisher m_middleIndexerVelocityPub;
   private final DoublePublisher m_leftShooterVelocityPub;
+  private final DoublePublisher m_middleShooterVelocityPub;
   private final DoublePublisher m_targetRPMPub;
   private final DoublePublisher m_distanceToTargetPub;
   private final StringPublisher m_debugMessagePub;
@@ -85,16 +94,25 @@ public class ShooterSubsystem extends SubsystemBase {
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
     m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
     m_floorMotorSpeedPub     = m_telemetryTable.getDoubleTopic("Floor Motor Speed").publish();
-    m_indexerSpeedPub        = m_telemetryTable.getDoubleTopic("Indexer Speed").publish();
+    m_leftIndexerSpeedPub    = m_telemetryTable.getDoubleTopic("Left Indexer Speed").publish();
+    m_rightIndexerSpeedPub   = m_telemetryTable.getDoubleTopic("Right Indexer Speed").publish();
+    m_middleIndexerSpeedPub  = m_telemetryTable.getDoubleTopic("Middle Indexer Speed").publish();
     m_leftShooterSpeedPub    = m_telemetryTable.getDoubleTopic("Left Shooter Speed").publish();
+    m_middleShooterSpeedPub  = m_telemetryTable.getDoubleTopic("Middle Shooter Speed").publish();
     m_rightShooterCurrentPub = m_telemetryTable.getDoubleTopic("Right Shooter Current").publish();
     m_floorMotorCurrentPub   = m_telemetryTable.getDoubleTopic("Floor Motor Current").publish();
-    m_indexerCurrentPub      = m_telemetryTable.getDoubleTopic("Indexer Current").publish();
+    m_leftIndexerCurrentPub  = m_telemetryTable.getDoubleTopic("Left Indexer Current").publish();
+    m_rightIndexerCurrentPub = m_telemetryTable.getDoubleTopic("Right Indexer Current").publish();
+    m_middleIndexerCurrentPub = m_telemetryTable.getDoubleTopic("Middle Indexer Current").publish();
     m_leftShooterCurrentPub  = m_telemetryTable.getDoubleTopic("Left Shooter Current").publish();
+    m_middleShooterCurrentPub = m_telemetryTable.getDoubleTopic("Middle Shooter Current").publish();
     m_rightShooterVelocityPub  = m_telemetryTable.getDoubleTopic("Right Shooter Velocity").publish();
     m_floorMotorVelocityPub    = m_telemetryTable.getDoubleTopic("Floor Motor Velocity").publish();
-    m_indexerVelocityPub       = m_telemetryTable.getDoubleTopic("Indexer Velocity").publish();
+    m_leftIndexerVelocityPub   = m_telemetryTable.getDoubleTopic("Left Indexer Velocity").publish();
+    m_rightIndexerVelocityPub  = m_telemetryTable.getDoubleTopic("Right Indexer Velocity").publish();
+    m_middleIndexerVelocityPub = m_telemetryTable.getDoubleTopic("Middle Indexer Velocity").publish();
     m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
+    m_middleShooterVelocityPub = m_telemetryTable.getDoubleTopic("Middle Shooter Velocity").publish();
     m_targetRPMPub             = m_telemetryTable.getDoubleTopic("Target RPM").publish();
     m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
     m_debugMessagePub          = m_telemetryTable.getStringTopic("Debug Message").publish();
@@ -265,10 +283,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // DYNAMIC RPM DISABLED - Using constant RPM
-    m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
-
-    /* DYNAMIC RPM CODE - COMMENTED OUT
+    // DYNAMIC RPM ENABLED - Calculate RPM based on vision distance
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
     // This updates m_calculatedTargetRPM which is published to Elastic dashboard
     if (m_visionSubsystem != null) {
@@ -284,12 +299,6 @@ public class ShooterSubsystem extends SubsystemBase {
     } else {
       // No vision subsystem, use default
       m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
-    }
-    */
-
-    // Update distance for telemetry purposes
-    if (m_visionSubsystem != null) {
-      m_lastDistanceToTarget = m_visionSubsystem.getDistanceToSpeaker();
     }
 
     // ALWAYS publish Target RPM and Distance (no throttling) so Elastic updates in real-time
@@ -321,22 +330,28 @@ public class ShooterSubsystem extends SubsystemBase {
       m_telemetryCounter = 0;
 
       m_floorMotorSpeedPub.set(m_floorMotor.get());
-      // m_indexerSpeedPub.set(m_indexerMotor.get());
+      m_leftIndexerSpeedPub.set(m_leftIndexerMotor.get());
+      m_rightIndexerSpeedPub.set(m_rightIndexerMotor.get());
+      m_middleIndexerSpeedPub.set(m_middleIndexerMotor.get());
       m_leftShooterSpeedPub.set(m_leftShooterMotor.get());
       m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
-      m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
-
-
+      m_middleShooterSpeedPub.set(m_middleShooterMotor.get());
 
       m_rightShooterCurrentPub.set(m_rightShooterMotor.getOutputCurrent());
       m_floorMotorCurrentPub.set(m_floorMotor.getOutputCurrent());
-      // m_indexerCurrentPub.set(m_indexerMotor.getOutputCurrent());
+      m_leftIndexerCurrentPub.set(m_leftIndexerMotor.getOutputCurrent());
+      m_rightIndexerCurrentPub.set(m_rightIndexerMotor.getOutputCurrent());
+      m_middleIndexerCurrentPub.set(m_middleIndexerMotor.getOutputCurrent());
       m_leftShooterCurrentPub.set(m_leftShooterMotor.getOutputCurrent());
+      m_middleShooterCurrentPub.set(m_middleShooterMotor.getOutputCurrent());
 
       m_rightShooterVelocityPub.set(m_rightShooterMotor.getEncoder().getVelocity());
       m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
-      // m_indexerVelocityPub.set(m_indexerMotor.getEncoder().getVelocity());
+      m_leftIndexerVelocityPub.set(m_leftIndexerMotor.getEncoder().getVelocity());
+      m_rightIndexerVelocityPub.set(m_rightIndexerMotor.getEncoder().getVelocity());
+      m_middleIndexerVelocityPub.set(m_middleIndexerMotor.getEncoder().getVelocity());
       m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
+      m_middleShooterVelocityPub.set(m_middleShooterMotor.getEncoder().getVelocity());
     }
   }
 
