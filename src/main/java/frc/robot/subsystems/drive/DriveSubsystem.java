@@ -22,6 +22,7 @@ import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -84,9 +85,37 @@ public class DriveSubsystem extends SubsystemBase {
       new Pose2d());
 
   // PID controllers for Choreo trajectory following
-  private final PIDController m_xController = new PIDController(5.0, 0, 0);
-  private final PIDController m_yController = new PIDController(5.0, 0, 0);
-  private final PIDController m_thetaController = new PIDController(3.0, 0, 0);
+  private final PIDController m_xController = new PIDController(8.0, 0, 0.3);
+  private final PIDController m_yController = new PIDController(8.0, 0, 0.3);
+  private final PIDController m_thetaController = new PIDController(5.0, 0, 0);
+
+  // Configurable constants (via NetworkTables)
+  private double m_maxSpeedMetersPerSecond = DriveConstants.kMaxSpeedMetersPerSecond;
+  private double m_maxAngularSpeed = DriveConstants.kMaxAngularSpeed;
+  private double m_xControllerP = 5.0;
+  private double m_xControllerI = 0.0;
+  private double m_xControllerD = 0.0;
+  private double m_yControllerP = 5.0;
+  private double m_yControllerI = 0.0;
+  private double m_yControllerD = 0.0;
+  private double m_thetaControllerP = 3.0;
+  private double m_thetaControllerI = 0.0;
+  private double m_thetaControllerD = 0.0;
+  private int m_telemetryUpdatePeriod = TelemetryConstants.kTelemetryUpdatePeriod;
+
+  // NetworkTables subscribers for configurable constants
+  private final DoubleSubscriber m_maxSpeedMetersPerSecondSub;
+  private final DoubleSubscriber m_maxAngularSpeedSub;
+  private final DoubleSubscriber m_xControllerPSub;
+  private final DoubleSubscriber m_xControllerISub;
+  private final DoubleSubscriber m_xControllerDSub;
+  private final DoubleSubscriber m_yControllerPSub;
+  private final DoubleSubscriber m_yControllerISub;
+  private final DoubleSubscriber m_yControllerDSub;
+  private final DoubleSubscriber m_thetaControllerPSub;
+  private final DoubleSubscriber m_thetaControllerISub;
+  private final DoubleSubscriber m_thetaControllerDSub;
+  private final DoubleSubscriber m_telemetryUpdatePeriodSub;
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
@@ -108,10 +137,61 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Publish Field2d to SmartDashboard for Glass visualization
     SmartDashboard.putData("Field", m_field);
+
+    // Initialize NetworkTables subscribers for configurable constants
+    NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Drive/Config");
+    m_maxSpeedMetersPerSecondSub = configTable.getDoubleTopic("Max Speed Meters Per Second").subscribe(m_maxSpeedMetersPerSecond);
+    m_maxAngularSpeedSub = configTable.getDoubleTopic("Max Angular Speed").subscribe(m_maxAngularSpeed);
+    m_xControllerPSub = configTable.getDoubleTopic("X Controller P").subscribe(m_xControllerP);
+    m_xControllerISub = configTable.getDoubleTopic("X Controller I").subscribe(m_xControllerI);
+    m_xControllerDSub = configTable.getDoubleTopic("X Controller D").subscribe(m_xControllerD);
+    m_yControllerPSub = configTable.getDoubleTopic("Y Controller P").subscribe(m_yControllerP);
+    m_yControllerISub = configTable.getDoubleTopic("Y Controller I").subscribe(m_yControllerI);
+    m_yControllerDSub = configTable.getDoubleTopic("Y Controller D").subscribe(m_yControllerD);
+    m_thetaControllerPSub = configTable.getDoubleTopic("Theta Controller P").subscribe(m_thetaControllerP);
+    m_thetaControllerISub = configTable.getDoubleTopic("Theta Controller I").subscribe(m_thetaControllerI);
+    m_thetaControllerDSub = configTable.getDoubleTopic("Theta Controller D").subscribe(m_thetaControllerD);
+    m_telemetryUpdatePeriodSub = configTable.getDoubleTopic("Telemetry Update Period").subscribe(m_telemetryUpdatePeriod);
   }
 
   @Override
   public void periodic() {
+    // Read configurable values from NetworkTables
+    m_maxSpeedMetersPerSecond = m_maxSpeedMetersPerSecondSub.get();
+    m_maxAngularSpeed = m_maxAngularSpeedSub.get();
+
+    double newXP = m_xControllerPSub.get();
+    double newXI = m_xControllerISub.get();
+    double newXD = m_xControllerDSub.get();
+    if (newXP != m_xControllerP || newXI != m_xControllerI || newXD != m_xControllerD) {
+      m_xControllerP = newXP;
+      m_xControllerI = newXI;
+      m_xControllerD = newXD;
+      m_xController.setPID(m_xControllerP, m_xControllerI, m_xControllerD);
+    }
+
+    double newYP = m_yControllerPSub.get();
+    double newYI = m_yControllerISub.get();
+    double newYD = m_yControllerDSub.get();
+    if (newYP != m_yControllerP || newYI != m_yControllerI || newYD != m_yControllerD) {
+      m_yControllerP = newYP;
+      m_yControllerI = newYI;
+      m_yControllerD = newYD;
+      m_yController.setPID(m_yControllerP, m_yControllerI, m_yControllerD);
+    }
+
+    double newThetaP = m_thetaControllerPSub.get();
+    double newThetaI = m_thetaControllerISub.get();
+    double newThetaD = m_thetaControllerDSub.get();
+    if (newThetaP != m_thetaControllerP || newThetaI != m_thetaControllerI || newThetaD != m_thetaControllerD) {
+      m_thetaControllerP = newThetaP;
+      m_thetaControllerI = newThetaI;
+      m_thetaControllerD = newThetaD;
+      m_thetaController.setPID(m_thetaControllerP, m_thetaControllerI, m_thetaControllerD);
+    }
+
+    m_telemetryUpdatePeriod = (int) m_telemetryUpdatePeriodSub.get();
+
     // Update the pose estimator in the periodic block
     m_poseEstimator.update(
         Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
@@ -127,7 +207,7 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Throttled telemetry updates
     m_telemetryCounter++;
-    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+    if (m_telemetryCounter >= getTelemetryUpdatePeriod()) {
       m_telemetryCounter = 0;
 
       m_xAnglePub.set(m_gyro.getAngle(IMUAxis.kX));
@@ -140,6 +220,112 @@ public class DriveSubsystem extends SubsystemBase {
       m_currentXPub.set(getPose().getX());
       m_currentYPub.set(getPose().getY());
     }
+  }
+
+  // Getters and setters for configurable constants
+  public double getMaxSpeedMetersPerSecond() {
+    return m_maxSpeedMetersPerSecond;
+  }
+
+  public void setMaxSpeedMetersPerSecond(double speed) {
+    m_maxSpeedMetersPerSecond = speed;
+  }
+
+  public double getMaxAngularSpeed() {
+    return m_maxAngularSpeed;
+  }
+
+  public void setMaxAngularSpeed(double speed) {
+    m_maxAngularSpeed = speed;
+  }
+
+  public double getXControllerP() {
+    return m_xControllerP;
+  }
+
+  public void setXControllerP(double p) {
+    m_xControllerP = p;
+    m_xController.setP(p);
+  }
+
+  public double getXControllerI() {
+    return m_xControllerI;
+  }
+
+  public void setXControllerI(double i) {
+    m_xControllerI = i;
+    m_xController.setI(i);
+  }
+
+  public double getXControllerD() {
+    return m_xControllerD;
+  }
+
+  public void setXControllerD(double d) {
+    m_xControllerD = d;
+    m_xController.setD(d);
+  }
+
+  public double getYControllerP() {
+    return m_yControllerP;
+  }
+
+  public void setYControllerP(double p) {
+    m_yControllerP = p;
+    m_yController.setP(p);
+  }
+
+  public double getYControllerI() {
+    return m_yControllerI;
+  }
+
+  public void setYControllerI(double i) {
+    m_yControllerI = i;
+    m_yController.setI(i);
+  }
+
+  public double getYControllerD() {
+    return m_yControllerD;
+  }
+
+  public void setYControllerD(double d) {
+    m_yControllerD = d;
+    m_yController.setD(d);
+  }
+
+  public double getThetaControllerP() {
+    return m_thetaControllerP;
+  }
+
+  public void setThetaControllerP(double p) {
+    m_thetaControllerP = p;
+    m_thetaController.setP(p);
+  }
+
+  public double getThetaControllerI() {
+    return m_thetaControllerI;
+  }
+
+  public void setThetaControllerI(double i) {
+    m_thetaControllerI = i;
+    m_thetaController.setI(i);
+  }
+
+  public double getThetaControllerD() {
+    return m_thetaControllerD;
+  }
+
+  public void setThetaControllerD(double d) {
+    m_thetaControllerD = d;
+    m_thetaController.setD(d);
+  }
+
+  public int getTelemetryUpdatePeriod() {
+    return m_telemetryUpdatePeriod;
+  }
+
+  public void setTelemetryUpdatePeriod(int period) {
+    m_telemetryUpdatePeriod = period;
   }
 
   /**
@@ -332,7 +518,7 @@ public class DriveSubsystem extends SubsystemBase {
     // Get current robot pose
     Pose2d currentPose = getPose();
 
-    // Calculate PID feedback (in field coordinates)
+    // Calculate PID feedback for position tracking (in field coordinates)
     double xFeedback = m_xController.calculate(currentPose.getX(), sample.x);
     double yFeedback = m_yController.calculate(currentPose.getY(), sample.y);
     double thetaFeedback = m_thetaController.calculate(
@@ -340,18 +526,13 @@ public class DriveSubsystem extends SubsystemBase {
         sample.heading
     );
 
-    // Convert field-relative PID feedback to robot-relative
-    ChassisSpeeds feedbackSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        xFeedback, yFeedback, thetaFeedback,
+    // Choreo provides field-relative velocities in SwerveSample
+    // Combine feedforward from trajectory with PID feedback, both in field coordinates
+    ChassisSpeeds targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+        sample.vx + xFeedback,
+        sample.vy + yFeedback,
+        sample.omega + thetaFeedback,
         currentPose.getRotation()
-    );
-
-    // Combine robot-relative feedforward from Choreo with robot-relative PID feedback
-    // Note: Choreo provides robot-relative velocities (vx, vy, omega)
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
-        sample.vx + feedbackSpeeds.vxMetersPerSecond,
-        sample.vy + feedbackSpeeds.vyMetersPerSecond,
-        sample.omega + feedbackSpeeds.omegaRadiansPerSecond
     );
 
     // Send robot-relative speeds to the drivetrain

@@ -12,6 +12,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
@@ -82,6 +83,24 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final List<BooleanPublisher> m_cameraHasTargetPubs = new ArrayList<>();
   private final List<DoublePublisher> m_cameraTagCountPubs = new ArrayList<>();
 
+  // Configurable constants (via NetworkTables)
+  private double m_maxAmbiguity = getMaxAmbiguity();
+  private double m_maxTagDistance = getMaxTagDistance();
+  private int m_minTagsForHighConfidence = getMinTagsForHighConfidence();
+  private double m_distanceFactorThreshold = getDistanceFactorThreshold();
+  private double m_confidenceTagCountMultiplier = getConfidenceTagCountMultiplier();
+  private double m_confidenceAmbiguityMultiplier = getConfidenceAmbiguityMultiplier();
+  private double[] m_singleTagStdDevs = getSingleTagStdDevs().clone();
+  private double[] m_multiTagStdDevs = getMultiTagStdDevs().clone();
+
+  // NetworkTables subscribers for configurable constants
+  private final DoubleSubscriber m_maxAmbiguitySub;
+  private final DoubleSubscriber m_maxTagDistanceSub;
+  private final DoubleSubscriber m_minTagsForHighConfidenceSub;
+  private final DoubleSubscriber m_distanceFactorThresholdSub;
+  private final DoubleSubscriber m_confidenceTagCountMultiplierSub;
+  private final DoubleSubscriber m_confidenceAmbiguityMultiplierSub;
+
   public PhotonVisionSubsystem(DriveSubsystem swerveDrive) {
     m_swerveDrive = swerveDrive;
 
@@ -131,6 +150,15 @@ public class PhotonVisionSubsystem extends SubsystemBase {
         m_telemetryTable.getDoubleTopic(camData.name + "/Tag Count").publish()
       );
     }
+
+    // Initialize NetworkTables subscribers for configurable constants
+    NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Vision/Config");
+    m_maxAmbiguitySub = configTable.getDoubleTopic("Max Ambiguity").subscribe(m_maxAmbiguity);
+    m_maxTagDistanceSub = configTable.getDoubleTopic("Max Tag Distance").subscribe(m_maxTagDistance);
+    m_minTagsForHighConfidenceSub = configTable.getDoubleTopic("Min Tags For High Confidence").subscribe(m_minTagsForHighConfidence);
+    m_distanceFactorThresholdSub = configTable.getDoubleTopic("Distance Factor Threshold").subscribe(m_distanceFactorThreshold);
+    m_confidenceTagCountMultiplierSub = configTable.getDoubleTopic("Confidence Tag Count Multiplier").subscribe(m_confidenceTagCountMultiplier);
+    m_confidenceAmbiguityMultiplierSub = configTable.getDoubleTopic("Confidence Ambiguity Multiplier").subscribe(m_confidenceAmbiguityMultiplier);
   }
 
   /**
@@ -149,6 +177,14 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Read configurable values from NetworkTables
+    m_maxAmbiguity = m_maxAmbiguitySub.get();
+    m_maxTagDistance = m_maxTagDistanceSub.get();
+    m_minTagsForHighConfidence = (int) m_minTagsForHighConfidenceSub.get();
+    m_distanceFactorThreshold = m_distanceFactorThresholdSub.get();
+    m_confidenceTagCountMultiplier = m_confidenceTagCountMultiplierSub.get();
+    m_confidenceAmbiguityMultiplier = m_confidenceAmbiguityMultiplierSub.get();
+
     boolean hasAnyTarget = false;
     int totalTagCount = 0;
     int activeCameras = 0;
@@ -307,7 +343,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // More tags = higher confidence
     int tagCount = pose.targetsUsed.size();
-    confidence += tagCount * PhotonVisionConstants.kConfidenceTagCountMultiplier;
+    confidence += tagCount * getConfidenceTagCountMultiplier();
 
     // Lower ambiguity = higher confidence
     if (result.hasTargets() && result.getBestTarget() != null) {
@@ -316,8 +352,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
       // Ambiguity ranges from 0.0 (perfect) to 1.0 (ambiguous)
       // Invert it so lower ambiguity gives higher confidence
-      if (ambiguity < PhotonVisionConstants.kMaxAmbiguity) {
-        confidence += (1.0 - ambiguity) * PhotonVisionConstants.kConfidenceAmbiguityMultiplier;
+      if (ambiguity < getMaxAmbiguity()) {
+        confidence += (1.0 - ambiguity) * getConfidenceAmbiguityMultiplier();
       }
     }
 
@@ -436,9 +472,9 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     // Check tag distance - reject if any tag is too far
     for (PhotonTrackedTarget target : pose.targetsUsed) {
       double distance = target.getBestCameraToTarget().getTranslation().getNorm();
-      if (distance > PhotonVisionConstants.kMaxTagDistance) {
+      if (distance > getMaxTagDistance()) {
         return String.format("Tag %d too far (%.2fm > %.2fm)",
-          target.getFiducialId(), distance, PhotonVisionConstants.kMaxTagDistance);
+          target.getFiducialId(), distance, getMaxTagDistance());
       }
     }
 
@@ -447,9 +483,9 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       PhotonTrackedTarget target = pose.targetsUsed.get(0);
       double ambiguity = target.getPoseAmbiguity();
 
-      if (ambiguity > PhotonVisionConstants.kMaxAmbiguity) {
+      if (ambiguity > getMaxAmbiguity()) {
         return String.format("Pose ambiguity too high (%.3f > %.3f)",
-          ambiguity, PhotonVisionConstants.kMaxAmbiguity);
+          ambiguity, getMaxAmbiguity());
       }
     }
 
@@ -463,13 +499,13 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1> getEstimationStdDevs(
       EstimatedRobotPose pose) {
 
-    double xyStdDev = PhotonVisionConstants.kSingleTagStdDevs[0];
-    double rotStdDev = PhotonVisionConstants.kSingleTagStdDevs[2];
+    double xyStdDev = getSingleTagStdDevs()[0];
+    double rotStdDev = getSingleTagStdDevs()[2];
 
     // Multi-tag measurements are much more reliable
-    if (pose.targetsUsed.size() >= PhotonVisionConstants.kMinTagsForHighConfidence) {
-      xyStdDev = PhotonVisionConstants.kMultiTagStdDevs[0];
-      rotStdDev = PhotonVisionConstants.kMultiTagStdDevs[2];
+    if (pose.targetsUsed.size() >= getMinTagsForHighConfidence()) {
+      xyStdDev = getMultiTagStdDevs()[0];
+      rotStdDev = getMultiTagStdDevs()[2];
     }
 
     // Calculate average distance to tags
@@ -481,8 +517,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Increase standard deviation based on average distance to tags
     // Further tags = less confidence
-    if (avgDistance > PhotonVisionConstants.kDistanceFactorThreshold) {
-      double distanceFactor = avgDistance / PhotonVisionConstants.kDistanceFactorThreshold;
+    if (avgDistance > getDistanceFactorThreshold()) {
+      double distanceFactor = avgDistance / getDistanceFactorThreshold();
       xyStdDev *= distanceFactor;
       rotStdDev *= distanceFactor;
     }
@@ -627,20 +663,68 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     return distance;
   }
 
-  /**
-   * Enable vision pose reset mode. Called when robot is disabled.
-   * The next valid multi-tag vision measurement will immediately reset the robot's pose
-   * instead of using sensor fusion. This provides instant accurate positioning at startup.
-   */
-  public void enableVisionPoseReset() {
-    m_useVisionPoseReset = true;
+  // Getters and setters for configurable constants
+  public double getMaxAmbiguity() {
+    return m_maxAmbiguity;
   }
 
-  /**
-   * Disable vision pose reset mode and use normal sensor fusion.
-   * Called when robot is enabled (teleop or auto).
-   */
-  public void disableVisionPoseReset() {
-    m_useVisionPoseReset = false;
+  public void setMaxAmbiguity(double maxAmbiguity) {
+    m_maxAmbiguity = maxAmbiguity;
+  }
+
+  public double getMaxTagDistance() {
+    return m_maxTagDistance;
+  }
+
+  public void setMaxTagDistance(double maxTagDistance) {
+    m_maxTagDistance = maxTagDistance;
+  }
+
+  public int getMinTagsForHighConfidence() {
+    return m_minTagsForHighConfidence;
+  }
+
+  public void setMinTagsForHighConfidence(int minTags) {
+    m_minTagsForHighConfidence = minTags;
+  }
+
+  public double getDistanceFactorThreshold() {
+    return m_distanceFactorThreshold;
+  }
+
+  public void setDistanceFactorThreshold(double threshold) {
+    m_distanceFactorThreshold = threshold;
+  }
+
+  public double getConfidenceTagCountMultiplier() {
+    return m_confidenceTagCountMultiplier;
+  }
+
+  public void setConfidenceTagCountMultiplier(double multiplier) {
+    m_confidenceTagCountMultiplier = multiplier;
+  }
+
+  public double getConfidenceAmbiguityMultiplier() {
+    return m_confidenceAmbiguityMultiplier;
+  }
+
+  public void setConfidenceAmbiguityMultiplier(double multiplier) {
+    m_confidenceAmbiguityMultiplier = multiplier;
+  }
+
+  public double[] getSingleTagStdDevs() {
+    return m_singleTagStdDevs;
+  }
+
+  public void setSingleTagStdDevs(double[] stdDevs) {
+    m_singleTagStdDevs = stdDevs;
+  }
+
+  public double[] getMultiTagStdDevs() {
+    return m_multiTagStdDevs;
+  }
+
+  public void setMultiTagStdDevs(double[] stdDevs) {
+    m_multiTagStdDevs = stdDevs;
   }
 }

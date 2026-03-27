@@ -26,6 +26,7 @@ import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
 import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -45,6 +46,32 @@ public class ClimberSubsystem extends SubsystemBase {
   private final DoublePublisher m_leftSpeedPub;
   private final DoublePublisher m_leftCurrentPub;
 
+  // Configurable constants (via NetworkTables)
+  private int m_motorCurrentLimit = ClimberConstants.kMotorCurrentLimit;
+  private double m_positionP = ClimberConstants.kPositionP;
+  private double m_positionI = ClimberConstants.kPositionI;
+  private double m_positionD = ClimberConstants.kPositionD;
+  private double m_retractedPosition = ClimberConstants.kRetractedPosition;
+  private double m_extendedPosition = ClimberConstants.kExtendedPosition;
+  private double m_positionTolerance = ClimberConstants.kPositionTolerance;
+  private double m_manualSpeed = ClimberConstants.kManualSpeed;
+  private double m_softLimitMin = ClimberConstants.kSoftLimitMin;
+  private double m_softLimitMax = ClimberConstants.kSoftLimitMax;
+  private int m_telemetryUpdatePeriod = TelemetryConstants.kTelemetryUpdatePeriod;
+
+  // NetworkTables subscribers for configurable constants
+  private final DoubleSubscriber m_motorCurrentLimitSub;
+  private final DoubleSubscriber m_positionPSub;
+  private final DoubleSubscriber m_positionISub;
+  private final DoubleSubscriber m_positionDSub;
+  private final DoubleSubscriber m_retractedPositionSub;
+  private final DoubleSubscriber m_extendedPositionSub;
+  private final DoubleSubscriber m_positionToleranceSub;
+  private final DoubleSubscriber m_manualSpeedSub;
+  private final DoubleSubscriber m_softLimitMinSub;
+  private final DoubleSubscriber m_softLimitMaxSub;
+  private final DoubleSubscriber m_telemetryUpdatePeriodSub;
+
   public ClimberSubsystem() {
     m_ClimberMotor = new SparkMax(ClimberConstants.kClimberMotorId, MotorType.kBrushless);
 
@@ -58,20 +85,34 @@ public class ClimberSubsystem extends SubsystemBase {
     m_targetPositionPub = m_telemetryTable.getDoubleTopic("Target Position").publish();
     m_leftSpeedPub = m_telemetryTable.getDoubleTopic("Left Speed").publish();
     m_leftCurrentPub = m_telemetryTable.getDoubleTopic("Left Current").publish();
+
+    // Initialize NetworkTables subscribers for configurable constants
+    NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Climber/Config");
+    m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
+    m_positionPSub = configTable.getDoubleTopic("Position P").subscribe(m_positionP);
+    m_positionISub = configTable.getDoubleTopic("Position I").subscribe(m_positionI);
+    m_positionDSub = configTable.getDoubleTopic("Position D").subscribe(m_positionD);
+    m_retractedPositionSub = configTable.getDoubleTopic("Retracted Position").subscribe(m_retractedPosition);
+    m_extendedPositionSub = configTable.getDoubleTopic("Extended Position").subscribe(m_extendedPosition);
+    m_positionToleranceSub = configTable.getDoubleTopic("Position Tolerance").subscribe(m_positionTolerance);
+    m_manualSpeedSub = configTable.getDoubleTopic("Manual Speed").subscribe(m_manualSpeed);
+    m_softLimitMinSub = configTable.getDoubleTopic("Soft Limit Min").subscribe(m_softLimitMin);
+    m_softLimitMaxSub = configTable.getDoubleTopic("Soft Limit Max").subscribe(m_softLimitMax);
+    m_telemetryUpdatePeriodSub = configTable.getDoubleTopic("Telemetry Update Period").subscribe(m_telemetryUpdatePeriod);
   }
 
   /**
    * Extend the climber to the fully extended position
    */
   public void extend() {
-    setPosition(ClimberConstants.kExtendedPosition);
+    setPosition(getExtendedPosition());
   }
 
   /**
    * Retract the climber to the fully retracted position
    */
   public void retract() {
-    setPosition(ClimberConstants.kRetractedPosition);
+    setPosition(getRetractedPosition());
   }
 
   /**
@@ -80,8 +121,8 @@ public class ClimberSubsystem extends SubsystemBase {
    */
   public void setPosition(double position) {
     // Clamp position to soft limits
-    m_targetPosition = Math.max(ClimberConstants.kSoftLimitMin,
-                                Math.min(ClimberConstants.kSoftLimitMax, position));
+    m_targetPosition = Math.max(getSoftLimitMin(),
+                                Math.min(getSoftLimitMax(), position));
   }
 
   /**
@@ -105,7 +146,7 @@ public class ClimberSubsystem extends SubsystemBase {
    * @return True if within tolerance of target position
    */
   public boolean isAtTarget() {
-    return Math.abs(getPosition() - m_targetPosition) < ClimberConstants.kPositionTolerance;
+    return Math.abs(getPosition() - m_targetPosition) < getPositionTolerance();
   }
 
   /**
@@ -113,7 +154,7 @@ public class ClimberSubsystem extends SubsystemBase {
    * @return True if at extended position
    */
   public boolean isExtended() {
-    return Math.abs(getPosition() - ClimberConstants.kExtendedPosition) < ClimberConstants.kPositionTolerance;
+    return Math.abs(getPosition() - getExtendedPosition()) < getPositionTolerance();
   }
 
   /**
@@ -121,7 +162,7 @@ public class ClimberSubsystem extends SubsystemBase {
    * @return True if at retracted position
    */
   public boolean isRetracted() {
-    return Math.abs(getPosition() - ClimberConstants.kRetractedPosition) < ClimberConstants.kPositionTolerance;
+    return Math.abs(getPosition() - getRetractedPosition()) < getPositionTolerance();
   }
 
   /**
@@ -134,13 +175,116 @@ public class ClimberSubsystem extends SubsystemBase {
 
     // Check soft limits when moving manually
     double currentPosition = getPosition();
-    if (speed > 0 && currentPosition >= ClimberConstants.kSoftLimitMax) {
+    if (speed > 0 && currentPosition >= getSoftLimitMax()) {
       m_ClimberMotor.set(0); // Stop if at max limit
-    } else if (speed < 0 && currentPosition <= ClimberConstants.kSoftLimitMin) {
+    } else if (speed < 0 && currentPosition <= getSoftLimitMin()) {
       m_ClimberMotor.set(0); // Stop if at min limit
     } else {
       m_ClimberMotor.set(speed);
     }
+  }
+
+  // Getters and setters for configurable constants
+  public int getMotorCurrentLimit() {
+    return m_motorCurrentLimit;
+  }
+
+  public void setMotorCurrentLimit(int limit) {
+    m_motorCurrentLimit = limit;
+  }
+
+  public double getPositionP() {
+    return m_positionP;
+  }
+
+  public void setPositionP(double p) {
+    m_positionP = p;
+    updatePositionPID();
+  }
+
+  public double getPositionI() {
+    return m_positionI;
+  }
+
+  public void setPositionI(double i) {
+    m_positionI = i;
+    updatePositionPID();
+  }
+
+  public double getPositionD() {
+    return m_positionD;
+  }
+
+  public void setPositionD(double d) {
+    m_positionD = d;
+    updatePositionPID();
+  }
+
+  public double getRetractedPosition() {
+    return m_retractedPosition;
+  }
+
+  public void setRetractedPosition(double position) {
+    m_retractedPosition = position;
+  }
+
+  public double getExtendedPosition() {
+    return m_extendedPosition;
+  }
+
+  public void setExtendedPosition(double position) {
+    m_extendedPosition = position;
+  }
+
+  public double getPositionTolerance() {
+    return m_positionTolerance;
+  }
+
+  public void setPositionTolerance(double tolerance) {
+    m_positionTolerance = tolerance;
+  }
+
+  public double getManualSpeed() {
+    return m_manualSpeed;
+  }
+
+  public void setManualSpeed(double speed) {
+    m_manualSpeed = speed;
+  }
+
+  public double getSoftLimitMin() {
+    return m_softLimitMin;
+  }
+
+  public void setSoftLimitMin(double limit) {
+    m_softLimitMin = limit;
+  }
+
+  public double getSoftLimitMax() {
+    return m_softLimitMax;
+  }
+
+  public void setSoftLimitMax(double limit) {
+    m_softLimitMax = limit;
+  }
+
+  public int getTelemetryUpdatePeriod() {
+    return m_telemetryUpdatePeriod;
+  }
+
+  public void setTelemetryUpdatePeriod(int period) {
+    m_telemetryUpdatePeriod = period;
+  }
+
+  /**
+   * Update climber motor PID values by reconfiguring motor
+   */
+  private void updatePositionPID() {
+    com.revrobotics.spark.config.SparkMaxConfig config = new com.revrobotics.spark.config.SparkMaxConfig();
+    config.closedLoop
+      .pid(m_positionP, m_positionI, m_positionD);
+
+    m_ClimberMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
   }
 
   /**
@@ -160,6 +304,30 @@ public class ClimberSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Read configurable values from NetworkTables
+    double newMotorCurrentLimit = m_motorCurrentLimitSub.get();
+    if (newMotorCurrentLimit != m_motorCurrentLimit) {
+      m_motorCurrentLimit = (int) newMotorCurrentLimit;
+    }
+
+    double newPositionP = m_positionPSub.get();
+    double newPositionI = m_positionISub.get();
+    double newPositionD = m_positionDSub.get();
+    if (newPositionP != m_positionP || newPositionI != m_positionI || newPositionD != m_positionD) {
+      m_positionP = newPositionP;
+      m_positionI = newPositionI;
+      m_positionD = newPositionD;
+      updatePositionPID();
+    }
+
+    m_retractedPosition = m_retractedPositionSub.get();
+    m_extendedPosition = m_extendedPositionSub.get();
+    m_positionTolerance = m_positionToleranceSub.get();
+    m_manualSpeed = m_manualSpeedSub.get();
+    m_softLimitMin = m_softLimitMinSub.get();
+    m_softLimitMax = m_softLimitMaxSub.get();
+    m_telemetryUpdatePeriod = (int) m_telemetryUpdatePeriodSub.get();
+
     // Use position control to move to target position
     m_ClimberMotor.getClosedLoopController().setSetpoint(
       m_targetPosition,
@@ -168,7 +336,7 @@ public class ClimberSubsystem extends SubsystemBase {
 
     // Update telemetry
     m_telemetryCounter++;
-    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+    if (m_telemetryCounter >= getTelemetryUpdatePeriod()) {
       m_telemetryCounter = 0;
 
       m_leftPositionPub.set(getPosition());
