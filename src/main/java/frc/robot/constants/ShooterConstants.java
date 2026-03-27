@@ -29,6 +29,10 @@ public class ShooterConstants {
   public static final double kFloorMotorTargetRPM = -1000;
   public static final double kIndexerMotorTargetRPM = 1000;
 
+  // Pre-spin RPM cap (used when shooter active but not shooting)
+  // Limits RPM to save energy until trigger is actually pulled
+  public static final double kPreSpinRPMCap = 3500;
+
   // Shooter velocity lookup table: distance (meters) -> RPM
   // Reduced by ~18% to lower power output
   public static final double[][] kShooterVelocityTable = {

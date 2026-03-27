@@ -62,6 +62,7 @@ public class ShooterSubsystem extends SubsystemBase {
   private double m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM; // Always reflects linear regression calculation
   private double m_lastDistanceToTarget = 0.0;
   private boolean m_isShooterActive = false; // Track if shooter is actively running
+  private boolean m_useRPMCap = true; // Cap RPM at kPreSpinRPMCap until trigger pulled
   private final PhotonVisionSubsystem m_visionSubsystem;
   private frc.robot.RobotContainer m_container;  // For accessing PID tuning entries
 
@@ -402,7 +403,12 @@ public class ShooterSubsystem extends SubsystemBase {
 
     // If shooter is active, continuously update motor commands with calculated RPM
     if (m_isShooterActive) {
-      m_currentTargetRPM = m_calculatedTargetRPM;
+      // Apply pre-spin RPM cap if enabled (until trigger is pulled)
+      if (m_useRPMCap) {
+        m_currentTargetRPM = Math.min(m_calculatedTargetRPM, ShooterConstants.kPreSpinRPMCap);
+      } else {
+        m_currentTargetRPM = m_calculatedTargetRPM;
+      }
 
       m_leftShooterMotor.getClosedLoopController().setSetpoint(
         m_currentTargetRPM,
@@ -529,6 +535,22 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public void setContainer(frc.robot.RobotContainer container) {
     m_container = container;
+  }
+
+  /**
+   * Enable full RPM (remove pre-spin cap).
+   * Call this when trigger is pulled to allow distance-based RPM without limit.
+   */
+  public void enableFullRPM() {
+    m_useRPMCap = false;
+  }
+
+  /**
+   * Enable pre-spin RPM cap (limit to kPreSpinRPMCap).
+   * Call this when trigger is released to conserve energy during pre-spin.
+   */
+  public void enableRPMCap() {
+    m_useRPMCap = true;
   }
 
   /**

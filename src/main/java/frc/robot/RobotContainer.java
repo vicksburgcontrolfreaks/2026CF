@@ -120,11 +120,23 @@ public class RobotContainer {
             speedMultiplier = OIConstants.kNormalSpeedLimit;
           }
 
-          m_swerveDrive.drive(
-            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
-            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier,
-            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * DriveConstants.kMaxAngularSpeed * speedMultiplier,
-            true);
+          // Read raw joystick inputs
+          double xSpeed = -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)
+                          * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier;
+          double ySpeed = -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)
+                          * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier;
+          double rotSpeed = -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband)
+                            * DriveConstants.kMaxAngularSpeed * speedMultiplier;
+
+          // Alliance-relative driving: flip X and Y when on red alliance
+          // This makes "forward" always mean "toward opponent"
+          if (DriverStation.getAlliance().isPresent() &&
+              DriverStation.getAlliance().get() == Alliance.Red) {
+            xSpeed = -xSpeed;
+            ySpeed = -ySpeed;
+          }
+
+          m_swerveDrive.drive(xSpeed, ySpeed, rotSpeed, true);
         },
         m_swerveDrive)
     );
@@ -179,18 +191,31 @@ public class RobotContainer {
 
 
   private void configureMechanismBindings() {
+    // A Button: Run collector in collection mode (forward)
     m_mechanismController.a().whileTrue(
       new RunCollectorCommand(m_collector, false).alongWith(Commands.run(() -> {
-        m_shooterSubsystem.runFloor(false); m_shooterSubsystem.runIndexer(true); }, m_shooterSubsystem))
+        m_shooterSubsystem.runFloor(false);
+        m_shooterSubsystem.runIndexer(true);
+      }, m_shooterSubsystem))
     );
 
+    // X Button: Reverse collector (unjam/eject)
+    m_mechanismController.x().whileTrue(
+      new RunCollectorCommand(m_collector, true).alongWith(Commands.run(() -> {
+        m_shooterSubsystem.runFloor(true);
+        m_shooterSubsystem.runIndexer(true);
+      }, m_shooterSubsystem))
+    );
+
+    // B Button: Stop all mechanisms EXCEPT shooter (collector, floor, indexer)
     m_mechanismController.b().onTrue(
       new StopCollectorCommand(m_collector).alongWith(
-            Commands.runOnce(() -> {
-              m_shooterSubsystem.StopFloor();
-              m_shooterSubsystem.StopIndexer();
-          }, m_shooterSubsystem)
-        )
+        Commands.runOnce(() -> {
+          m_shooterSubsystem.StopFloor();
+          m_shooterSubsystem.StopIndexer();
+          // Note: Shooter continues spinning (stays ready for quick shots)
+        }, m_shooterSubsystem)
+      )
     );
 
     m_mechanismController.povUp().onTrue(
@@ -202,7 +227,7 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().whileTrue(
-      new ShooterCommand(m_shooterSubsystem, m_visionSubsystem, m_swerveDrive, this)
+      new ShooterCommand(m_shooterSubsystem, m_visionSubsystem, m_swerveDrive, m_driverController, this)
     );
 
   /*

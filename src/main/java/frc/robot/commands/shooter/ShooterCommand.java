@@ -4,15 +4,18 @@
 
 package frc.robot.commands.shooter;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.RobotContainer;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
+import frc.robot.constants.OIConstants;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -32,6 +35,7 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 public class ShooterCommand extends Command {
   private final ShooterSubsystem m_shooter;
   private final DriveSubsystem m_drive;
+  private final CommandXboxController m_driverController;
   private final PIDController m_rotationController;
   private final RobotContainer m_container;
   private boolean m_feedingStarted = false;
@@ -42,12 +46,15 @@ public class ShooterCommand extends Command {
    * @param shooter ShooterSubsystem to control
    * @param vision PhotonVisionSubsystem (unused - kept for compatibility)
    * @param drive DriveSubsystem to control rotation
+   * @param driverController Driver controller for reading translation inputs
    * @param container RobotContainer for accessing PID tuning parameters
    */
   public ShooterCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision,
-                        DriveSubsystem drive, RobotContainer container) {
+                        DriveSubsystem drive, CommandXboxController driverController,
+                        RobotContainer container) {
     m_shooter = shooter;
     m_drive = drive;
+    m_driverController = driverController;
     m_container = container;
 
     m_rotationController = new PIDController(
@@ -58,7 +65,8 @@ public class ShooterCommand extends Command {
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
-    addRequirements(shooter, drive);
+    // Only require shooter - let default drive command continue for translation
+    addRequirements(shooter);
   }
 
   @Override
@@ -69,6 +77,8 @@ public class ShooterCommand extends Command {
     if (!m_shooter.isShooterActive()) {
       m_shooter.activateShooter();
     }
+    // Remove RPM cap when trigger pulled - allow full distance-based RPM
+    m_shooter.enableFullRPM();
   }
 
   @Override
@@ -111,12 +121,39 @@ public class ShooterCommand extends Command {
     // Calculate rotation using PID
     double rotationSpeed = m_rotationController.calculate(currentHeading, targetAngleDegrees);
 
-    // Clamp rotation speed
-    rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
-                             Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
+    // If aligned, stop rotation control to prevent micro-corrections
+    if (m_rotationController.atSetpoint()) {
+      rotationSpeed = 0.0;
+    } else {
+      // Clamp rotation speed when not at setpoint
+      rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
+                               Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
+    }
 
-    // Apply only rotation control (no translation - driver keeps control)
-    m_drive.drive(0, 0, rotationSpeed * DriveConstants.kMaxAngularSpeed, true);
+    // Read driver's translation inputs (with speed multiplier logic)
+    double speedMultiplier;
+    if (m_driverController.rightBumper().getAsBoolean()) {
+      speedMultiplier = OIConstants.kTurboSpeedLimit;
+    } else if (m_driverController.leftBumper().getAsBoolean()) {
+      speedMultiplier = OIConstants.kPrecisionSpeedLimit;
+    } else {
+      speedMultiplier = OIConstants.kNormalSpeedLimit;
+    }
+
+    double xSpeed = -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)
+                    * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier;
+    double ySpeed = -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)
+                    * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier;
+
+    // Alliance-relative driving: flip X and Y when on red alliance
+    if (DriverStation.getAlliance().isPresent() &&
+        DriverStation.getAlliance().get() == DriverStation.Alliance.Red) {
+      xSpeed = -xSpeed;
+      ySpeed = -ySpeed;
+    }
+
+    // Apply rotation control from alignment + driver's translation control
+    m_drive.drive(xSpeed, ySpeed, rotationSpeed * DriveConstants.kMaxAngularSpeed, true);
 
     // Check if we should feed balls: aligned AND at target RPM
     boolean isAligned = m_rotationController.atSetpoint();
@@ -128,12 +165,10 @@ public class ShooterCommand extends Command {
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
       m_feedingStarted = true;
-    } else if (!shouldFeed && m_feedingStarted) {
-      // Stop feeding (not aligned or not at RPM)
-      m_shooter.StopIndexer();
-      m_shooter.StopFloor();
-      m_feedingStarted = false;
     }
+    // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
+    // The feeding will continue until the command ends (trigger released)
+    // This prevents jitter from PID micro-corrections
   }
 
   @Override
@@ -141,6 +176,8 @@ public class ShooterCommand extends Command {
     // Stop feeding, but keep shooter spinning (stays active for quick re-shoot)
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
+    // Re-enable RPM cap when trigger released - back to pre-spin mode
+    m_shooter.enableRPMCap();
     // Don't call m_drive.stop() - let the default command resume smoothly
     // This allows driver to immediately regain rotation control
   }

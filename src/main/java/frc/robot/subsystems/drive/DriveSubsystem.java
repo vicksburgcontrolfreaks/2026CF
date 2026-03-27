@@ -196,9 +196,10 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
     // Create chassis speeds from inputs
+    // Use pose estimator rotation (fused with vision) instead of raw gyro for field-relative
     ChassisSpeeds speeds = fieldRelative
         ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
-            Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)))
+            getPose().getRotation())
         : new ChassisSpeeds(xSpeed, ySpeed, rot);
 
     // Discretize chassis speeds to prevent skew/drift during motion
@@ -246,18 +247,33 @@ public class DriveSubsystem extends SubsystemBase {
     m_rearRight.resetEncoders();
   }
 
-  /** Zeroes the heading of the robot. */
+  /**
+   * Zeroes the heading of the robot by resetting both gyro and pose estimator.
+   * This ensures field-oriented drive treats the current direction as "forward".
+   */
   public void zeroHeading() {
     m_gyro.reset();
+    // Also reset the pose estimator to match, keeping current X/Y position
+    Pose2d currentPose = m_poseEstimator.getEstimatedPosition();
+    m_poseEstimator.resetPosition(
+        Rotation2d.fromDegrees(0.0),  // Gyro now reads 0
+        new SwerveModulePosition[] {
+            m_frontLeft.getPosition(),
+            m_frontRight.getPosition(),
+            m_rearLeft.getPosition(),
+            m_rearRight.getPosition()
+        },
+        new Pose2d(currentPose.getTranslation(), Rotation2d.fromDegrees(0.0))  // Keep position, reset rotation to 0
+    );
   }
 
   /**
-   * Returns the heading of the robot.
+   * Returns the heading of the robot from the pose estimator (fused with vision).
    *
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)).getDegrees();
+    return getPose().getRotation().getDegrees();
   }
 
   /**

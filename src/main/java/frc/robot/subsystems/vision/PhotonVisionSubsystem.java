@@ -65,6 +65,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final AprilTagFieldLayout m_fieldLayout;
 
   private int m_telemetryCounter = 0;
+  private boolean m_useVisionPoseReset = true;  // True when disabled, false when enabled
 
   // Telemetry publishers
   private final NetworkTable m_telemetryTable;
@@ -205,12 +206,19 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     if (!validPoses.isEmpty()) {
       FusedPoseResult fusedResult = fusePoses(validPoses);
 
-      // Add fused measurement to pose estimator
-      m_swerveDrive.addVisionMeasurement(
-        fusedResult.fusedPose,
-        fusedResult.timestamp,
-        fusedResult.stdDevs
-      );
+      // When disabled with vision reset mode enabled, continuously reset pose to vision (100% trust)
+      // This allows moving the robot while disabled and maintaining accurate position
+      if (m_useVisionPoseReset && fusedResult.stdDevs.get(0, 0) <= PhotonVisionConstants.kMultiTagStdDevs[0]) {
+        // Only reset on multi-tag measurements (more reliable)
+        m_swerveDrive.resetOdometry(fusedResult.fusedPose);
+      } else {
+        // Normal operation: add fused measurement to pose estimator (sensor fusion)
+        m_swerveDrive.addVisionMeasurement(
+          fusedResult.fusedPose,
+          fusedResult.timestamp,
+          fusedResult.stdDevs
+        );
+      }
 
       // Throttled telemetry updates
       m_telemetryCounter++;
@@ -617,5 +625,22 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     double distance = robotPosition.getDistance(speakerPosition);
 
     return distance;
+  }
+
+  /**
+   * Enable vision pose reset mode. Called when robot is disabled.
+   * The next valid multi-tag vision measurement will immediately reset the robot's pose
+   * instead of using sensor fusion. This provides instant accurate positioning at startup.
+   */
+  public void enableVisionPoseReset() {
+    m_useVisionPoseReset = true;
+  }
+
+  /**
+   * Disable vision pose reset mode and use normal sensor fusion.
+   * Called when robot is enabled (teleop or auto).
+   */
+  public void disableVisionPoseReset() {
+    m_useVisionPoseReset = false;
   }
 }

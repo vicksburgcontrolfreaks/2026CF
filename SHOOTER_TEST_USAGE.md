@@ -140,6 +140,86 @@ The current scored count is visible in `ShooterTest/Balls Scored`.
 **Option 3: RoboDash/WPILib Tools**
 - Use RoboRIO web dashboard file browser
 
+## Analyzing Data with AdvantageScope
+
+### Real-Time Velocity Plotting
+
+**AdvantageScope** is the recommended tool for plotting shooter velocity data during testing.
+
+#### Setup:
+
+1. **Connect to Robot**:
+   - Open AdvantageScope
+   - Connect to your robot's NetworkTables (usually auto-detected)
+
+2. **Add Velocity Charts**:
+   - Create a new Line Graph widget
+   - Add the following fields:
+     - `Shooter/Motor 1 Velocity` (left shooter)
+     - `Shooter/Motor 2 Velocity` (center shooter)
+     - `Shooter/Motor 3 Velocity` (right shooter)
+     - `Shooter/Target RPM` (commanded setpoint)
+
+3. **Add Indexer Charts** (optional):
+   - Create another Line Graph widget
+   - Add fields:
+     - `Shooter/Indexer 1 Velocity`
+     - `Shooter/Indexer 2 Velocity`
+     - `Shooter/Indexer 3 Velocity`
+     - `Shooter/Indexer Target RPM`
+
+4. **Add Current Monitoring** (optional):
+   - Create a Line Graph for motor current:
+     - `Shooter/Motor 1 Current`
+     - `Shooter/Motor 2 Current`
+     - `Shooter/Motor 3 Current`
+
+#### During Testing:
+
+- **Watch the velocity graphs** to see:
+  - Spin-up time to target RPM
+  - Velocity stability during feeding
+  - RPM drop when balls are fed
+  - Recovery time between shots
+
+- **Look for**:
+  - All three motors tracking together (synchronized)
+  - Smooth approach to target RPM (no oscillation)
+  - Minimal RPM drop during feeding
+  - Quick recovery after each shot
+
+#### Post-Test Analysis:
+
+1. **Export Recording**:
+   - AdvantageScope can record NetworkTables data
+   - Save recording for later analysis
+
+2. **Compare Tests**:
+   - Load multiple test recordings
+   - Compare velocity profiles across different RPM settings
+   - Identify optimal PID tuning
+
+3. **Measure Metrics**:
+   - Use AdvantageScope's measurement tools
+   - Calculate exact spin-up times
+   - Measure RPM stability (standard deviation)
+   - Analyze current draw patterns
+
+### Why AdvantageScope?
+
+- **Real-time visualization** during testing
+- **High-resolution plotting** (50 Hz sampling matches telemetry rate)
+- **Time-synchronized data** across all sensors
+- **Recording and playback** for detailed analysis
+- **Better than CSV** for velocity profiling (CSV is for summary statistics)
+
+### Complementary Use of CSV and AdvantageScope
+
+- **AdvantageScope**: Real-time velocity profiles, PID tuning, motor behavior
+- **CSV Export**: Summary statistics, success rates, distance-based lookup table
+
+Both tools work together for comprehensive shooter characterization!
+
 ## Building the Velocity Lookup Table
 
 ### 1. Open CSV in Excel/Google Sheets
