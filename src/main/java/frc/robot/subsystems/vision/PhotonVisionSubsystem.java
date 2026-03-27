@@ -104,7 +104,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   public PhotonVisionSubsystem(DriveSubsystem swerveDrive) {
     m_swerveDrive = swerveDrive;
 
-    // Load AprilTag field layout (2025 Reefscape)
+    // Load AprilTag field layout (2026 Rebuilt Welded)
     try {
       m_fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
     } catch (Exception e) {
@@ -726,5 +726,23 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
   public void setMultiTagStdDevs(double[] stdDevs) {
     m_multiTagStdDevs = stdDevs;
+  }
+
+  /**
+   * Enable vision pose reset mode (100% trust vision while disabled).
+   * Call this in disabledInit() to allow moving the robot while disabled
+   * and maintaining accurate position from vision.
+   */
+  public void enableVisionPoseReset() {
+    m_useVisionPoseReset = true;
+  }
+
+  /**
+   * Disable vision pose reset mode (use sensor fusion while enabled).
+   * Call this in teleopInit() and autonomousInit() to switch to normal
+   * operation where vision measurements are fused with odometry.
+   */
+  public void disableVisionPoseReset() {
+    m_useVisionPoseReset = false;
   }
 }

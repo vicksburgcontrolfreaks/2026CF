@@ -24,6 +24,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void disabledInit() {
+    // Enable 100% vision trust while disabled to maintain accurate field-relative pose
+    // This allows moving the robot while disabled and corrects field orientation
+    m_robotContainer.getVisionSubsystem().enableVisionPoseReset();
   }
 
   @Override
@@ -31,6 +34,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    // Switch to sensor fusion mode (vision + odometry)
+    m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
+
     // Start shooter spinning at the beginning of autonomous
     m_robotContainer.getShooterSubsystem().activateShooter();
 
@@ -47,6 +53,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    // Switch to sensor fusion mode (vision + odometry)
+    m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
+
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }

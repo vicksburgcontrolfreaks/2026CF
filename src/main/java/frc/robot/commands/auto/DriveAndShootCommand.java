@@ -104,50 +104,15 @@ public class DriveAndShootCommand extends Command {
         m_drive.drive(xSpeed, ySpeed, 0, true);
       }
     } else {
-      // Phase 2: Align and shoot
-      // Determine target speaker based on alliance
-      Translation2d targetPosition;
-      if (DriverStation.getAlliance().isPresent() &&
-          DriverStation.getAlliance().get() == Alliance.Blue) {
-        targetPosition = AutoConstants.blueTarget;
-      } else {
-        targetPosition = AutoConstants.redTarget;
-      }
+      // Phase 2: Shoot
+      // Robot is already facing alliance station (vision corrected orientation during disabled)
+      // No rotation needed - just wait for RPM and shoot
+      m_drive.drive(0, 0, 0, true);
 
-      // Calculate angle to target (back of robot facing speaker)
-      double deltaX = targetPosition.getX() - currentPose.getX();
-      double deltaY = targetPosition.getY() - currentPose.getY();
-      double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
-
-      // Add 180 degrees to point the BACK of the robot at the target
-      targetAngleDegrees = (targetAngleDegrees + 180) % 360;
-      if (targetAngleDegrees > 180) {
-        targetAngleDegrees -= 360;
-      }
-
-      // Get current heading
-      double currentHeading = m_drive.getHeading();
-
-      // Calculate rotation using PID
-      double rotationSpeed = m_rotationController.calculate(currentHeading, targetAngleDegrees);
-
-      // If aligned, stop rotation control
-      if (m_rotationController.atSetpoint()) {
-        rotationSpeed = 0.0;
-      } else {
-        // Clamp rotation speed
-        rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
-                                 Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
-      }
-
-      // Apply rotation control
-      m_drive.drive(0, 0, rotationSpeed * DriveConstants.kMaxAngularSpeed, true);
-
-      // Start shooting when aligned and at RPM
-      boolean isAligned = m_rotationController.atSetpoint();
+      // Start shooting when at target RPM
       boolean isAtRPM = m_shooter.isReadyToFeed();
 
-      if (isAligned && isAtRPM && !m_shootingStarted) {
+      if (isAtRPM && !m_shootingStarted) {
         m_shooter.runIndexer(false);
         m_shooter.runFloor(false);
         m_collector.runLowerCollectorRPM(1000);

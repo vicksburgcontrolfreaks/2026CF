@@ -19,6 +19,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.networktables.DoublePublisher;
@@ -75,7 +76,7 @@ public class DriveSubsystem extends SubsystemBase {
   // Pose estimator for tracking robot pose with vision fusion
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
       DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY) * (DriveConstants.kGyroReversed ? -1.0 : 1.0)),
       new SwerveModulePosition[] {
           m_frontLeft.getPosition(),
           m_frontRight.getPosition(),
@@ -194,7 +195,7 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Update the pose estimator in the periodic block
     m_poseEstimator.update(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY) * (DriveConstants.kGyroReversed ? -1.0 : 1.0)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -339,12 +340,17 @@ public class DriveSubsystem extends SubsystemBase {
 
   /**
    * Resets the odometry to the specified pose.
+   * Also resets the gyro to match the pose rotation, eliminating any offset.
    *
    * @param pose The pose to which to set the odometry.
    */
   public void resetOdometry(Pose2d pose) {
+    // Reset gyro to match the desired pose rotation
+    // This eliminates offset between gyro and vision measurements
+    m_gyro.setGyroAngleY(pose.getRotation().getDegrees() * (DriveConstants.kGyroReversed ? -1.0 : 1.0));
+
     m_poseEstimator.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+        pose.getRotation(),  // Use the desired rotation directly
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),

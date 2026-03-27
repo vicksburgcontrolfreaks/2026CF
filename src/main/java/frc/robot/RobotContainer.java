@@ -123,9 +123,16 @@ public class RobotContainer {
             speedMultiplier = OIConstants.kNormalSpeedLimit;
           }
 
+          // For Red alliance, flip X/Y inputs so "forward" drives toward blue alliance (X=0)
+          // Blue alliance: 0° = forward toward red side (positive X)
+          // Red alliance: 180° = forward toward blue side (negative X)
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+
           m_swerveDrive.drive(
-            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier,
-            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
+            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
             -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
             true);
         },
