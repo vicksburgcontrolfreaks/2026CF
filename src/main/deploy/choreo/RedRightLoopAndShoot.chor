@@ -1,5 +1,5 @@
 {
- "name":"RedRightLoop",
+ "name":"RedRightLoopAndShoot",
  "version":2,
  "type":"Swerve",
  "variables":{
@@ -9,43 +9,43 @@
  "config":{
   "frontLeft":{
    "x":{
-    "exp":"13.25 in",
-    "val":0.33654999999999996
+    "exp":"11 in",
+    "val":0.2794
    },
    "y":{
-    "exp":"13.25 in",
-    "val":0.33654999999999996
+    "exp":"11 in",
+    "val":0.2794
    }
   },
   "backLeft":{
    "x":{
-    "exp":"-13.25 in",
-    "val":-0.33654999999999996
+    "exp":"-11 in",
+    "val":-0.2794
    },
    "y":{
-    "exp":"13.25 in",
-    "val":0.33654999999999996
+    "exp":"11 in",
+    "val":0.2794
    }
   },
   "mass":{
-   "exp":"97 lbs",
-   "val":43.99845989
+   "exp":"100 lbs",
+   "val":45.359237
   },
   "inertia":{
-   "exp":"4.138 kg m ^ 2",
-   "val":4.138
+   "exp":"6 kg m ^ 2",
+   "val":6.0
   },
   "gearing":{
-   "exp":"4.71",
-   "val":4.71
+   "exp":"6.5",
+   "val":6.5
   },
   "radius":{
    "exp":"2 in",
    "val":0.0508
   },
   "vmax":{
-   "exp":"6784 RPM",
-   "val":710.4188187317718
+   "exp":"6000 RPM",
+   "val":628.3185307179587
   },
   "tmax":{
    "exp":"1.2 N * m",
@@ -76,7 +76,7 @@
  },
  "generationFeatures":[],
  "codegen":{
-  "root":"../C:/Users/Vicksburg FTC/Documents/CF2026/2026CF/src/main/deploy/choreo",
+  "root":"../../java/frc/robot/commands/auton",
   "genVars":true,
   "genTrajData":true,
   "useChoreoLib":true

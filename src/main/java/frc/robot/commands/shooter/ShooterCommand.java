@@ -9,24 +9,21 @@ import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
- * AdvancedShooterCommand - Combined ShooterCalibrationCommand and ShooterSequenceCommand.
+ * ShooterCommand - Controls indexer and floor feed motors.
  *
- * Uses linear regression to calculate optimal RPM based on vision distance,
- * then runs the complete shooter sequence (shooter + floor + indexer).
+ * The shooter wheels are now activated at the beginning of autonomous mode
+ * and stay spinning throughout the match for instant firing capability.
  *
- * The ShooterSubsystem.periodic() method continuously calculates the target RPM
- * based on vision distance. This command simply activates the shooter motors
- * to use the pre-calculated RPM.
+ * This command only controls the indexer and floor motors to feed game pieces
+ * into the already-spinning shooter wheels.
  *
- * Replaces both the old ShooterSequenceCommand and ShooterCalibrationCommand.
  * Bound to right trigger - runs while button is held.
  */
 public class ShooterCommand extends Command {
   private final ShooterSubsystem m_shooter;
-  private boolean m_feedingStarted = false;
 
   /**
-   * Creates a new AdvancedShooterCommand.
+   * Creates a new ShooterCommand.
    *
    * @param shooter ShooterSubsystem to control
    * @param vision PhotonVisionSubsystem (unused - kept for compatibility, subsystem handles vision internally)
@@ -40,25 +37,21 @@ public class ShooterCommand extends Command {
 
   @Override
   public void initialize() {
-    m_feedingStarted = false;
-    // Activate shooter wheels - wait for them to reach speed before feeding
-    m_shooter.activateShooter();
+    // Shooter wheels are already spinning from autonomousInit()
+    // Just activate the indexer and floor to feed game pieces
+    m_shooter.runIndexer(false);
+    m_shooter.runFloor(false);
   }
 
   @Override
   public void execute() {
-    // Once shooter reaches target velocity, start feeding game pieces
-    if (!m_feedingStarted && m_shooter.isAtTargetVelocity(75)) {
-      m_shooter.runIndexer(false);
-      m_shooter.runFloor(false);
-      m_feedingStarted = true;
-    }
+    // Continue feeding - motors stay running
   }
 
   @Override
   public void end(boolean interrupted) {
-    // Stop all motors when button is released
-    m_shooter.stopShooter();
+    // Stop only the feed motors when button is released
+    // Shooter wheels continue spinning
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
   }

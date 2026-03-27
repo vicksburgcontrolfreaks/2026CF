@@ -30,6 +30,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    // Start shooter spinning at the beginning of autonomous
+    m_robotContainer.getShooterSubsystem().activateShooter();
+
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
     // Schedule the autonomous command
