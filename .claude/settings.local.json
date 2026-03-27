@@ -15,7 +15,12 @@
       "Bash(.gradlew build:*)",
       "Bash(./gradlew.bat build:*)",
       "Bash(Select-Object -Last 50)",
-      "Bash(gradlew.bat build:*)"
+      "Bash(gradlew.bat build:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd real-time PID tuning and velocity capture for shooter testing\n\nFeatures added:\n- Real-time motor PID tuning \\(shooter & indexer\\) via NetworkTables\n- Real-time alignment PID tuning via NetworkTables\n- Automatic velocity capture system \\(300ms, 3 motors\\) triggered on ball contact\n- Shooter characterization test command with data logging\n- Shoot-while-driving command with alignment control\n- Comprehensive documentation \\(PID tuning guide, test usage, system docs\\)\n\nMotor PID tuning prevents reconfiguration spam by only updating on value changes.\nVelocity capture records all three shooter motors separately for analysis.\nAll changes synced with main branch.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

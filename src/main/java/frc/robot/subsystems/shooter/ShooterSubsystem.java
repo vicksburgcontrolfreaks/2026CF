@@ -7,6 +7,7 @@ package frc.robot.subsystems.shooter;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
@@ -62,7 +63,38 @@ public class ShooterSubsystem extends SubsystemBase {
   private double m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM; // Always reflects linear regression calculation
   private double m_lastDistanceToTarget = 0.0;
   private boolean m_isShooterActive = false; // Track if shooter is actively running
+  private boolean m_useRPMCap = true; // Cap RPM at kPreSpinRPMCap until trigger pulled
   private final PhotonVisionSubsystem m_visionSubsystem;
+  private frc.robot.RobotContainer m_container;  // For accessing PID tuning entries
+
+  // Cache last applied PID values to avoid reconfiguring every cycle
+  private double m_lastShooterP = ShooterConstants.kShooterP;
+  private double m_lastShooterI = ShooterConstants.kShooterI;
+  private double m_lastShooterD = ShooterConstants.kShooterD;
+  private double m_lastShooterFF = ShooterConstants.kShooterFF;
+  private double m_lastIndexerP = ShooterConstants.kIndexerP;
+  private double m_lastIndexerI = ShooterConstants.kIndexerI;
+  private double m_lastIndexerD = ShooterConstants.kIndexerD;
+  private double m_lastIndexerFF = ShooterConstants.kIndexerFF;
+
+  // Velocity capture system for graphing during shooting
+  private static final int CAPTURE_BUFFER_SIZE = 15; // 15 samples at 20ms = 300ms
+  private static final double VELOCITY_DIP_THRESHOLD = 200.0; // RPM drop to trigger capture
+  private final double[] m_leftVelocityBuffer = new double[CAPTURE_BUFFER_SIZE];
+  private final double[] m_rightVelocityBuffer = new double[CAPTURE_BUFFER_SIZE];
+  private final double[] m_middleVelocityBuffer = new double[CAPTURE_BUFFER_SIZE];
+  private final double[] m_timestampBuffer = new double[CAPTURE_BUFFER_SIZE];
+  private int m_bufferIndex = 0;
+  private boolean m_isCapturing = false;
+  private int m_captureRemaining = 0;
+  private double m_lastVelocity = 0.0;
+  private double m_captureStartTime = 0.0;
+  private int m_captureCount = 0;
+  private final DoublePublisher[] m_capturedLeftVelocityPubs = new DoublePublisher[CAPTURE_BUFFER_SIZE];
+  private final DoublePublisher[] m_capturedRightVelocityPubs = new DoublePublisher[CAPTURE_BUFFER_SIZE];
+  private final DoublePublisher[] m_capturedMiddleVelocityPubs = new DoublePublisher[CAPTURE_BUFFER_SIZE];
+  private final DoublePublisher[] m_capturedTimestampPubs = new DoublePublisher[CAPTURE_BUFFER_SIZE];
+  private final DoublePublisher m_captureCountPub;
 
   // Configurable constants (via NetworkTables)
   private int m_motorCurrentLimit = ShooterConstants.kMotorCurrentLimit;
@@ -96,10 +128,11 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoubleSubscriber m_telemetryUpdatePeriodSub;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
-  // max rpm 6784 
+  // max rpm 6784
 
   public ShooterSubsystem(PhotonVisionSubsystem visionSubsystem) {
     m_visionSubsystem = visionSubsystem;
+    m_container = null;  // Will be set later via setContainer()
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
     m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
@@ -249,6 +282,30 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
+   * Activate the shooter motors with a specific RPM (for testing)
+   * @param rpm Target RPM for all shooter motors
+   */
+  public void activateShooterWithRPM(double rpm) {
+    m_isShooterActive = true;
+    m_currentTargetRPM = rpm;
+
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    m_middleShooterMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+  }
+
+  /**
    * Stop the shooter motors (set to 0).
    */
   public void stopShooter() {
@@ -302,6 +359,32 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public void runIndexer(boolean reversed) {
     double rpm = getIndexerMotorTargetRPM();
+    if (reversed) {
+      rpm = -rpm;
+    }
+
+    m_leftIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    m_rightIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    m_middleIndexerMotor.getClosedLoopController().setSetpoint(
+      -rpm,
+      ControlType.kVelocity
+    );
+  }
+
+  /**
+   * Run indexer with specific RPM (for testing)
+   * @param rpm Target RPM for indexer motors
+   * @param reversed True to reverse direction
+   */
+  public void runIndexerWithRPM(double rpm, boolean reversed) {
     if (reversed) {
       rpm = -rpm;
     }
@@ -548,7 +631,12 @@ public class ShooterSubsystem extends SubsystemBase {
 
     // If shooter is active, continuously update motor commands with calculated RPM
     if (m_isShooterActive) {
-      m_currentTargetRPM = m_calculatedTargetRPM;
+      // Apply pre-spin RPM cap if enabled (until trigger is pulled)
+      if (m_useRPMCap) {
+        m_currentTargetRPM = Math.min(m_calculatedTargetRPM, ShooterConstants.kPreSpinRPMCap);
+      } else {
+        m_currentTargetRPM = m_calculatedTargetRPM;
+      }
 
       m_leftShooterMotor.getClosedLoopController().setSetpoint(
         m_currentTargetRPM,
@@ -565,6 +653,9 @@ public class ShooterSubsystem extends SubsystemBase {
         ControlType.kVelocity
       );
     }
+
+    // Velocity capture system - capture data when velocity dips (ball contact)
+    captureVelocityData();
 
     m_telemetryCounter++;
     if (m_telemetryCounter >= getTelemetryUpdatePeriod()) {
@@ -598,5 +689,223 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public static double getKShooterTargetRPM() {
     return ShooterConstants.kShooterTargetRPM;
+  }
+
+  // ========== Test Telemetry Methods ==========
+
+  /**
+   * Get average shooter RPM across all three shooter motors
+   * @return Average actual RPM
+   */
+  public double getAverageShooterRPM() {
+    double leftRPM = Math.abs(m_leftShooterMotor.getEncoder().getVelocity());
+    double rightRPM = Math.abs(m_rightShooterMotor.getEncoder().getVelocity());
+    double middleRPM = Math.abs(m_middleShooterMotor.getEncoder().getVelocity());
+    return (leftRPM + rightRPM + middleRPM) / 3.0;
+  }
+
+  /**
+   * Get average indexer RPM across all three indexer motors
+   * @return Average actual RPM
+   */
+  public double getAverageIndexerRPM() {
+    double leftRPM = Math.abs(m_leftIndexerMotor.getEncoder().getVelocity());
+    double rightRPM = Math.abs(m_rightIndexerMotor.getEncoder().getVelocity());
+    double middleRPM = Math.abs(m_middleIndexerMotor.getEncoder().getVelocity());
+    return (leftRPM + rightRPM + middleRPM) / 3.0;
+  }
+
+  /**
+   * Get average shooter current across all three shooter motors
+   * @return Average current in amps
+   */
+  public double getAverageShooterCurrent() {
+    double leftCurrent = m_leftShooterMotor.getOutputCurrent();
+    double rightCurrent = m_rightShooterMotor.getOutputCurrent();
+    double middleCurrent = m_middleShooterMotor.getOutputCurrent();
+    return (leftCurrent + rightCurrent + middleCurrent) / 3.0;
+  }
+
+  /**
+   * Get average indexer current across all three indexer motors
+   * @return Average current in amps
+   */
+  public double getAverageIndexerCurrent() {
+    double leftCurrent = m_leftIndexerMotor.getOutputCurrent();
+    double rightCurrent = m_rightIndexerMotor.getOutputCurrent();
+    double middleCurrent = m_middleIndexerMotor.getOutputCurrent();
+    return (leftCurrent + rightCurrent + middleCurrent) / 3.0;
+  }
+
+  /**
+   * Get distance to speaker from vision subsystem
+   * @return Distance in meters, or -1 if unavailable
+   */
+  public double getDistanceToSpeaker() {
+    if (m_visionSubsystem != null) {
+      return m_visionSubsystem.getDistanceToSpeaker();
+    }
+    return -1.0;
+  }
+
+  /**
+   * Check if shooter is ready to feed balls (RPM at target)
+   * Note: Commands should also check robot alignment before feeding
+   * @return True if shooter velocity is within tolerance
+   */
+  public boolean isReadyToFeed() {
+    return isShooterActive() && isAtTargetVelocity(100.0);
+  }
+
+  /**
+   * Set the RobotContainer reference for accessing PID tuning entries
+   * @param container RobotContainer instance
+   */
+  public void setContainer(frc.robot.RobotContainer container) {
+    m_container = container;
+  }
+
+  /**
+   * Enable full RPM (remove pre-spin cap).
+   * Call this when trigger is pulled to allow distance-based RPM without limit.
+   */
+  public void enableFullRPM() {
+    m_useRPMCap = false;
+  }
+
+  /**
+   * Enable pre-spin RPM cap (limit to kPreSpinRPMCap).
+   * Call this when trigger is released to conserve energy during pre-spin.
+   */
+  public void enableRPMCap() {
+    m_useRPMCap = true;
+  }
+
+  /**
+   * Capture velocity data for graphing. Triggers on velocity dip (ball contact).
+   * Captures 300ms of data (15 samples at 20ms intervals) for all three shooter motors.
+   */
+  private void captureVelocityData() {
+    // Get current velocities for all three motors
+    double leftVelocity = m_leftShooterMotor.getEncoder().getVelocity();
+    double rightVelocity = m_rightShooterMotor.getEncoder().getVelocity();
+    double middleVelocity = Math.abs(m_middleShooterMotor.getEncoder().getVelocity()); // Abs because it spins opposite
+    double averageVelocity = (leftVelocity + rightVelocity) / 2.0;
+    double currentTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+
+    // Check if we should trigger a new capture
+    if (!m_isCapturing && m_isShooterActive) {
+      // Detect velocity dip (ball contact) using average velocity
+      double velocityDrop = m_lastVelocity - averageVelocity;
+
+      if (velocityDrop > VELOCITY_DIP_THRESHOLD && m_lastVelocity > m_currentTargetRPM * 0.8) {
+        // Trigger new capture
+        m_isCapturing = true;
+        m_captureRemaining = CAPTURE_BUFFER_SIZE;
+        m_bufferIndex = 0;
+        m_captureStartTime = currentTime;
+        m_captureCount++;
+        System.out.println("Velocity capture triggered! Drop: " + velocityDrop + " RPM. Capture #" + m_captureCount);
+      }
+    }
+
+    // If capturing, store data for all three motors
+    if (m_isCapturing && m_captureRemaining > 0) {
+      m_leftVelocityBuffer[m_bufferIndex] = leftVelocity;
+      m_rightVelocityBuffer[m_bufferIndex] = rightVelocity;
+      m_middleVelocityBuffer[m_bufferIndex] = middleVelocity;
+      m_timestampBuffer[m_bufferIndex] = (currentTime - m_captureStartTime) * 1000.0; // Convert to ms
+      m_bufferIndex++;
+      m_captureRemaining--;
+
+      // If capture complete, publish all data
+      if (m_captureRemaining == 0) {
+        publishCapturedData();
+        m_isCapturing = false;
+        System.out.println("Velocity capture complete. Published " + CAPTURE_BUFFER_SIZE + " samples for 3 motors.");
+      }
+    }
+
+    m_lastVelocity = averageVelocity;
+  }
+
+  /**
+   * Publish captured velocity data to NetworkTables for graphing in ShuffleBoard
+   * Publishes data for all three shooter motors separately
+   */
+  private void publishCapturedData() {
+    for (int i = 0; i < CAPTURE_BUFFER_SIZE; i++) {
+      m_capturedLeftVelocityPubs[i].set(m_leftVelocityBuffer[i]);
+      m_capturedRightVelocityPubs[i].set(m_rightVelocityBuffer[i]);
+      m_capturedMiddleVelocityPubs[i].set(m_middleVelocityBuffer[i]);
+      m_capturedTimestampPubs[i].set(m_timestampBuffer[i]);
+    }
+    m_captureCountPub.set(m_captureCount);
+  }
+
+  /**
+   * Update motor PID gains from NetworkTables (for real-time tuning)
+   * Only reconfigures motors when values actually change to avoid disrupting control loop
+   */
+  private void updateMotorPIDFromNetworkTables() {
+    if (m_container == null) {
+      return;  // Container not set yet, use default values
+    }
+
+    // Read shooter motor PID values
+    double shooterP = m_container.m_shooterPEntry.get();
+    double shooterI = m_container.m_shooterIEntry.get();
+    double shooterD = m_container.m_shooterDEntry.get();
+    double shooterFF = m_container.m_shooterFFEntry.get();
+
+    // Read indexer motor PID values
+    double indexerP = m_container.m_indexerPEntry.get();
+    double indexerI = m_container.m_indexerIEntry.get();
+    double indexerD = m_container.m_indexerDEntry.get();
+    double indexerFF = m_container.m_indexerFFEntry.get();
+
+    // Only update shooter motors if values changed
+    if (shooterP != m_lastShooterP || shooterI != m_lastShooterI ||
+        shooterD != m_lastShooterD || shooterFF != m_lastShooterFF) {
+
+      SparkFlexConfig shooterConfig = new SparkFlexConfig();
+      shooterConfig.closedLoop
+        .pid(shooterP, shooterI, shooterD)
+        .velocityFF(shooterFF);
+
+      m_leftShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      m_rightShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      m_middleShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+      // Update cached values
+      m_lastShooterP = shooterP;
+      m_lastShooterI = shooterI;
+      m_lastShooterD = shooterD;
+      m_lastShooterFF = shooterFF;
+
+      System.out.println("Updated shooter PID: P=" + shooterP + " I=" + shooterI + " D=" + shooterD + " FF=" + shooterFF);
+    }
+
+    // Only update indexer motors if values changed
+    if (indexerP != m_lastIndexerP || indexerI != m_lastIndexerI ||
+        indexerD != m_lastIndexerD || indexerFF != m_lastIndexerFF) {
+
+      SparkFlexConfig indexerConfig = new SparkFlexConfig();
+      indexerConfig.closedLoop
+        .pid(indexerP, indexerI, indexerD)
+        .velocityFF(indexerFF);
+
+      m_leftIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      m_rightIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      m_middleIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+      // Update cached values
+      m_lastIndexerP = indexerP;
+      m_lastIndexerI = indexerI;
+      m_lastIndexerD = indexerD;
+      m_lastIndexerFF = indexerFF;
+
+      System.out.println("Updated indexer PID: P=" + indexerP + " I=" + indexerI + " D=" + indexerD + " FF=" + indexerFF);
+    }
   }
 }

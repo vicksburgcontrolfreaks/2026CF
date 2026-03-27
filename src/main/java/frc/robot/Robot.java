@@ -23,7 +23,10 @@ public class Robot extends TimedRobot {
   }
 
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+    // Enable vision pose reset mode - next multi-tag measurement will reset pose (100% trust vision)
+    m_robotContainer.getVisionSubsystem().enableVisionPoseReset();
+  }
 
   @Override
   public void disabledPeriodic() {}
@@ -32,6 +35,8 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     // Start shooter spinning at the beginning of autonomous
     m_robotContainer.getShooterSubsystem().activateShooter();
+    // Switch to normal sensor fusion mode
+    m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
 
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
@@ -46,9 +51,15 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    // Switch to normal sensor fusion mode
+    m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
+
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+
+    // Spin up shooter on teleop enable (uses current before driving starts)
+    m_robotContainer.spinUpShooter();
   }
 
   @Override

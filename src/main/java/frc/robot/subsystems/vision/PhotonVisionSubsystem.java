@@ -66,6 +66,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final AprilTagFieldLayout m_fieldLayout;
 
   private int m_telemetryCounter = 0;
+  private boolean m_useVisionPoseReset = true;  // True when disabled, false when enabled
 
   // Telemetry publishers
   private final NetworkTable m_telemetryTable;
@@ -241,12 +242,19 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     if (!validPoses.isEmpty()) {
       FusedPoseResult fusedResult = fusePoses(validPoses);
 
-      // Add fused measurement to pose estimator
-      m_swerveDrive.addVisionMeasurement(
-        fusedResult.fusedPose,
-        fusedResult.timestamp,
-        fusedResult.stdDevs
-      );
+      // When disabled with vision reset mode enabled, continuously reset pose to vision (100% trust)
+      // This allows moving the robot while disabled and maintaining accurate position
+      if (m_useVisionPoseReset && fusedResult.stdDevs.get(0, 0) <= PhotonVisionConstants.kMultiTagStdDevs[0]) {
+        // Only reset on multi-tag measurements (more reliable)
+        m_swerveDrive.resetOdometry(fusedResult.fusedPose);
+      } else {
+        // Normal operation: add fused measurement to pose estimator (sensor fusion)
+        m_swerveDrive.addVisionMeasurement(
+          fusedResult.fusedPose,
+          fusedResult.timestamp,
+          fusedResult.stdDevs
+        );
+      }
 
       // Throttled telemetry updates
       m_telemetryCounter++;
