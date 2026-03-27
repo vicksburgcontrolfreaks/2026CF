@@ -76,8 +76,9 @@ The robot uses **alliance-relative field-oriented drive**:
 
 | Button | Function | Description |
 |--------|----------|-------------|
-| **A Button** | Reverse Feed | Runs collector + indexer in reverse (unjam) |
-| **B Button** | Stop All | Emergency stop for all mechanisms |
+| **A Button** | Collect | Runs collector + floor + indexer forward (collection mode) |
+| **X Button** | Reverse | Runs collector + floor + indexer in reverse (unjam/eject) |
+| **B Button** | Stop Feeding | Stops collector, floor, indexer (shooter keeps spinning) |
 
 ### Hopper
 
@@ -117,8 +118,8 @@ The robot uses **alliance-relative field-oriented drive**:
 
 ### Emergency Stop
 
-- **B Button** (mechanism controller): Stops all mechanisms immediately
-- **Disable robot** (driver station): Full stop
+- **B Button** (mechanism controller): Stops collector, floor, and indexer (shooter keeps spinning for quick re-shot)
+- **Disable robot** (driver station): Full stop of everything
 
 ---
 
