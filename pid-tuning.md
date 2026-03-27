@@ -2,7 +2,6 @@
 layout: default
 title: PID Tuning Guide
 ---
-
 # Real-Time PID Tuning Guide
 
 ## Overview

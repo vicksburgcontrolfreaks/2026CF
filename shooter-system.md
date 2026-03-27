@@ -2,7 +2,6 @@
 layout: default
 title: Shooter System
 ---
-
 # Robot Systems Documentation - 2026 Season
 
 ## Shooting System

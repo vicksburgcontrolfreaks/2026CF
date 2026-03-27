@@ -2,7 +2,6 @@
 layout: default
 title: Shoot While Driving
 ---
-
 # Shoot While Driving System
 
 ## Overview

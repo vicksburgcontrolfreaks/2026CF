@@ -2,7 +2,6 @@
 layout: default
 title: Shooter Test System
 ---
-
 # Shooter Test System - Usage Guide
 
 ## Overview
