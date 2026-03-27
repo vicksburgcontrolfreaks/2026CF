@@ -9,6 +9,9 @@ Welcome to the official documentation for the 2026 Control Freaks FRC robot!
 
 ## Quick Links
 
+### For Today (Load-In Day)
+- [**📋 Load-In Test Plan**](load-in-test-plan.md) - Structured test checklist for March 27, 2026
+
 ### For Drivers
 - [**Driver Controls Guide**](driver-controls.md) - Controller button mappings and operating instructions
 
