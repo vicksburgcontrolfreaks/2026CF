@@ -5,7 +5,6 @@
 package frc.robot.commands.collector;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.constants.CollectorConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 
 public class ExtendHopperCommand extends Command {
@@ -41,6 +40,6 @@ public class ExtendHopperCommand extends Command {
   public boolean isFinished() {
     // Command finishes when hopper reaches extended position within tolerance
     double currentPosition = m_collector.getHopperPosition();
-    return Math.abs(currentPosition - CollectorConstants.kDownPosition) < m_tolerance;
+    return Math.abs(currentPosition - m_collector.getDownPosition()) < m_tolerance;
   }
 }

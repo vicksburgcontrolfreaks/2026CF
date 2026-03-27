@@ -15,12 +15,14 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.commands.auton.RedRightLoopAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
 import frc.robot.commands.shooter.ShooterCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
@@ -120,23 +122,11 @@ public class RobotContainer {
             speedMultiplier = OIConstants.kNormalSpeedLimit;
           }
 
-          // Read raw joystick inputs
-          double xSpeed = -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)
-                          * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier;
-          double ySpeed = -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)
-                          * DriveConstants.kMaxSpeedMetersPerSecond * speedMultiplier;
-          double rotSpeed = -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband)
-                            * DriveConstants.kMaxAngularSpeed * speedMultiplier;
-
-          // Alliance-relative driving: flip X and Y when on red alliance
-          // This makes "forward" always mean "toward opponent"
-          if (DriverStation.getAlliance().isPresent() &&
-              DriverStation.getAlliance().get() == Alliance.Red) {
-            xSpeed = -xSpeed;
-            ySpeed = -ySpeed;
-          }
-
-          m_swerveDrive.drive(xSpeed, ySpeed, rotSpeed, true);
+          m_swerveDrive.drive(
+            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
+            true);
         },
         m_swerveDrive)
     );
@@ -227,7 +217,12 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().whileTrue(
-      new ShooterCommand(m_shooterSubsystem, m_visionSubsystem, m_swerveDrive, m_driverController, this)
+      new ShooterWithAutoAimCommand(
+        m_shooterSubsystem,
+        m_swerveDrive,
+        () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
+        () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
+      )
     );
 
   /*
@@ -355,15 +350,26 @@ public class RobotContainer {
    *
    * The chooser will appear on the SmartDashboard/Shuffleboard.
    * Add more paths by creating .traj files and adding them here.
+   *
+   * To add markers to your trajectory:
+   * 1. Open the trajectory in Choreo
+   * 2. Add event markers at specific timestamps (e.g., "startCollector", "shoot", "stopCollector")
+   * 3. Bind commands to those markers using trajectory.atTime("markerName")
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
 
     try {
-      // Add autonomous options to the chooser
-      // Format: m_autoChooser.addOption("Display Name", autoFactory.trajectoryCmd("PathName"));
+      // Create the RedRightLoopAndShoot autonomous command
+      RedRightLoopAndShootCommand redRightLoopAndShoot = new RedRightLoopAndShootCommand(
+        autoFactory,
+        m_collector,
+        m_shooterSubsystem,
+        m_visionSubsystem
+      );
 
-      m_autoChooser.setDefaultOption("Red Right Loop", autoFactory.trajectoryCmd("RedRightLoop"));
+      // Add the routine to the chooser
+      m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
       m_autoChooser.addOption("Do Nothing", Commands.none());
 
       // Add shooter test command
@@ -411,5 +417,23 @@ public class RobotContainer {
 
   public LEDSubsystem getLEDSubsystem() {
     return m_ledSubsystem;
+  }
+
+  public ShooterSubsystem getShooterSubsystem() {
+    return m_shooterSubsystem;
+  }
+
+  /**
+   * Get the current speed multiplier based on driver controller bumpers
+   * @return Speed multiplier (precision, normal, or turbo)
+   */
+  private double getSpeedMultiplier() {
+    if (m_driverController.rightBumper().getAsBoolean()) {
+      return OIConstants.kTurboSpeedLimit;
+    } else if (m_driverController.leftBumper().getAsBoolean()) {
+      return OIConstants.kPrecisionSpeedLimit;
+    } else {
+      return OIConstants.kNormalSpeedLimit;
+    }
   }
 }

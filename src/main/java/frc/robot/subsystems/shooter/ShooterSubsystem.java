@@ -12,6 +12,7 @@ import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
 import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
@@ -95,6 +96,37 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher[] m_capturedTimestampPubs = new DoublePublisher[CAPTURE_BUFFER_SIZE];
   private final DoublePublisher m_captureCountPub;
 
+  // Configurable constants (via NetworkTables)
+  private int m_motorCurrentLimit = ShooterConstants.kMotorCurrentLimit;
+  private double m_shooterP = ShooterConstants.kShooterP;
+  private double m_shooterI = ShooterConstants.kShooterI;
+  private double m_shooterD = ShooterConstants.kShooterD;
+  private double m_shooterFF = ShooterConstants.kShooterFF;
+  private double m_indexerP = ShooterConstants.kIndexerP;
+  private double m_indexerI = ShooterConstants.kIndexerI;
+  private double m_indexerD = ShooterConstants.kIndexerD;
+  private double m_indexerFF = ShooterConstants.kIndexerFF;
+  private double m_shooterTargetRPM = ShooterConstants.kShooterTargetRPM;
+  private double m_floorMotorTargetRPM = ShooterConstants.kFloorMotorTargetRPM;
+  private double m_indexerMotorTargetRPM = ShooterConstants.kIndexerMotorTargetRPM;
+  private double[][] m_shooterVelocityTable = ShooterConstants.kShooterVelocityTable;
+  private int m_telemetryUpdatePeriod = TelemetryConstants.kTelemetryUpdatePeriod;
+
+  // NetworkTables subscribers for configurable constants
+  private final DoubleSubscriber m_motorCurrentLimitSub;
+  private final DoubleSubscriber m_shooterPSub;
+  private final DoubleSubscriber m_shooterISub;
+  private final DoubleSubscriber m_shooterDSub;
+  private final DoubleSubscriber m_shooterFFSub;
+  private final DoubleSubscriber m_indexerPSub;
+  private final DoubleSubscriber m_indexerISub;
+  private final DoubleSubscriber m_indexerDSub;
+  private final DoubleSubscriber m_indexerFFSub;
+  private final DoubleSubscriber m_shooterTargetRPMSub;
+  private final DoubleSubscriber m_floorMotorTargetRPMSub;
+  private final DoubleSubscriber m_indexerMotorTargetRPMSub;
+  private final DoubleSubscriber m_telemetryUpdatePeriodSub;
+
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784
 
@@ -150,19 +182,25 @@ public class ShooterSubsystem extends SubsystemBase {
     m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
     m_debugMessagePub          = m_telemetryTable.getStringTopic("Debug Message").publish();
 
-    // Initialize velocity capture publishers
-    NetworkTable captureTable = NetworkTableInstance.getDefault().getTable("ShooterVelocityCapture");
-    for (int i = 0; i < CAPTURE_BUFFER_SIZE; i++) {
-      m_capturedLeftVelocityPubs[i] = captureTable.getDoubleTopic("LeftVelocity" + i).publish();
-      m_capturedRightVelocityPubs[i] = captureTable.getDoubleTopic("RightVelocity" + i).publish();
-      m_capturedMiddleVelocityPubs[i] = captureTable.getDoubleTopic("MiddleVelocity" + i).publish();
-      m_capturedTimestampPubs[i] = captureTable.getDoubleTopic("Timestamp" + i).publish();
-    }
-    m_captureCountPub = captureTable.getDoubleTopic("CaptureCount").publish();
+    // Initialize NetworkTables subscribers for configurable constants
+    NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Shooter/Config");
+    m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
+    m_shooterPSub = configTable.getDoubleTopic("Shooter P").subscribe(m_shooterP);
+    m_shooterISub = configTable.getDoubleTopic("Shooter I").subscribe(m_shooterI);
+    m_shooterDSub = configTable.getDoubleTopic("Shooter D").subscribe(m_shooterD);
+    m_shooterFFSub = configTable.getDoubleTopic("Shooter FF").subscribe(m_shooterFF);
+    m_indexerPSub = configTable.getDoubleTopic("Indexer P").subscribe(m_indexerP);
+    m_indexerISub = configTable.getDoubleTopic("Indexer I").subscribe(m_indexerI);
+    m_indexerDSub = configTable.getDoubleTopic("Indexer D").subscribe(m_indexerD);
+    m_indexerFFSub = configTable.getDoubleTopic("Indexer FF").subscribe(m_indexerFF);
+    m_shooterTargetRPMSub = configTable.getDoubleTopic("Shooter Target RPM").subscribe(m_shooterTargetRPM);
+    m_floorMotorTargetRPMSub = configTable.getDoubleTopic("Floor Motor Target RPM").subscribe(m_floorMotorTargetRPM);
+    m_indexerMotorTargetRPMSub = configTable.getDoubleTopic("Indexer Motor Target RPM").subscribe(m_indexerMotorTargetRPM);
+    m_telemetryUpdatePeriodSub = configTable.getDoubleTopic("Telemetry Update Period").subscribe(m_telemetryUpdatePeriod);
   }
 
   public void runFloor(boolean reversed) {
-    double targetRPM = ShooterConstants.kFloorMotorTargetRPM;
+    double targetRPM = getFloorMotorTargetRPM();
     if (reversed) {
       targetRPM = -targetRPM;
     }
@@ -189,27 +227,32 @@ public class ShooterSubsystem extends SubsystemBase {
    * @return Target RPM for the shooter
    */
   private double getRPMForDistance(double distance) {
-    if (distance <= ShooterConstants.kShooterVelocityTable[0][0]) {
-      return ShooterConstants.kShooterVelocityTable[0][1];
+    double[][] table = getShooterVelocityTable();
+    if (table.length == 0) {
+      return getShooterTargetRPM();
     }
 
-    int lastIndex = ShooterConstants.kShooterVelocityTable.length - 1;
-    if (distance >= ShooterConstants.kShooterVelocityTable[lastIndex][0]) {
-      return ShooterConstants.kShooterVelocityTable[lastIndex][1];
+    if (distance <= table[0][0]) {
+      return table[0][1];
     }
 
-    for (int i = 0; i < ShooterConstants.kShooterVelocityTable.length - 1; i++) {
-      double d1 = ShooterConstants.kShooterVelocityTable[i][0];
-      double rpm1 = ShooterConstants.kShooterVelocityTable[i][1];
-      double d2 = ShooterConstants.kShooterVelocityTable[i + 1][0];
-      double rpm2 = ShooterConstants.kShooterVelocityTable[i + 1][1];
+    int lastIndex = table.length - 1;
+    if (distance >= table[lastIndex][0]) {
+      return table[lastIndex][1];
+    }
+
+    for (int i = 0; i < table.length - 1; i++) {
+      double d1 = table[i][0];
+      double rpm1 = table[i][1];
+      double d2 = table[i + 1][0];
+      double rpm2 = table[i + 1][1];
 
       if (distance >= d1 && distance <= d2) {
         return rpm1 + (rpm2 - rpm1) * (distance - d1) / (d2 - d1);
       }
     }
 
-    return ShooterConstants.kShooterTargetRPM;
+    return getShooterTargetRPM();
   }
 
   /**
@@ -315,7 +358,7 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void runIndexer(boolean reversed) {
-    double rpm = ShooterConstants.kIndexerMotorTargetRPM;
+    double rpm = getIndexerMotorTargetRPM();
     if (reversed) {
       rpm = -rpm;
     }
@@ -374,12 +417,197 @@ public class ShooterSubsystem extends SubsystemBase {
            m_middleShooterMotor.getOutputCurrent() > threshold;
   }
 
+  // Getters and setters for configurable constants
+  public int getMotorCurrentLimit() {
+    return m_motorCurrentLimit;
+  }
+
+  public void setMotorCurrentLimit(int limit) {
+    m_motorCurrentLimit = limit;
+  }
+
+  public double getShooterP() {
+    return m_shooterP;
+  }
+
+  public void setShooterP(double p) {
+    m_shooterP = p;
+    updateShooterPID();
+  }
+
+  public double getShooterI() {
+    return m_shooterI;
+  }
+
+  public void setShooterI(double i) {
+    m_shooterI = i;
+    updateShooterPID();
+  }
+
+  public double getShooterD() {
+    return m_shooterD;
+  }
+
+  public void setShooterD(double d) {
+    m_shooterD = d;
+    updateShooterPID();
+  }
+
+  public double getShooterFF() {
+    return m_shooterFF;
+  }
+
+  public void setShooterFF(double ff) {
+    m_shooterFF = ff;
+    updateShooterPID();
+  }
+
+  public double getIndexerP() {
+    return m_indexerP;
+  }
+
+  public void setIndexerP(double p) {
+    m_indexerP = p;
+    updateIndexerPID();
+  }
+
+  public double getIndexerI() {
+    return m_indexerI;
+  }
+
+  public void setIndexerI(double i) {
+    m_indexerI = i;
+    updateIndexerPID();
+  }
+
+  public double getIndexerD() {
+    return m_indexerD;
+  }
+
+  public void setIndexerD(double d) {
+    m_indexerD = d;
+    updateIndexerPID();
+  }
+
+  public double getIndexerFF() {
+    return m_indexerFF;
+  }
+
+  public void setIndexerFF(double ff) {
+    m_indexerFF = ff;
+    updateIndexerPID();
+  }
+
+  public double getShooterTargetRPM() {
+    return m_shooterTargetRPM;
+  }
+
+  public void setShooterTargetRPM(double rpm) {
+    m_shooterTargetRPM = rpm;
+  }
+
+  public double getFloorMotorTargetRPM() {
+    return m_floorMotorTargetRPM;
+  }
+
+  public void setFloorMotorTargetRPM(double rpm) {
+    m_floorMotorTargetRPM = rpm;
+  }
+
+  public double getIndexerMotorTargetRPM() {
+    return m_indexerMotorTargetRPM;
+  }
+
+  public void setIndexerMotorTargetRPM(double rpm) {
+    m_indexerMotorTargetRPM = rpm;
+  }
+
+  public double[][] getShooterVelocityTable() {
+    return m_shooterVelocityTable;
+  }
+
+  public void setShooterVelocityTable(double[][] table) {
+    m_shooterVelocityTable = table;
+  }
+
+  public int getTelemetryUpdatePeriod() {
+    return m_telemetryUpdatePeriod;
+  }
+
+  public void setTelemetryUpdatePeriod(int period) {
+    m_telemetryUpdatePeriod = period;
+  }
+
+  /**
+   * Update shooter motor PID values by reconfiguring motors
+   */
+  private void updateShooterPID() {
+    com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
+    config.closedLoop
+      .pid(m_shooterP, m_shooterI, m_shooterD)
+      .velocityFF(m_shooterFF)
+      .outputRange(-1, 1);
+
+    m_leftShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_middleShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+  }
+
+  /**
+   * Update indexer motor PID values by reconfiguring motors
+   */
+  private void updateIndexerPID() {
+    com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
+    config.closedLoop
+      .pid(m_indexerP, m_indexerI, m_indexerD)
+      .velocityFF(m_indexerFF)
+      .outputRange(-1, 1);
+
+    m_leftIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_middleIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+  }
+
   @Override
   public void periodic() {
-    // Update motor PID from NetworkTables (allows real-time tuning)
-    updateMotorPIDFromNetworkTables();
+    // Read configurable values from NetworkTables
+    double newMotorCurrentLimit = m_motorCurrentLimitSub.get();
+    if (newMotorCurrentLimit != m_motorCurrentLimit) {
+      m_motorCurrentLimit = (int) newMotorCurrentLimit;
+    }
 
-    // DYNAMIC RPM ENABLED - Calculate target RPM based on vision distance
+    double newShooterP = m_shooterPSub.get();
+    double newShooterI = m_shooterISub.get();
+    double newShooterD = m_shooterDSub.get();
+    double newShooterFF = m_shooterFFSub.get();
+    if (newShooterP != m_shooterP || newShooterI != m_shooterI ||
+        newShooterD != m_shooterD || newShooterFF != m_shooterFF) {
+      m_shooterP = newShooterP;
+      m_shooterI = newShooterI;
+      m_shooterD = newShooterD;
+      m_shooterFF = newShooterFF;
+      updateShooterPID();
+    }
+
+    double newIndexerP = m_indexerPSub.get();
+    double newIndexerI = m_indexerISub.get();
+    double newIndexerD = m_indexerDSub.get();
+    double newIndexerFF = m_indexerFFSub.get();
+    if (newIndexerP != m_indexerP || newIndexerI != m_indexerI ||
+        newIndexerD != m_indexerD || newIndexerFF != m_indexerFF) {
+      m_indexerP = newIndexerP;
+      m_indexerI = newIndexerI;
+      m_indexerD = newIndexerD;
+      m_indexerFF = newIndexerFF;
+      updateIndexerPID();
+    }
+
+    m_shooterTargetRPM = m_shooterTargetRPMSub.get();
+    m_floorMotorTargetRPM = m_floorMotorTargetRPMSub.get();
+    m_indexerMotorTargetRPM = m_indexerMotorTargetRPMSub.get();
+    m_telemetryUpdatePeriod = (int) m_telemetryUpdatePeriodSub.get();
+
+    // DYNAMIC RPM ENABLED - Calculate RPM based on vision distance
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
     // This updates m_calculatedTargetRPM which is published to Elastic dashboard
     if (m_visionSubsystem != null) {
@@ -390,11 +618,11 @@ public class ShooterSubsystem extends SubsystemBase {
         m_calculatedTargetRPM = getRPMForDistance(distance);
       } else {
         // Fall back to default RPM if distance calculation fails
-        m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
+        m_calculatedTargetRPM = getShooterTargetRPM();
       }
     } else {
       // No vision subsystem, use default
-      m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM;
+      m_calculatedTargetRPM = getShooterTargetRPM();
     }
 
     // ALWAYS publish Target RPM and Distance (no throttling) so Elastic updates in real-time
@@ -430,7 +658,7 @@ public class ShooterSubsystem extends SubsystemBase {
     captureVelocityData();
 
     m_telemetryCounter++;
-    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
+    if (m_telemetryCounter >= getTelemetryUpdatePeriod()) {
       m_telemetryCounter = 0;
 
       m_floorMotorSpeedPub.set(m_floorMotor.get());

@@ -5,7 +5,6 @@
 package frc.robot.commands.collector;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.constants.CollectorConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 
 public class RetractHopperCommand extends Command {
@@ -41,6 +40,6 @@ public class RetractHopperCommand extends Command {
   public boolean isFinished() {
     // Command finishes when hopper reaches retracted position within tolerance
     double currentPosition = m_collector.getHopperPosition();
-    return Math.abs(currentPosition - CollectorConstants.kUpPosition) < m_tolerance;
+    return Math.abs(currentPosition - m_collector.getUpPosition()) < m_tolerance;
   }
 }

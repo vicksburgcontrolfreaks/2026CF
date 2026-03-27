@@ -33,6 +33,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    // Start shooter spinning at the beginning of autonomous
+    m_robotContainer.getShooterSubsystem().activateShooter();
     // Switch to normal sensor fusion mode
     m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
 
