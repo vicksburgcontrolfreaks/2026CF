@@ -182,6 +182,15 @@ public class ShooterSubsystem extends SubsystemBase {
     m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
     m_debugMessagePub          = m_telemetryTable.getStringTopic("Debug Message").publish();
 
+    // Initialize velocity capture publishers
+    for (int i = 0; i < CAPTURE_BUFFER_SIZE; i++) {
+      m_capturedLeftVelocityPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Left Velocity/" + i).publish();
+      m_capturedRightVelocityPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Right Velocity/" + i).publish();
+      m_capturedMiddleVelocityPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Middle Velocity/" + i).publish();
+      m_capturedTimestampPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Timestamp/" + i).publish();
+    }
+    m_captureCountPub = m_telemetryTable.getDoubleTopic("Capture/Count").publish();
+
     // Initialize NetworkTables subscribers for configurable constants
     NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Shooter/Config");
     m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);

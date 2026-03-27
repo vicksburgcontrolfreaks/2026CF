@@ -5,10 +5,10 @@
 package frc.robot.commands.auton;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
-import frc.robot.commands.shooter.ShooterCommand;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -70,7 +70,21 @@ public class RedRightLoopAndShootCommand extends Command {
     );
 
     trajectory.atTime("Shoot").whileTrue(
-      new ShooterCommand(m_shooter, m_vision).withTimeout(7)
+      Commands.runOnce(() -> {
+        m_shooter.activateShooter();
+        m_shooter.enableFullRPM();
+      }, m_shooter)
+      .andThen(Commands.waitSeconds(1.0)) // Wait for shooter to spin up
+      .andThen(Commands.runOnce(() -> {
+        m_shooter.runIndexer(false);
+        m_shooter.runFloor(false);
+      }, m_shooter))
+      .andThen(Commands.waitSeconds(6.0)) // Shoot for 6 seconds
+      .finallyDo(() -> {
+        m_shooter.StopFloor();
+        m_shooter.StopIndexer();
+        m_shooter.stopShooter();
+      })
     );
 
     // Trigger the trajectory to run when the routine is active
