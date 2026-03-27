@@ -1,0 +1,22 @@
+title: 2026 Control Freaks Robot Documentation
+description: Shooter tuning, vision localization, and swerve drive documentation for FRC Team
+theme: jekyll-theme-minimal
+
+# GitHub metadata
+github:
+  repository_url: https://github.com/vicksburgcontrolfreaks/2026CF
+
+# Navigation
+navigation:
+  - title: Home
+    url: /
+  - title: Driver Controls
+    url: /driver-controls
+  - title: Shooter Testing
+    url: /shooter-testing
+  - title: PID Tuning
+    url: /pid-tuning
+  - title: Shooter System
+    url: /shooter-system
+  - title: Shoot While Driving
+    url: /shoot-while-driving
