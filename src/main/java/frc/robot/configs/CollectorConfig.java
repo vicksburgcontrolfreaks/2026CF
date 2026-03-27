@@ -16,6 +16,16 @@ public final class CollectorConfig {
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(CollectorConstants.kMotorCurrentLimit);
 
+    // Configure collector velocity control (for precise RPM control)
+    collectorConfig
+      .encoder
+        .velocityConversionFactor(1.0); // RPM
+
+    collectorConfig
+      .closedLoop
+        .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
+        .pid(CollectorConstants.kCollectorP, CollectorConstants.kCollectorI, CollectorConstants.kCollectorD);
+
     hopperConfig
       .idleMode(IdleMode.kCoast)
       .smartCurrentLimit(CollectorConstants.kMotorCurrentLimit);
@@ -31,5 +41,12 @@ public final class CollectorConfig {
         .pid(CollectorConstants.kHopperP, CollectorConstants.kHopperI, CollectorConstants.kHopperD)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(0, 1);
+
+    // Configure MAXMotion for slow, controlled hopper movement
+    hopperConfig
+      .closedLoop
+        .maxMotion
+          .maxVelocity(CollectorConstants.kHopperMaxVelocity)
+          .maxAcceleration(CollectorConstants.kHopperMaxAcceleration);
   }
 }

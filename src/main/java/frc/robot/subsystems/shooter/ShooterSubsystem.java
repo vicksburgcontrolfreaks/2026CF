@@ -306,6 +306,28 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
+   * Activate only left and right shooters (disable middle shooter for hardware issue workaround)
+   */
+  public void activateLeftRightShootersOnly() {
+    m_isShooterActive = true;
+    m_currentTargetRPM = m_calculatedTargetRPM;
+
+    // Run left and right shooters
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+
+    // Disable middle shooter
+    m_middleShooterMotor.set(0);
+  }
+
+  /**
    * Stop the shooter motors (set to 0).
    */
   public void stopShooter() {
@@ -375,6 +397,31 @@ public class ShooterSubsystem extends SubsystemBase {
 
     m_middleIndexerMotor.getClosedLoopController().setSetpoint(
       -rpm,
+      ControlType.kVelocity
+    );
+  }
+
+  /**
+   * Run left/right indexers forward, middle indexer in reverse (hardware issue workaround)
+   * Used during shooting sequence to clear middle path
+   */
+  public void runIndexerMiddleReversed() {
+    double rpm = ShooterConstants.kIndexerMotorTargetRPM;
+
+    // Run left and right indexers forward
+    m_leftIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    m_rightIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,
+      ControlType.kVelocity
+    );
+
+    // Run middle indexer in reverse
+    m_middleIndexerMotor.getClosedLoopController().setSetpoint(
+      rpm,  // Positive RPM for reverse (opposite of normal)
       ControlType.kVelocity
     );
   }

@@ -62,6 +62,12 @@ public class CollectorSubsystem extends SubsystemBase {
     m_lowerCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_hopperMotor.configure(CollectorConfig.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+    // Set hopper to down position on enable
+    m_hopperMotor.getClosedLoopController().setSetpoint(
+      CollectorConstants.kDownPosition,
+      SparkMax.ControlType.kPosition
+    );
+
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Collector");
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
     m_lowerCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Lower Collector Speed").publish();
@@ -92,6 +98,32 @@ public class CollectorSubsystem extends SubsystemBase {
     }
   }
 
+  /**
+   * Run collector at a specific RPM using velocity control
+   * @param rpm Target velocity in RPM (positive = forward, negative = reverse)
+   */
+  public void runCollectorRPM(double rpm) {
+    m_upperCollectorMotor.getClosedLoopController().setSetpoint(
+      -rpm,
+      SparkFlex.ControlType.kVelocity
+    );
+    m_lowerCollectorMotor.getClosedLoopController().setSetpoint(
+      -rpm,
+      SparkFlex.ControlType.kVelocity
+    );
+  }
+
+  /**
+   * Run only lower collector at a specific RPM (for shooting sequence)
+   * @param rpm Target velocity in RPM (positive = forward, negative = reverse)
+   */
+  public void runLowerCollectorRPM(double rpm) {
+    m_lowerCollectorMotor.getClosedLoopController().setSetpoint(
+      -rpm,
+      SparkFlex.ControlType.kVelocity
+    );
+  }
+
   public void stopCollector() {
     m_upperCollectorMotor.set(0);
     m_lowerCollectorMotor.set(0);
@@ -101,6 +133,18 @@ public class CollectorSubsystem extends SubsystemBase {
     m_hopperMotor.getClosedLoopController().setSetpoint(
       getUpPosition(),
       SparkMax.ControlType.kPosition
+    );
+  }
+
+  /**
+   * Retract hopper to halfway position slowly (for shooting sequence)
+   * Uses position control with motion constraints configured in CollectorConfig
+   */
+  public void retractHopperHalfwaySlow() {
+    // Move to halfway position using MAXMotion (motion profiling configured in CollectorConfig)
+    m_hopperMotor.getClosedLoopController().setSetpoint(
+      CollectorConstants.kHalfwayPosition,
+      SparkMax.ControlType.kMAXMotionPositionControl
     );
   }
 
