@@ -16,6 +16,7 @@ import frc.robot.RobotContainer;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
+import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -28,12 +29,14 @@ import frc.robot.subsystems.vision.PhotonVisionSubsystem;
  * - Maintains back of robot facing speaker
  * - Uses dynamic RPM based on distance
  * - Only feeds balls when aligned AND at target RPM
+ * - Automatically retracts hopper after 2 seconds to pull in straggler balls
  *
  * Shooter is already spun up by teleopInit, so this command just manages
  * rotation control and feeding logic.
  */
 public class ShooterCommand extends Command {
   private final ShooterSubsystem m_shooter;
+  private final CollectorSubsystem m_collector;
   private final DriveSubsystem m_drive;
   private final CommandXboxController m_driverController;
   private final PIDController m_rotationController;
@@ -44,15 +47,17 @@ public class ShooterCommand extends Command {
    * Creates a new ShooterCommand.
    *
    * @param shooter ShooterSubsystem to control
+   * @param collector CollectorSubsystem to control hopper
    * @param vision PhotonVisionSubsystem (unused - kept for compatibility)
    * @param drive DriveSubsystem to control rotation
    * @param driverController Driver controller for reading translation inputs
    * @param container RobotContainer for accessing PID tuning parameters
    */
-  public ShooterCommand(ShooterSubsystem shooter, PhotonVisionSubsystem vision,
-                        DriveSubsystem drive, CommandXboxController driverController,
-                        RobotContainer container) {
+  public ShooterCommand(ShooterSubsystem shooter, CollectorSubsystem collector,
+                        PhotonVisionSubsystem vision, DriveSubsystem drive,
+                        CommandXboxController driverController, RobotContainer container) {
     m_shooter = shooter;
+    m_collector = collector;
     m_drive = drive;
     m_driverController = driverController;
     m_container = container;
@@ -74,8 +79,9 @@ public class ShooterCommand extends Command {
     m_feedingStarted = false;
     m_rotationController.reset();
     // Shooter is already active from teleopInit, just ensure it's running
+    // Use left/right shooters only (disable middle shooter for hardware issue)
     if (!m_shooter.isShooterActive()) {
-      m_shooter.activateShooter();
+      m_shooter.activateLeftRightShootersOnly();
     }
     // Remove RPM cap when trigger pulled - allow full distance-based RPM
     m_shooter.enableFullRPM();
@@ -161,9 +167,10 @@ public class ShooterCommand extends Command {
     boolean shouldFeed = isAligned && isAtRPM;
 
     if (shouldFeed && !m_feedingStarted) {
-      // Start feeding
+      // Start feeding and run lower collector to help feed balls
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
+      m_collector.runLowerCollectorRPM(1000);  // 1000 RPM in collection direction
       m_feedingStarted = true;
     }
     // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
@@ -176,6 +183,7 @@ public class ShooterCommand extends Command {
     // Stop feeding, but keep shooter spinning (stays active for quick re-shoot)
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
+    m_collector.stopCollector();  // Stop collector
     // Re-enable RPM cap when trigger released - back to pre-spin mode
     m_shooter.enableRPMCap();
     // Don't call m_drive.stop() - let the default command resume smoothly

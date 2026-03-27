@@ -27,7 +27,7 @@ public class RunCollectorCommand extends Command {
 
   @Override
   public void end(boolean interrupted) {
-    new StopCollectorCommand(m_collector);
+    m_collector.stopCollector();
   }
 
   @Override

@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.commands.auto.DriveAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
@@ -191,15 +192,16 @@ public class RobotContainer {
 
 
   private void configureMechanismBindings() {
-    // A Button: Run collector in collection mode (forward)
-    m_mechanismController.a().whileTrue(
-      new RunCollectorCommand(m_collector, false).alongWith(Commands.run(() -> {
+    // A Button: Run collector in collection mode (forward) - stays on until X or B pressed
+    m_mechanismController.a().onTrue(
+      Commands.runOnce(() -> {
+        m_collector.runCollector(false);
         m_shooterSubsystem.runFloor(false);
         m_shooterSubsystem.runIndexer(true);
-      }, m_shooterSubsystem))
+      }, m_collector, m_shooterSubsystem)
     );
 
-    // X Button: Reverse collector (unjam/eject)
+    // X Button: Reverse collector (unjam/eject) - stops collector started by A, runs in reverse while held
     m_mechanismController.x().whileTrue(
       new RunCollectorCommand(m_collector, true).alongWith(Commands.run(() -> {
         m_shooterSubsystem.runFloor(true);
@@ -227,7 +229,7 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().whileTrue(
-      new ShooterCommand(m_shooterSubsystem, m_visionSubsystem, m_swerveDrive, m_driverController, this)
+      new ShooterCommand(m_shooterSubsystem, m_collector, m_visionSubsystem, m_swerveDrive, m_driverController, this)
     );
 
   /*
@@ -365,6 +367,7 @@ public class RobotContainer {
 
       m_autoChooser.setDefaultOption("Red Right Loop", autoFactory.trajectoryCmd("RedRightLoop"));
       m_autoChooser.addOption("Do Nothing", Commands.none());
+      m_autoChooser.addOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
 
       // Add shooter test command
       m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {

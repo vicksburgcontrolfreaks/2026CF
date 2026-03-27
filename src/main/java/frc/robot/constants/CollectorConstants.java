@@ -9,10 +9,20 @@ public class CollectorConstants {
 
   public static final double kCollectorSpeed = 0.4;
 
+  // Collector velocity PID constants (for RPM control)
+  public static final double kCollectorP = 0.0001;
+  public static final double kCollectorI = 0.0;
+  public static final double kCollectorD = 0.0;
+
   public static final double kUpPosition = 0.01;
+  public static final double kHalfwayPosition = 0.095;  // Halfway between up and down
   public static final double kDownPosition = 0.180;
 
   public static final double kHopperP = 0.5;
   public static final double kHopperI = 0.001;
   public static final double kHopperD = 0.0;
+
+  // Hopper motion limits for slow retraction during shooting
+  public static final double kHopperMaxVelocity = 0.5;  // Max velocity for slow motion
+  public static final double kHopperMaxAcceleration = 1.0;  // Max acceleration for slow motion
 }
