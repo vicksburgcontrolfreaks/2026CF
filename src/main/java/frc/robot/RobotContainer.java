@@ -18,15 +18,14 @@ import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
+import frc.robot.commands.collector.HopperHalfwaySequenceCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
 import frc.robot.constants.AutoConstants;
-import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
-import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -39,7 +38,6 @@ public class RobotContainer {
   private final LEDSubsystem m_ledSubsystem = null;
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
-  private final ClimberSubsystem m_climber = null;
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -139,22 +137,41 @@ public class RobotContainer {
 
   private void configureMechanismBindings() {
     m_mechanismController.a().whileTrue(
-      new RunCollectorCommand(m_collector, false)
+      new RunCollectorCommand(m_collector, false).alongWith(
+        Commands.run(() -> {
+          m_shooterSubsystem.runFloor(false);
+          m_shooterSubsystem.runIndexer(true);
+        }, m_shooterSubsystem)
+      )
     );
 
     m_mechanismController.b().onTrue(
-      new StopCollectorCommand(m_collector)
+      new StopCollectorCommand(m_collector).alongWith(
+        Commands.run(() -> {
+          m_shooterSubsystem.StopFloor();
+          m_shooterSubsystem.StopIndexer();
+        }, m_shooterSubsystem)
+      )
     );
 
     m_mechanismController.x().onTrue(
-      new RunCollectorCommand(m_collector, true)
+      new RunCollectorCommand(m_collector, true).alongWith(
+        Commands.run(() -> {
+          m_shooterSubsystem.runFloor(true);
+          m_shooterSubsystem.runIndexer(true);
+        }, m_shooterSubsystem)
+      )
     );
 
     m_mechanismController.povUp().onTrue(
+      new HopperHalfwaySequenceCommand(m_collector)
+    );
+
+    m_mechanismController.povLeft().onTrue(
       new RetractHopperCommand(m_collector)
     );
 
-    m_mechanismController.povDown().onTrue(
+    m_mechanismController.povRight().onTrue(
       new ExtendHopperCommand(m_collector)
     );
 
@@ -163,21 +180,12 @@ public class RobotContainer {
         m_shooterSubsystem,
         m_swerveDrive,
         () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
+        () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
+        () -> -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * getSpeedMultiplier(),
+        () -> m_driverController.leftTrigger().getAsBoolean()
       )
     );
 
-  /*
-    m_mechanismController.povUp().whileTrue(
-      Commands.run(() -> m_climber.setSpeed(0.2), m_climber)
-        .finallyDo(() -> m_climber.stop())
-    );
-
-    m_mechanismController.povDown().whileTrue(
-      Commands.run(() -> m_climber.setSpeed(-0.2), m_climber)
-        .finallyDo(() -> m_climber.stop())
-    );
-  */
   }
 
   /*

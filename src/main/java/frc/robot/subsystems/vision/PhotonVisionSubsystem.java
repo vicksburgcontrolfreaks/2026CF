@@ -83,14 +83,14 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   private final List<DoublePublisher> m_cameraTagCountPubs = new ArrayList<>();
 
   // Configurable constants (via NetworkTables)
-  private double m_maxAmbiguity = getMaxAmbiguity();
-  private double m_maxTagDistance = getMaxTagDistance();
-  private int m_minTagsForHighConfidence = getMinTagsForHighConfidence();
-  private double m_distanceFactorThreshold = getDistanceFactorThreshold();
-  private double m_confidenceTagCountMultiplier = getConfidenceTagCountMultiplier();
-  private double m_confidenceAmbiguityMultiplier = getConfidenceAmbiguityMultiplier();
-  private double[] m_singleTagStdDevs = getSingleTagStdDevs().clone();
-  private double[] m_multiTagStdDevs = getMultiTagStdDevs().clone();
+  private double m_maxAmbiguity = PhotonVisionConstants.kMaxAmbiguity;
+  private double m_maxTagDistance = PhotonVisionConstants.kMaxTagDistance;
+  private int m_minTagsForHighConfidence = PhotonVisionConstants.kMinTagsForHighConfidence;
+  private double m_distanceFactorThreshold = PhotonVisionConstants.kDistanceFactorThreshold;
+  private double m_confidenceTagCountMultiplier = PhotonVisionConstants.kConfidenceTagCountMultiplier;
+  private double m_confidenceAmbiguityMultiplier = PhotonVisionConstants.kConfidenceAmbiguityMultiplier;
+  private double[] m_singleTagStdDevs = PhotonVisionConstants.kSingleTagStdDevs.clone();
+  private double[] m_multiTagStdDevs = PhotonVisionConstants.kMultiTagStdDevs.clone();
 
   // NetworkTables subscribers for configurable constants
   private final DoubleSubscriber m_maxAmbiguitySub;

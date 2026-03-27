@@ -92,13 +92,13 @@ public class DriveSubsystem extends SubsystemBase {
   // Configurable constants (via NetworkTables)
   private double m_maxSpeedMetersPerSecond = DriveConstants.kMaxSpeedMetersPerSecond;
   private double m_maxAngularSpeed = DriveConstants.kMaxAngularSpeed;
-  private double m_xControllerP = 5.0;
+  private double m_xControllerP = 8.0;
   private double m_xControllerI = 0.0;
-  private double m_xControllerD = 0.0;
-  private double m_yControllerP = 5.0;
+  private double m_xControllerD = 0.3;
+  private double m_yControllerP = 8.0;
   private double m_yControllerI = 0.0;
-  private double m_yControllerD = 0.0;
-  private double m_thetaControllerP = 3.0;
+  private double m_yControllerD = 0.3;
+  private double m_thetaControllerP = 5.0;
   private double m_thetaControllerI = 0.0;
   private double m_thetaControllerD = 0.0;
   private int m_telemetryUpdatePeriod = TelemetryConstants.kTelemetryUpdatePeriod;

@@ -15,6 +15,7 @@ import frc.robot.constants.DriveConstants;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
 /**
@@ -26,6 +27,7 @@ import java.util.function.DoubleSupplier;
  * 1. Activates the indexer and floor to feed game pieces
  * 2. Automatically rotates the robot to face the alliance's speaker
  * 3. Allows the driver to maintain translational control (forward/backward/strafe)
+ * 4. Left trigger on driver controller overrides auto-aim for manual rotation control
  *
  * Bound to right trigger - runs while button is held.
  */
@@ -34,6 +36,8 @@ public class ShooterWithAutoAimCommand extends Command {
   private final DriveSubsystem m_swerveDrive;
   private final DoubleSupplier m_xSpeedSupplier;
   private final DoubleSupplier m_ySpeedSupplier;
+  private final DoubleSupplier m_rotationSupplier;
+  private final BooleanSupplier m_manualRotationOverride;
   private final PIDController m_rotationController;
 
   /**
@@ -43,16 +47,22 @@ public class ShooterWithAutoAimCommand extends Command {
    * @param swerveDrive DriveSubsystem for auto-rotation
    * @param xSpeedSupplier Supplier for forward/backward speed from joystick
    * @param ySpeedSupplier Supplier for left/right speed from joystick
+   * @param rotationSupplier Supplier for manual rotation speed from joystick
+   * @param manualRotationOverride Supplier that returns true when manual rotation is desired (left trigger pressed)
    */
   public ShooterWithAutoAimCommand(
       ShooterSubsystem shooter,
       DriveSubsystem swerveDrive,
       DoubleSupplier xSpeedSupplier,
-      DoubleSupplier ySpeedSupplier) {
+      DoubleSupplier ySpeedSupplier,
+      DoubleSupplier rotationSupplier,
+      BooleanSupplier manualRotationOverride) {
     m_shooter = shooter;
     m_swerveDrive = swerveDrive;
     m_xSpeedSupplier = xSpeedSupplier;
     m_ySpeedSupplier = ySpeedSupplier;
+    m_rotationSupplier = rotationSupplier;
+    m_manualRotationOverride = manualRotationOverride;
 
     m_rotationController = new PIDController(
         AutoConstants.kRotateToTargetP,
@@ -80,38 +90,50 @@ public class ShooterWithAutoAimCommand extends Command {
 
   @Override
   public void execute() {
-    // Determine target position based on alliance
-    Translation2d targetPosition;
-    if (DriverStation.getAlliance().isPresent() &&
-        DriverStation.getAlliance().get() == Alliance.Blue) {
-      targetPosition = AutoConstants.blueTarget;
+    double rotationSpeed;
+
+    // Check if manual rotation override is active (left trigger pressed)
+    if (m_manualRotationOverride.getAsBoolean()) {
+      // Use manual rotation from right stick
+      rotationSpeed = m_rotationSupplier.getAsDouble();
     } else {
-      targetPosition = AutoConstants.redTarget;
+      // Use auto-aim rotation
+      // Determine target position based on alliance
+      Translation2d targetPosition;
+      if (DriverStation.getAlliance().isPresent() &&
+          DriverStation.getAlliance().get() == Alliance.Blue) {
+        targetPosition = AutoConstants.blueTarget;
+      } else {
+        targetPosition = AutoConstants.redTarget;
+      }
+
+      // Get current robot pose
+      Pose2d currentPose = m_swerveDrive.getPose();
+
+      // Calculate the angle to the target
+      double deltaX = targetPosition.getX() - currentPose.getX();
+      double deltaY = targetPosition.getY() - currentPose.getY();
+      double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
+
+      // Get current heading
+      double currentHeading = m_swerveDrive.getHeading();
+
+      // Calculate rotation using PID
+      rotationSpeed = m_rotationController.calculate(currentHeading, targetAngleDegrees);
+
+      // Clamp rotation speed to max velocity
+      rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
+                               Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
+
+      // Scale to max angular speed
+      rotationSpeed = rotationSpeed * DriveConstants.kMaxAngularSpeed;
     }
 
-    // Get current robot pose
-    Pose2d currentPose = m_swerveDrive.getPose();
-
-    // Calculate the angle to the target
-    double deltaX = targetPosition.getX() - currentPose.getX();
-    double deltaY = targetPosition.getY() - currentPose.getY();
-    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
-
-    // Get current heading
-    double currentHeading = m_swerveDrive.getHeading();
-
-    // Calculate rotation using PID
-    double rotationSpeed = m_rotationController.calculate(currentHeading, targetAngleDegrees);
-
-    // Clamp rotation speed to max velocity
-    rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
-                             Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
-
-    // Apply drive command with driver's translational input and automatic rotation
+    // Apply drive command with driver's translational input and rotation (auto or manual)
     m_swerveDrive.drive(
         m_xSpeedSupplier.getAsDouble(),
         m_ySpeedSupplier.getAsDouble(),
-        rotationSpeed * DriveConstants.kMaxAngularSpeed,
+        rotationSpeed,
         true
     );
 

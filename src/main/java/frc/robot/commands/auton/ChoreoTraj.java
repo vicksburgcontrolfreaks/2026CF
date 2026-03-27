@@ -27,7 +27,7 @@ public record ChoreoTraj(
     public static final ChoreoTraj RedRightLoopAndShoot = new ChoreoTraj(
         "RedRightLoopAndShoot",
         OptionalInt.empty(),
-        17.74421,
+        17.85399,
         new Pose2d(13.04865, 7.49901, Rotation2d.fromRadians(3.14159)),
         new Pose2d(13.4485, 5.34845, Rotation2d.fromRadians(0.7854))
     );
