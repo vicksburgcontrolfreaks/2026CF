@@ -93,15 +93,15 @@ public class DriveAndShootCommand extends Command {
 
       if (distanceToTarget < DRIVE_TOLERANCE) {
         // Reached target position
-        m_drive.drive(0, 0, 0, false);
+        m_drive.drive(0, 0, 0, true);
         m_driveComplete = true;
       } else {
-        // Drive toward target with simple proportional control
+        // Drive toward target with simple proportional control (field-relative)
         double speed = Math.min(0.5, distanceToTarget * 2.0);
         double xSpeed = (deltaX / distanceToTarget) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
         double ySpeed = (deltaY / distanceToTarget) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
 
-        m_drive.drive(xSpeed, ySpeed, 0, false);
+        m_drive.drive(xSpeed, ySpeed, 0, true);
       }
     } else {
       // Phase 2: Align and shoot

@@ -62,9 +62,9 @@ public class CollectorSubsystem extends SubsystemBase {
     m_lowerCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_hopperMotor.configure(CollectorConfig.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // Set hopper to down position on enable
+    // Set hopper to 0.07 position on enable (between up and halfway)
     m_hopperMotor.getClosedLoopController().setSetpoint(
-      CollectorConstants.kDownPosition,
+      0.07,
       SparkMax.ControlType.kPosition
     );
 
