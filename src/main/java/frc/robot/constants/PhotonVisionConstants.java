@@ -41,11 +41,11 @@ public class PhotonVisionConstants {
     new Rotation3d(0, Math.toRadians(0), Math.toRadians(-90)) // roll: 0°, pitch: 0°, yaw: -90° (right)
   );
 
-  public static final double[] kSingleTagStdDevs = {1.5, 1.5, 3.0};
+  public static final double[] kSingleTagStdDevs = {1.5, 1.5, 20.0}; // high rotation stdDev to resist single-tag flip ambiguity
   public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
 
   public static final double kMaxAmbiguity = 0.2;
-  public static final double kMaxHeadingDelta = 90.0; // degrees - reject vision poses more than this far from current gyro heading
+  public static final double kMaxHeadingDelta = 45.0; // degrees - reject vision poses more than this far from current gyro heading
   public static final double kMaxTagDistance = 5.0;
   public static final int kMinTagsForHighConfidence = 2;
 

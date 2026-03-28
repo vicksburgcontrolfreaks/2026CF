@@ -534,6 +534,13 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       rotStdDev *= distanceFactor;
     }
 
+    // For single-tag estimates, close range increases rotation ambiguity (pose flip risk).
+    // Scale rotation stdDev up inversely with distance — closer = less rotation trust.
+    if (pose.targetsUsed.size() == 1 && avgDistance < getDistanceFactorThreshold()) {
+      double closeRangeFactor = getDistanceFactorThreshold() / Math.max(avgDistance, 0.1);
+      rotStdDev *= closeRangeFactor;
+    }
+
     return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
   }
 
