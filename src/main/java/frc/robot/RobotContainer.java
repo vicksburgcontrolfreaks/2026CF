@@ -27,6 +27,7 @@ import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
 import frc.robot.commands.shooter.ShooterCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
+import frc.robot.constants.CollectorConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
 import frc.robot.constants.ShooterConstants;
@@ -190,12 +191,25 @@ public class RobotContainer {
 
   private void configureMechanismBindings() {
     // A Button: Run collector in collection mode (forward) - stays on until X or B pressed
+    // Also extends hopper if not already deployed (within tolerance)
     m_mechanismController.a().onTrue(
-      Commands.runOnce(() -> {
-        m_collector.runCollector(false);
-        m_shooterSubsystem.runFloor(false);
-        m_shooterSubsystem.runIndexer(true);
-      }, m_collector, m_shooterSubsystem)
+      Commands.either(
+        // If hopper is not extended (within tolerance), extend it first then run collector
+        new ExtendHopperCommand(m_collector).andThen(
+          Commands.runOnce(() -> {
+            m_collector.runCollector(false);
+            m_shooterSubsystem.runFloor(false);
+            m_shooterSubsystem.runIndexer(true);
+          }, m_collector, m_shooterSubsystem)
+        ),
+        // Otherwise just run collector without extending hopper
+        Commands.runOnce(() -> {
+          m_collector.runCollector(false);
+          m_shooterSubsystem.runFloor(false);
+          m_shooterSubsystem.runIndexer(true);
+        }, m_collector, m_shooterSubsystem),
+        () -> !m_collector.isHopperExtended(0.05) // Use same tolerance as ExtendHopperCommand
+      )
     );
 
     // X Button: Reverse collector (unjam/eject) - stops collector started by A, runs in reverse while held

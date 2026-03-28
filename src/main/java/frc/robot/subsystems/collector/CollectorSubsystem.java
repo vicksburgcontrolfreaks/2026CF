@@ -156,6 +156,16 @@ public class CollectorSubsystem extends SubsystemBase {
     return m_hopperMotor.getAbsoluteEncoder().getPosition();
   }
 
+  /**
+   * Check if hopper is at the extended (down) position within tolerance
+   * @param tolerance Position tolerance in rotations
+   * @return true if hopper is extended within tolerance
+   */
+  public boolean isHopperExtended(double tolerance) {
+    double currentPosition = getHopperPosition();
+    return Math.abs(currentPosition - getDownPosition()) < tolerance;
+  }
+
   // Getters and setters for configurable constants
   public int getMotorCurrentLimit() {
     return m_motorCurrentLimit;
