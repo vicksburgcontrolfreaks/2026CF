@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.auto.DriveAndShootCommand;
+import frc.robot.commands.auto.SimpleDriveAndShootCommand;
 import frc.robot.commands.auton.RedRightLoopAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
@@ -374,6 +375,7 @@ public class RobotContainer {
       m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
       m_autoChooser.addOption("Do Nothing", Commands.none());
       m_autoChooser.addOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
+      m_autoChooser.addOption("Simple Drive and Shoot (No Vision)", new SimpleDriveAndShootCommand(m_swerveDrive, m_shooterSubsystem));
 
       // Add shooter test command
       m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {
