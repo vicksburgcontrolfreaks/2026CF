@@ -45,6 +45,7 @@ public class PhotonVisionConstants {
   public static final double[] kMultiTagStdDevs = {0.5, 0.5, 1.0};
 
   public static final double kMaxAmbiguity = 0.2;
+  public static final double kMaxHeadingDelta = 90.0; // degrees - reject vision poses more than this far from current gyro heading
   public static final double kMaxTagDistance = 5.0;
   public static final int kMinTagsForHighConfidence = 2;
 
