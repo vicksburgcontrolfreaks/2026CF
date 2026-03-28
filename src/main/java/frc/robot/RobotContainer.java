@@ -13,49 +13,47 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.commands.auton.RedRightLoopAndShootCommand;
+// import frc.robot.commands.auton.RedRightLoopAndShootCommand;
+import frc.robot.commands.auton.ExtendBackupAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.HopperHalfwaySequenceCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
-import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.OIConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
-import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
-import choreo.auto.AutoFactory;
+// import choreo.auto.AutoFactory;
 
 
 public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final LEDSubsystem m_ledSubsystem = null;
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
-  private final AutoFactory autoFactory;
+  // private final AutoFactory autoFactory;
   private SendableChooser<Command> m_autoChooser;
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
-      autoFactory = new AutoFactory(
-          m_swerveDrive::getPose,
-          m_swerveDrive::resetOdometry,
-          m_swerveDrive::followTrajectory,
-          false,
-          m_swerveDrive
-      );
+      // autoFactory = new AutoFactory(
+      //     m_swerveDrive::getPose,
+      //     m_swerveDrive::resetOdometry,
+      //     m_swerveDrive::followTrajectory,
+      //     false,
+      //     m_swerveDrive
+      // );
 
       configureAutos();
 
@@ -85,12 +83,6 @@ public class RobotContainer {
         },
         m_swerveDrive)
     );
-
-    if (m_visionSubsystem != null && m_ledSubsystem != null) {
-      m_ledSubsystem.setDefaultCommand(
-        new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
-      );
-    }
   }
 
   private void configureDriverBindings() {
@@ -204,21 +196,28 @@ public class RobotContainer {
     m_autoChooser = new SendableChooser<>();
 
     try {
-      // Create the RedRightLoopAndShoot autonomous command
-      RedRightLoopAndShootCommand redRightLoopAndShoot = new RedRightLoopAndShootCommand(
-        autoFactory,
+      // Create the RedRightLoopAndShoot autonomous command (CHOREO - COMMENTED OUT)
+      // RedRightLoopAndShootCommand redRightLoopAndShoot = new RedRightLoopAndShootCommand(
+      //   autoFactory,
+      //   m_collector,
+      //   m_shooterSubsystem,
+      //   m_visionSubsystem
+      // );
+
+      // Create the ExtendBackupAndShoot autonomous command
+      ExtendBackupAndShootCommand extendBackupAndShoot = new ExtendBackupAndShootCommand(
         m_collector,
-        m_shooterSubsystem,
-        m_visionSubsystem
+        m_swerveDrive,
+        m_shooterSubsystem
       );
 
-      // Add the routine to the chooser
-      m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
+      // Add the routines to the chooser
+      m_autoChooser.setDefaultOption("ExtendBackupAndShoot", extendBackupAndShoot);
+      // m_autoChooser.addOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
       m_autoChooser.addOption("Do Nothing", Commands.none());
 
     } catch (Exception e) {
-      System.err.println("Failed to load Choreo trajectory: " + e.getMessage());
-      System.err.println("Make sure you have .traj files in src/main/deploy/choreo/");
+      System.err.println("Failed to load autonomous command: " + e.getMessage());
       e.printStackTrace();
       m_autoChooser.setDefaultOption("Do Nothing", Commands.none());
     }
@@ -237,10 +236,6 @@ public class RobotContainer {
 
   public PhotonVisionSubsystem getVisionSubsystem() {
     return m_visionSubsystem;
-  }
-
-  public LEDSubsystem getLEDSubsystem() {
-    return m_ledSubsystem;
   }
 
   public ShooterSubsystem getShooterSubsystem() {

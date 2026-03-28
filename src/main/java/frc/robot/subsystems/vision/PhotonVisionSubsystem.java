@@ -719,4 +719,52 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   public void setMultiTagStdDevs(double[] stdDevs) {
     m_multiTagStdDevs = stdDevs;
   }
+
+  /**
+   * Get the current field-relative rotation estimate from vision.
+   * This uses the pose estimator's current best estimate based on AprilTags.
+   * Returns null if no valid pose estimate is available.
+   *
+   * @return The estimated field-relative rotation, or null if unavailable
+   */
+  public Rotation2d getVisionRotationEstimate() {
+    // Collect all valid poses from cameras
+    List<WeightedPose> validPoses = new ArrayList<>();
+
+    for (CameraData camData : m_cameras) {
+      // Skip if no recent result
+      if (camData.lastResult == null || !camData.lastResult.hasTargets()) {
+        continue;
+      }
+
+      // Set reference pose for the estimator
+      camData.poseEstimator.setReferencePose(m_swerveDrive.getPose());
+
+      // Get pose estimate from this camera
+      Optional<EstimatedRobotPose> poseResult = camData.poseEstimator.update(camData.lastResult);
+
+      if (poseResult.isPresent()) {
+        EstimatedRobotPose pose = poseResult.get();
+
+        // Check if pose passes quality filters
+        String rejectionReason = getVisionRejectionReason(pose);
+        if (rejectionReason == null) {
+          // Calculate confidence for this pose
+          double confidence = calculatePoseConfidence(pose, camData.lastResult);
+
+          // Add to valid poses list
+          validPoses.add(new WeightedPose(pose, confidence, camData.name));
+        }
+      }
+    }
+
+    // If we have valid poses, fuse them and return the rotation
+    if (!validPoses.isEmpty()) {
+      FusedPoseResult fusedResult = fusePoses(validPoses);
+      return fusedResult.fusedPose.getRotation();
+    }
+
+    // No valid vision data available
+    return null;
+  }
 }

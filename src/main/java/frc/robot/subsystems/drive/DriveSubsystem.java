@@ -438,6 +438,33 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   /**
+   * Sets the gyro heading to a specific field-relative angle.
+   * This is useful for aligning the gyro with vision-based pose estimation.
+   *
+   * @param fieldRelativeAngle The desired field-relative angle in Rotation2d
+   */
+  public void setHeading(Rotation2d fieldRelativeAngle) {
+    // Get current position to preserve it
+    Pose2d currentPose = getPose();
+
+    // Reset the gyro to 0
+    m_gyro.reset();
+
+    // Update pose estimator with the desired field-relative angle
+    // while keeping the same position
+    m_poseEstimator.resetPosition(
+        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+        new SwerveModulePosition[] {
+            m_frontLeft.getPosition(),
+            m_frontRight.getPosition(),
+            m_rearLeft.getPosition(),
+            m_rearRight.getPosition()
+        },
+        new Pose2d(currentPose.getTranslation(), fieldRelativeAngle)
+    );
+  }
+
+  /**
    * Returns the heading of the robot.
    *
    * @return the robot's heading in degrees, from -180 to 180

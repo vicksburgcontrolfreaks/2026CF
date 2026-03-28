@@ -30,6 +30,20 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    // Use vision to align field-oriented drive with actual field orientation
+    // This allows the robot to start in any orientation and still have accurate field-oriented control
+    edu.wpi.first.math.geometry.Rotation2d visionRotation =
+        m_robotContainer.getVisionSubsystem().getVisionRotationEstimate();
+
+    if (visionRotation != null) {
+      // Vision has a valid rotation estimate - use it to set the gyro heading
+      m_robotContainer.getSwerveDrive().setHeading(visionRotation);
+      System.out.println("Gyro aligned to field using vision: " + visionRotation.getDegrees() + " degrees");
+    } else {
+      // No vision estimate available - warn the user
+      System.out.println("WARNING: No AprilTags visible - field orientation will be relative to robot starting position");
+    }
+
     // Start shooter spinning at the beginning of autonomous
     m_robotContainer.getShooterSubsystem().activateShooter();
 
