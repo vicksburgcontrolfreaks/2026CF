@@ -391,10 +391,8 @@ public class RobotContainer {
         m_visionSubsystem
       );
 
-      // Add the routine to the chooser
-      m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
       m_autoChooser.addOption("Do Nothing", Commands.none());
-      m_autoChooser.addOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
+      m_autoChooser.setDefaultOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
 
       // Add shooter test command
       m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {
