@@ -243,8 +243,22 @@ public class RobotContainer {
       new ShooterWithAutoAimCommand(
         m_shooterSubsystem,
         m_swerveDrive,
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
+        () -> {
+          // For Red alliance, flip X/Y inputs so "forward" drives toward blue alliance (X=0)
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+          return -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier() * allianceFlip;
+        },
+        () -> {
+          // For Red alliance, flip X/Y inputs so "forward" drives toward blue alliance (X=0)
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+          return -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier() * allianceFlip;
+        },
+        () -> -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * getSpeedMultiplier(),
+        () -> m_driverController.leftTrigger().getAsBoolean()
       )
     );
 
