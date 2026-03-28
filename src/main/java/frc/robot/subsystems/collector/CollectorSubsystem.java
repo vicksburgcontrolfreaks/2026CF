@@ -62,11 +62,8 @@ public class CollectorSubsystem extends SubsystemBase {
     m_lowerCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_hopperMotor.configure(CollectorConfig.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // Set hopper to 0.07 position on enable (between up and halfway)
-    m_hopperMotor.getClosedLoopController().setSetpoint(
-      0.07,
-      SparkMax.ControlType.kPosition
-    );
+    // Extend hopper on enable
+    extendHopper();
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Collector");
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
