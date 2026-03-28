@@ -56,6 +56,10 @@ public class DriveSubsystem extends SubsystemBase {
   // The gyro sensor
   private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
 
+  // Gyro offset for field-relative orientation
+  // This allows the robot to start in any orientation and align to field coordinates
+  private double m_gyroOffsetDegrees = 0.0;
+
   // Field2d for visualizing robot pose in Glass
   private final Field2d m_field = new Field2d();
 
@@ -73,9 +77,10 @@ public class DriveSubsystem extends SubsystemBase {
   private final DoublePublisher m_currentXPub;
   private final DoublePublisher m_currentYPub;
   // Pose estimator for tracking robot pose with vision fusion
+  // Initialized with zero rotation - will be set correctly on first periodic() call
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
       DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+      Rotation2d.fromDegrees(0),
       new SwerveModulePosition[] {
           m_frontLeft.getPosition(),
           m_frontRight.getPosition(),
@@ -194,7 +199,7 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Update the pose estimator in the periodic block
     m_poseEstimator.update(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+        getRotation2d(),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -344,7 +349,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     m_poseEstimator.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+        getRotation2d(),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -382,9 +387,9 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
     // Create chassis speeds from inputs
+    // Use corrected rotation that includes gyro offset for proper field-relative control
     ChassisSpeeds speeds = fieldRelative
-        ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
-            Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)))
+        ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot, getRotation2d())
         : new ChassisSpeeds(xSpeed, ySpeed, rot);
 
     // Discretize chassis speeds to prevent skew/drift during motion
@@ -435,25 +440,38 @@ public class DriveSubsystem extends SubsystemBase {
   /** Zeroes the heading of the robot. */
   public void zeroHeading() {
     m_gyro.reset();
+    m_gyroOffsetDegrees = 0.0;
+  }
+
+  /**
+   * Gets the current rotation of the robot with gyro offset applied.
+   * This returns the field-relative rotation when setHeading() has been called.
+   *
+   * @return The corrected rotation as Rotation2d
+   */
+  private Rotation2d getRotation2d() {
+    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY) + m_gyroOffsetDegrees);
   }
 
   /**
    * Sets the gyro heading to a specific field-relative angle.
    * This is useful for aligning the gyro with vision-based pose estimation.
+   * Allows the robot to start in any orientation and align to field coordinates.
    *
    * @param fieldRelativeAngle The desired field-relative angle in Rotation2d
    */
   public void setHeading(Rotation2d fieldRelativeAngle) {
+    // Calculate the offset needed to make current gyro reading equal to desired field angle
+    double currentGyroAngle = m_gyro.getAngle(IMUAxis.kY);
+    m_gyroOffsetDegrees = fieldRelativeAngle.getDegrees() - currentGyroAngle;
+
     // Get current position to preserve it
     Pose2d currentPose = getPose();
-
-    // Reset the gyro to 0
-    m_gyro.reset();
 
     // Update pose estimator with the desired field-relative angle
     // while keeping the same position
     m_poseEstimator.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)),
+        getRotation2d(),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -470,7 +488,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY)).getDegrees();
+    return getRotation2d().getDegrees();
   }
 
   /**
