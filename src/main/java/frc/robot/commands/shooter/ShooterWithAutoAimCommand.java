@@ -97,6 +97,12 @@ public class ShooterWithAutoAimCommand extends Command {
     double deltaY = targetPosition.getY() - currentPose.getY();
     double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
 
+    // Add 180 degrees to point the BACK of the robot at the target (shooter is at the back)
+    targetAngleDegrees = (targetAngleDegrees + 180) % 360;
+    if (targetAngleDegrees > 180) {
+      targetAngleDegrees -= 360;
+    }
+
     // Get current heading
     double currentHeading = m_swerveDrive.getHeading();
 
