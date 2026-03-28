@@ -35,6 +35,7 @@ public class ShooterWithAutoAimCommand extends Command {
   private final DoubleSupplier m_xSpeedSupplier;
   private final DoubleSupplier m_ySpeedSupplier;
   private final PIDController m_rotationController;
+  private boolean m_feedingStarted = false;
 
   /**
    * Creates a new ShooterWithAutoAimCommand.
@@ -72,10 +73,11 @@ public class ShooterWithAutoAimCommand extends Command {
     // Reset the rotation PID controller
     m_rotationController.reset();
 
-    // Shooter wheels are already spinning from autonomousInit()
-    // Just activate the indexer and floor to feed game pieces
-    m_shooter.runIndexer(false);
-    m_shooter.runFloor(false);
+    // Reset feeding state
+    m_feedingStarted = false;
+
+    // Shooter wheels are already spinning from teleopInit()
+    // Don't start feeding yet - wait for alignment in execute()
   }
 
   @Override
@@ -121,7 +123,19 @@ public class ShooterWithAutoAimCommand extends Command {
         true
     );
 
-    // Continue feeding - motors stay running
+    // Check if we should feed balls: aligned AND at target RPM
+    boolean isAligned = m_rotationController.atSetpoint();
+    boolean isAtRPM = m_shooter.isReadyToFeed();
+    boolean shouldFeed = isAligned && isAtRPM;
+
+    if (shouldFeed && !m_feedingStarted) {
+      // Start feeding
+      m_shooter.runIndexer(false);
+      m_shooter.runFloor(false);
+      m_feedingStarted = true;
+    }
+    // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
+    // The feeding will continue until the command ends (trigger released)
   }
 
   @Override
