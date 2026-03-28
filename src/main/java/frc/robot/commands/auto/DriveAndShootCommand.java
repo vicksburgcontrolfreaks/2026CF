@@ -104,15 +104,27 @@ public class DriveAndShootCommand extends Command {
         m_drive.drive(xSpeed, ySpeed, 0, true);
       }
     } else {
-      // Phase 2: Shoot
-      // Robot is already facing alliance station (vision corrected orientation during disabled)
-      // No rotation needed - just wait for RPM and shoot
-      m_drive.drive(0, 0, 0, true);
+      // Phase 2: Aim and shoot (same logic as ShooterWithAutoAimCommand)
+      boolean isRed = DriverStation.getAlliance().isPresent() &&
+                      DriverStation.getAlliance().get() == Alliance.Red;
+      Translation2d targetPosition = isRed ? AutoConstants.redTarget : AutoConstants.blueTarget;
 
-      // Start shooting when at target RPM
+      double deltaX = targetPosition.getX() - currentPose.getX();
+      double deltaY = targetPosition.getY() - currentPose.getY();
+      double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
+      targetAngleDegrees = (targetAngleDegrees + 180) % 360;
+      if (targetAngleDegrees > 180) targetAngleDegrees -= 360;
+
+      double rotationSpeed = m_rotationController.calculate(m_drive.getHeading(), targetAngleDegrees);
+      rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
+                     Math.min( AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
+
+      m_drive.drive(0, 0, rotationSpeed * DriveConstants.kMaxAngularSpeed, true);
+
+      boolean isAligned = m_rotationController.atSetpoint();
       boolean isAtRPM = m_shooter.isReadyToFeed();
 
-      if (isAtRPM && !m_shootingStarted) {
+      if (isAligned && isAtRPM && !m_shootingStarted) {
         m_shooter.runIndexer(false);
         m_shooter.runFloor(false);
         m_collector.runLowerCollectorRPM(1000);
