@@ -155,6 +155,13 @@ public class CollectorSubsystem extends SubsystemBase {
     );
   }
 
+  public void setHopperPosition(double position) {
+    m_hopperMotor.getClosedLoopController().setSetpoint(
+      position,
+      SparkMax.ControlType.kPosition
+    );
+  }
+
   public double getHopperPosition() {
     return m_hopperMotor.getAbsoluteEncoder().getPosition();
   }

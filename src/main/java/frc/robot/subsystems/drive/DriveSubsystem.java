@@ -27,6 +27,7 @@ import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.TelemetryConstants;
 import choreo.trajectory.SwerveSample;
@@ -405,6 +406,24 @@ public class DriveSubsystem extends SubsystemBase {
     m_frontRight.setDesiredState(swerveModuleStates[1]);
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
     m_rearRight.setDesiredState(swerveModuleStates[3]);
+  }
+
+  /**
+   * Returns true if the back of the robot is pointed at the speaker within
+   * the rotation tolerance defined in AutoConstants.
+   */
+  public boolean isAlignedToSpeaker() {
+    boolean isRed = DriverStation.getAlliance().isPresent() &&
+                    DriverStation.getAlliance().get() == DriverStation.Alliance.Red;
+    var target = isRed ? AutoConstants.redTarget : AutoConstants.blueTarget;
+    Pose2d pose = getPose();
+    double dx = target.getX() - pose.getX();
+    double dy = target.getY() - pose.getY();
+    double targetAngle = Math.toDegrees(Math.atan2(dy, dx)) + 180;
+    if (targetAngle > 180) targetAngle -= 360;
+    double error = Math.abs(pose.getRotation().getDegrees() - targetAngle);
+    if (error > 180) error = 360 - error;
+    return error <= AutoConstants.kRotateToTargetTolerance;
   }
 
   /**

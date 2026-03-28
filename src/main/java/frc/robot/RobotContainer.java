@@ -16,7 +16,10 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.auto.DriveAndShootCommand;
+import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
+import frc.robot.commands.auton.BlueTwoPieceAutoCommand;
 import frc.robot.commands.auton.RedRightLoopAndShootCommand;
+import frc.robot.commands.auton.RedTwoPieceAutoCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
@@ -24,15 +27,12 @@ import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
-import frc.robot.commands.shooter.ShooterCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
-import frc.robot.constants.DriveConstants;
 import frc.robot.constants.OIConstants;
 import frc.robot.constants.ShooterConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
-import frc.robot.subsystems.climber.ClimberSubsystem;
 import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
@@ -49,7 +49,6 @@ public class RobotContainer {
   private final LEDSubsystem m_ledSubsystem = null;
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
-  private final ClimberSubsystem m_climber = null;
 
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
@@ -151,6 +150,13 @@ public class RobotContainer {
       m_swerveDrive.runOnce(() -> m_swerveDrive.zeroHeading())
     );
 
+
+    m_driverController.x()
+      .and(() -> m_swerveDrive.isAlignedToSpeaker())
+      .whileTrue(
+        m_swerveDrive.runOnce(() -> m_swerveDrive.setX()).andThen(Commands.idle(m_swerveDrive))
+      );
+
     m_driverController.y().onTrue(
       Commands.either(
         new RotateToTargetCommand(m_swerveDrive, AutoConstants.blueTarget),
@@ -223,6 +229,18 @@ public class RobotContainer {
 
     m_mechanismController.povDown().onTrue(
       new ExtendHopperCommand(m_collector)
+    );
+
+    // Manual shoot — shooter already spinning at 3500, just feed immediately, no alignment/vision needed
+    m_mechanismController.leftTrigger().whileTrue(
+      Commands.run(() -> {
+        m_shooterSubsystem.runIndexer(false);
+        m_shooterSubsystem.runFloor(false);
+      }, m_shooterSubsystem)
+      .finallyDo(() -> {
+        m_shooterSubsystem.StopIndexer();
+        m_shooterSubsystem.StopFloor();
+      })
     );
 
     m_mechanismController.rightTrigger().whileTrue(
@@ -381,6 +399,9 @@ public class RobotContainer {
       m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
       m_autoChooser.addOption("Do Nothing", Commands.none());
       m_autoChooser.addOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
+      m_autoChooser.addOption("Drive and Shoot (No Camera)", new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
+      m_autoChooser.addOption("Red Two Piece", new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
+      m_autoChooser.addOption("Blue Two Piece", new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
 
       // Add shooter test command
       m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {

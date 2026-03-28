@@ -76,9 +76,8 @@ public class DriveAndShootCommand extends Command {
       m_startPose.getRotation()
     );
 
-    // Activate shooter
-    m_shooter.activateShooter();
-    m_shooter.enableFullRPM();
+    // Shooter is already spinning from autonomousInit() at capped RPM (3500)
+    // enableFullRPM() is called only when aiming begins in Phase 2
   }
 
   @Override
@@ -120,6 +119,9 @@ public class DriveAndShootCommand extends Command {
                      Math.min( AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
 
       m_drive.drive(0, 0, rotationSpeed * DriveConstants.kMaxAngularSpeed, true);
+
+      // Remove RPM cap now that we're aiming — let distance-based RPM take over
+      m_shooter.enableFullRPM();
 
       boolean isAligned = m_rotationController.atSetpoint();
       boolean isAtRPM = m_shooter.isReadyToFeed();
