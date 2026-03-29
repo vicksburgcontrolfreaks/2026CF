@@ -43,7 +43,7 @@ public class BlueTwoPieceAutoCommand extends Command {
   private final CollectorSubsystem m_collector;
   private final PIDController m_rotationController;
 
-  private static final Translation2d PICKUP_POSITION = new Translation2d(0.51,  0.68);
+  private static final Translation2d PICKUP_POSITION = new Translation2d(0.61,  0.68);
   private static final Translation2d SHOOT_POSITION  = new Translation2d(2.46,  2.69);
   private static final double DRIVE_TOLERANCE       = 0.15; // meters
   private static final double FIRST_SHOOT_DURATION  = 3.0;  // seconds
@@ -112,7 +112,7 @@ public class BlueTwoPieceAutoCommand extends Command {
         break;
 
       case DRIVE_TO_PICKUP:
-        driveToWaypoint(pose, PICKUP_POSITION, 0.0, t);
+        driveToWaypoint(pose, PICKUP_POSITION, 180.0, t);
         break;
 
       case WAIT_AT_PICKUP:
@@ -130,7 +130,7 @@ public class BlueTwoPieceAutoCommand extends Command {
         break;
 
       case DRIVE_TO_SHOOT:
-        driveToWaypoint(pose, SHOOT_POSITION, 0.0, t);
+        driveToWaypoint(pose, SHOOT_POSITION, 180.0, t);
         break;
 
       case SHOOT_SECOND:
