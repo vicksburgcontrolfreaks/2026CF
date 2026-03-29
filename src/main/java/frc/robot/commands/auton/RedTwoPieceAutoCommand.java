@@ -49,13 +49,13 @@ public class RedTwoPieceAutoCommand extends Command {
   private static final double FIRST_SHOOT_DURATION  = 3.0;  // seconds
   private static final double PICKUP_WAIT_DURATION  = 3.0;  // seconds
   private static final double SECOND_SHOOT_DURATION = 3.0;  // seconds
-  private static final double HOPPER_RETRACT_DELAY  = 2.0;  // seconds after indexers start
 
   private Phase m_phase;
   private double m_phaseStartTime;
   private boolean m_shootingStarted;
   private double m_shootingStartTime;
-  private boolean m_hopperSet;
+  private boolean m_hopperPopHigh;
+  private double m_lastPopTime;
 
   public RedTwoPieceAutoCommand(DriveSubsystem drive, ShooterSubsystem shooter,
                                 CollectorSubsystem collector) {
@@ -80,7 +80,8 @@ public class RedTwoPieceAutoCommand extends Command {
     m_phaseStartTime = now();
     m_shootingStarted = false;
     m_shootingStartTime = 0;
-    m_hopperSet = false;
+    m_hopperPopHigh = false;
+    m_lastPopTime = 0;
     m_rotationController.reset();
 
     // Shooter already spinning from autonomousInit() at capped RPM (3500)
@@ -120,7 +121,8 @@ public class RedTwoPieceAutoCommand extends Command {
         if ((t - m_phaseStartTime) >= PICKUP_WAIT_DURATION) {
           m_collector.stopCollector();
           m_shootingStarted = false;
-          m_hopperSet = false;
+          m_hopperPopHigh = false;
+          m_lastPopTime = 0;
           m_rotationController.reset();
           // Shooter already running at cap — enableFullRPM() called in aimAndShoot()
           m_phase = Phase.DRIVE_TO_SHOOT;
@@ -134,11 +136,6 @@ public class RedTwoPieceAutoCommand extends Command {
 
       case SHOOT_SECOND:
         aimAndShoot(pose);
-        if (m_shootingStarted && !m_hopperSet &&
-            (t - m_shootingStartTime) >= HOPPER_RETRACT_DELAY) {
-          m_collector.setHopperPosition(0.07);
-          m_hopperSet = true;
-        }
         if (m_shootingStarted && (t - m_shootingStartTime) >= SECOND_SHOOT_DURATION) {
           m_phase = Phase.DONE;
         }
@@ -172,9 +169,22 @@ public class RedTwoPieceAutoCommand extends Command {
     if (!m_shootingStarted && m_rotationController.atSetpoint() && m_shooter.isReadyToFeed()) {
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
-      m_collector.runLowerCollectorRPM(1000);
+      m_collector.runCollector(false);
+      m_collector.setHopperPosition(0.02);
+      m_hopperPopHigh = false;
+      m_lastPopTime = now();
       m_shootingStarted = true;
       m_shootingStartTime = now();
+    }
+
+    // Pop hopper while shooting
+    if (m_shootingStarted) {
+      double t = now();
+      if (t - m_lastPopTime >= 0.25) {
+        m_hopperPopHigh = !m_hopperPopHigh;
+        m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
+        m_lastPopTime = t;
+      }
     }
   }
 

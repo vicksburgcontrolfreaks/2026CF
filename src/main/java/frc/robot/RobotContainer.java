@@ -8,6 +8,7 @@ import java.util.Set;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -232,14 +233,29 @@ public class RobotContainer {
     );
 
     // Manual shoot — shooter already spinning at 3500, just feed immediately, no alignment/vision needed
+    Timer manualShootHopperTimer = new Timer();
+    boolean[] manualHopperPopHigh = {false};
     m_mechanismController.leftTrigger().whileTrue(
-      Commands.run(() -> {
+      Commands.runOnce(() -> {
+        manualHopperPopHigh[0] = true;
+        m_collector.setHopperPosition(0.19);
+        manualShootHopperTimer.reset();
+        manualShootHopperTimer.start();
+      })
+      .andThen(Commands.run(() -> {
         m_shooterSubsystem.runIndexer(false);
         m_shooterSubsystem.runFloor(false);
-      }, m_shooterSubsystem)
+        m_collector.runCollector(false);
+        if (manualShootHopperTimer.advanceIfElapsed(0.25)) {
+          manualHopperPopHigh[0] = !manualHopperPopHigh[0];
+          m_collector.setHopperPosition(manualHopperPopHigh[0] ? 0.19 : 0.02);
+        }
+      }, m_shooterSubsystem, m_collector))
       .finallyDo(() -> {
         m_shooterSubsystem.StopIndexer();
         m_shooterSubsystem.StopFloor();
+        m_collector.stopCollector();
+        manualShootHopperTimer.stop();
       })
     );
 
@@ -452,6 +468,10 @@ public class RobotContainer {
 
   public ShooterSubsystem getShooterSubsystem() {
     return m_shooterSubsystem;
+  }
+
+  public CollectorSubsystem getCollector() {
+    return m_collector;
   }
 
   /**

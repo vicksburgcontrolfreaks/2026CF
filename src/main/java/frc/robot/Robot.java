@@ -62,6 +62,9 @@ public class Robot extends TimedRobot {
 
     // Spin up shooter on teleop enable (uses current before driving starts)
     m_robotContainer.spinUpShooter();
+
+    // Deploy hopper to down position on teleop enable
+    m_robotContainer.getCollector().extendHopper();
   }
 
   @Override

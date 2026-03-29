@@ -22,7 +22,7 @@ public class CollectorConstants {
   public static final double kHopperI = 0.001;
   public static final double kHopperD = 0.0;
 
-  // Hopper motion limits for slow retraction during shooting
-  public static final double kHopperMaxVelocity = 0.5;  // Max velocity for slow motion
-  public static final double kHopperMaxAcceleration = 1.0;  // Max acceleration for slow motion
+  // Hopper MAXMotion limits
+  public static final double kHopperMaxVelocity = 80.0;     // mechanism RPM (60:1 gearing)
+  public static final double kHopperMaxAcceleration = 160.0; // mechanism RPM/s
 }

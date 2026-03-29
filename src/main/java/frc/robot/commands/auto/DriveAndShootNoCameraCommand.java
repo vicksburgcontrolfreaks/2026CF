@@ -26,6 +26,8 @@ public class DriveAndShootNoCameraCommand extends Command {
   private boolean m_driveComplete = false;
   private boolean m_shootingStarted = false;
   private double m_shootingStartTime = 0;
+  private boolean m_hopperPopHigh = false;
+  private double m_lastPopTime = 0;
 
   private static final double DRIVE_TOLERANCE    = 0.1;  // meters
   private static final double SHOOT_RPM          = 3500;
@@ -77,9 +79,21 @@ public class DriveAndShootNoCameraCommand extends Command {
       if (!m_shootingStarted && m_shooter.isReadyToFeed()) {
         m_shooter.runIndexer(false);
         m_shooter.runFloor(false);
-        m_collector.runLowerCollectorRPM(1000);
+        m_collector.runCollector(false);
+        m_collector.setHopperPosition(0.02);
+        m_hopperPopHigh = false;
+        m_lastPopTime = System.currentTimeMillis() / 1000.0;
         m_shootingStarted = true;
         m_shootingStartTime = System.currentTimeMillis() / 1000.0;
+      }
+
+      if (m_shootingStarted) {
+        double t = System.currentTimeMillis() / 1000.0;
+        if (t - m_lastPopTime >= 0.25) {
+          m_hopperPopHigh = !m_hopperPopHigh;
+          m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
+          m_lastPopTime = t;
+        }
       }
     }
   }
