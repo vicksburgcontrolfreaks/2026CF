@@ -201,7 +201,7 @@ public class RobotContainer {
       Commands.runOnce(() -> {
         m_collector.runCollector(false);
         m_shooterSubsystem.runFloor(false);
-        m_shooterSubsystem.runIndexer(true);
+        m_shooterSubsystem.StopIndexer();
       }, m_collector, m_shooterSubsystem)
     );
 
@@ -241,7 +241,7 @@ public class RobotContainer {
         m_collector.setHopperPosition(0.19);
         manualShootHopperTimer.reset();
         manualShootHopperTimer.start();
-      })
+      }, m_collector)
       .andThen(Commands.run(() -> {
         m_shooterSubsystem.runIndexer(false);
         m_shooterSubsystem.runFloor(false);

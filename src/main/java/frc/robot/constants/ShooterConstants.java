@@ -26,7 +26,7 @@ public class ShooterConstants {
 
   // max rpm 6784+
   public static final double kShooterTargetRPM = 3000;
-  public static final double kFloorMotorTargetRPM = -1000;
+  public static final double kFloorMotorTargetRPM = -1200;
   public static final double kIndexerMotorTargetRPM = 1000;
 
   // Pre-spin RPM cap (used when shooter active but not shooting)
