@@ -263,6 +263,7 @@ public class RobotContainer {
       new ShooterWithAutoAimCommand(
         m_shooterSubsystem,
         m_swerveDrive,
+        m_collector,
         () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
         () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
       )
