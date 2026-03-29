@@ -20,6 +20,7 @@ import frc.robot.commands.auto.DriveAndShootCommand;
 import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
 import frc.robot.commands.auton.BlueTwoPieceAutoCommand;
 import frc.robot.commands.auton.RedRightLoopAndShootCommand;
+import frc.robot.commands.auton.RedCollectAndShootCommand;
 import frc.robot.commands.auton.RedTwoPieceAutoCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
@@ -419,6 +420,7 @@ public class RobotContainer {
       m_autoChooser.addOption("Drive and Shoot (No Camera)", new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
       m_autoChooser.addOption("Red Two Piece", new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
       m_autoChooser.addOption("Blue Two Piece", new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
+      m_autoChooser.addOption("Red Collect and Shoot", new RedCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
 
       // Add shooter test command
       m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {

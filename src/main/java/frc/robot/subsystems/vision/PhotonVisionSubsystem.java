@@ -491,13 +491,17 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Reject poses whose heading is wildly different from the current gyro heading.
     // Catches single-tag 180° flip ambiguity while still allowing vision to correct real drift.
-    double visionHeading = pose.estimatedPose.toPose2d().getRotation().getDegrees();
-    double gyroHeading = m_swerveDrive.getHeading();
-    double headingDelta = Math.abs(visionHeading - gyroHeading) % 360;
-    if (headingDelta > 180) headingDelta = 360 - headingDelta;
-    if (headingDelta > PhotonVisionConstants.kMaxHeadingDelta) {
-      return String.format("Heading delta too large (%.1f° > %.1f°)",
-        headingDelta, PhotonVisionConstants.kMaxHeadingDelta);
+    // Skip this check when in vision pose reset mode (disabled) — gyro is untrusted at boot,
+    // and we want 100% vision trust to seed the pose before the match starts.
+    if (!m_useVisionPoseReset) {
+      double visionHeading = pose.estimatedPose.toPose2d().getRotation().getDegrees();
+      double gyroHeading = m_swerveDrive.getHeading();
+      double headingDelta = Math.abs(visionHeading - gyroHeading) % 360;
+      if (headingDelta > 180) headingDelta = 360 - headingDelta;
+      if (headingDelta > PhotonVisionConstants.kMaxHeadingDelta) {
+        return String.format("Heading delta too large (%.1f° > %.1f°)",
+          headingDelta, PhotonVisionConstants.kMaxHeadingDelta);
+      }
     }
 
     return null; // Accept measurement
