@@ -17,21 +17,21 @@ import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 
 /**
- * Red alliance collect-and-shoot autonomous.
+ * Red alliance RIGHT collect-and-shoot autonomous (upper field, y near 7.62).
  *
  * Sequence:
  * 1. Drive to (10.69, 7.62) @ 180° — deploy hopper, start collector
  * 2. Drive to (8.78,  6.54) @ -90° — collector running
- * 3. Drive to (8.78,  4.54) @ -90° — collecting balls
- * 4. Stop collector, retract hopper, drive to (10.69, 7.50) @ 0°
+ * 3. Drive to (8.78,  4.54) @ -90° — collecting balls; stop collector on arrival
+ * 4. Drive to (10.69, 7.50) @ 0°
  * 5. Drive to (12.88, 7.62) @ 0°
  * 6. Drive to (13.33, 5.62) @ 60°
  * 7. Aim and shoot (4 sec)
- * 8. Drive to outpost (15.88, 7.39) @ 0° — red alliance wall minus 26 inches
+ * 8. Drive to outpost (15.88, 7.39) @ 0° — red wall minus 26 inches
  * 9. Wait 2 seconds
  * 10. Drive back to (13.33, 5.62) @ 60°, aim and shoot again (4 sec)
  */
-public class RedCollectAndShootCommand extends Command {
+public class RedRightCollectAndShootCommand extends Command {
 
   private enum Phase {
     DRIVE_TO_COLLECTOR_DEPLOY,
@@ -59,10 +59,10 @@ public class RedCollectAndShootCommand extends Command {
   private static final Translation2d MIDPOINT_POS         = new Translation2d(10.69, 7.50);
   private static final Translation2d TRANSIT_POS          = new Translation2d(12.88, 7.62);
   private static final Translation2d SHOOT_POS            = new Translation2d(13.33, 5.62);
-  private static final Translation2d OUTPOST_POS          = new Translation2d(15.88, 7.39); // red wall minus 26 inches
-  private static final double DRIVE_TOLERANCE             = 0.15; // meters
-  private static final double SHOOT_DURATION              = 4.0;  // seconds
-  private static final double OUTPOST_WAIT_DURATION       = 2.0;  // seconds
+  private static final Translation2d OUTPOST_POS          = new Translation2d(15.88, 7.39);
+  private static final double DRIVE_TOLERANCE             = 0.15;
+  private static final double SHOOT_DURATION              = 4.0;
+  private static final double OUTPOST_WAIT_DURATION       = 2.0;
 
   private Phase m_phase;
   private boolean m_shootingStarted;
@@ -71,8 +71,8 @@ public class RedCollectAndShootCommand extends Command {
   private boolean m_hopperPopHigh;
   private double m_lastPopTime;
 
-  public RedCollectAndShootCommand(DriveSubsystem drive, ShooterSubsystem shooter,
-                                   CollectorSubsystem collector) {
+  public RedRightCollectAndShootCommand(DriveSubsystem drive, ShooterSubsystem shooter,
+                                        CollectorSubsystem collector) {
     m_drive = drive;
     m_shooter = shooter;
     m_collector = collector;
@@ -96,7 +96,6 @@ public class RedCollectAndShootCommand extends Command {
     m_hopperPopHigh = false;
     m_lastPopTime = 0;
     m_rotationController.reset();
-    // Shooter already spinning from autonomousInit() at capped RPM
   }
 
   @Override
@@ -109,7 +108,6 @@ public class RedCollectAndShootCommand extends Command {
       case DRIVE_TO_COLLECTOR_DEPLOY:
         driveToWaypoint(pose, COLLECTOR_DEPLOY_POS, 180.0, Phase.DRIVE_TO_COLLECT_ALIGN);
         if (m_phase == Phase.DRIVE_TO_COLLECT_ALIGN) {
-          // Just transitioned — deploy hopper and start collector
           m_collector.extendHopper();
           m_collector.runCollector(false);
         }
@@ -122,7 +120,6 @@ public class RedCollectAndShootCommand extends Command {
       case DRIVE_COLLECT:
         driveToWaypoint(pose, COLLECT_POS, -90.0, Phase.DRIVE_TO_MIDPOINT);
         if (m_phase == Phase.DRIVE_TO_MIDPOINT) {
-          // Just transitioned — stop collector, leave hopper down
           m_collector.stopCollector();
         }
         break;
@@ -186,7 +183,6 @@ public class RedCollectAndShootCommand extends Command {
     }
   }
 
-  /** Drive toward waypoint with heading control; transition to nextPhase on arrival. */
   private void driveToWaypoint(Pose2d pose, Translation2d waypoint, double targetHeading,
                                 Phase nextPhase) {
     double dx = waypoint.getX() - pose.getX();
@@ -212,7 +208,6 @@ public class RedCollectAndShootCommand extends Command {
     }
   }
 
-  /** Rotate to point back of robot at speaker, feed when aligned. */
   private void aimAndShoot(Pose2d pose) {
     boolean isRed = DriverStation.getAlliance().isPresent() &&
                     DriverStation.getAlliance().get() == Alliance.Red;
