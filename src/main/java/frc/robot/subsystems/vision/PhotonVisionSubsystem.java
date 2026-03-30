@@ -489,6 +489,17 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       }
     }
 
+    // Reject poses whose heading is wildly different from the current gyro heading.
+    // Catches single-tag 180° flip ambiguity while still allowing vision to correct real drift.
+    double visionHeading = pose.estimatedPose.toPose2d().getRotation().getDegrees();
+    double gyroHeading = m_swerveDrive.getHeading();
+    double headingDelta = Math.abs(visionHeading - gyroHeading) % 360;
+    if (headingDelta > 180) headingDelta = 360 - headingDelta;
+    if (headingDelta > PhotonVisionConstants.kMaxHeadingDelta) {
+      return String.format("Heading delta too large (%.1f° > %.1f°)",
+        headingDelta, PhotonVisionConstants.kMaxHeadingDelta);
+    }
+
     return null; // Accept measurement
   }
 
@@ -521,6 +532,13 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       double distanceFactor = avgDistance / getDistanceFactorThreshold();
       xyStdDev *= distanceFactor;
       rotStdDev *= distanceFactor;
+    }
+
+    // For single-tag estimates, close range increases rotation ambiguity (pose flip risk).
+    // Scale rotation stdDev up inversely with distance — closer = less rotation trust.
+    if (pose.targetsUsed.size() == 1 && avgDistance < getDistanceFactorThreshold()) {
+      double closeRangeFactor = getDistanceFactorThreshold() / Math.max(avgDistance, 0.1);
+      rotStdDev *= closeRangeFactor;
     }
 
     return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
