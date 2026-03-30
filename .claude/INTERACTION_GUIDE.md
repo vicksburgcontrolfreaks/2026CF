@@ -29,6 +29,14 @@ This document defines how Claude Code should interact with this team.
 - If approach doesn't match existing codebase patterns
 - If proactive changes weren't requested (e.g., changing constants, adding features)
 
+## Git Workflow Standards
+- **Main branch**: Only tested and proven code - do NOT make changes directly on main
+- **Feature branches**: All development work happens on branches
+- **Competition branch**: Used for code changes during competitions
+  - When code is deployed to robot during competition, commit with summary of changes and match number
+  - Example: "Adjust shooter RPM for match 42 - increased by 200 to compensate for battery voltage"
+- Always create a new branch for feature work unless user explicitly requests working on existing branch
+
 ## Competition Context
 - This is FRC robot code - practical and working beats perfect
 - Camera failure scenarios need fallback options
