@@ -5,6 +5,7 @@
 package frc.robot.commands.shooter;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -35,6 +36,7 @@ public class ShooterWithAutoAimCommand extends Command {
   private final DoubleSupplier m_xSpeedSupplier;
   private final DoubleSupplier m_ySpeedSupplier;
   private final PIDController m_rotationController;
+  private final LinearFilter m_angleOffsetFilter;
   private boolean m_feedingStarted = false;
 
   /**
@@ -65,13 +67,18 @@ public class ShooterWithAutoAimCommand extends Command {
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
+    // Low-pass filter for angle compensation offset (0.15s time constant at 50Hz)
+    // Smooths velocity spikes from carpet bumps so the PID setpoint changes gradually
+    m_angleOffsetFilter = LinearFilter.singlePoleIIR(0.15, 0.02);
+
     addRequirements(shooter, swerveDrive);
   }
 
   @Override
   public void initialize() {
-    // Reset the rotation PID controller
+    // Reset the rotation PID controller and angle filter
     m_rotationController.reset();
+    m_angleOffsetFilter.reset();
 
     // Reset feeding state
     m_feedingStarted = false;
@@ -99,9 +106,9 @@ public class ShooterWithAutoAimCommand extends Command {
     double deltaY = targetPosition.getY() - currentPose.getY();
     double targetAngleRadians = Math.atan2(deltaY, deltaX);
 
-    // Apply velocity compensation for moving shots
-    double angleCompensationOffset = m_shooter.getVelocityCompensatedAngleOffset();
-    targetAngleRadians += angleCompensationOffset;
+    // Apply velocity compensation — filter smooths rapid velocity fluctuations
+    double rawOffset = m_shooter.getVelocityCompensatedAngleOffset();
+    targetAngleRadians += m_angleOffsetFilter.calculate(rawOffset);
 
     // Convert to degrees
     double targetAngleDegrees = Math.toDegrees(targetAngleRadians);

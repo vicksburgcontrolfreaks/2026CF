@@ -13,13 +13,15 @@ import com.revrobotics.PersistMode;
 
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.configs.ShooterConfig;
 import frc.robot.constants.AutoConstants;
@@ -122,7 +124,6 @@ public class ShooterSubsystem extends SubsystemBase {
 
   // Velocity compensation parameters
   private boolean m_velocityCompensationEnabled = ShooterConstants.kVelocityCompensationEnabled;
-  private double m_rpmVelocityCompensationFactor = ShooterConstants.kRPMVelocityCompensationFactor;
   private double m_angleCompensationFactor = ShooterConstants.kAngleCompensationFactor;
   private double m_averageShotVelocity = ShooterConstants.kAverageShotVelocity;
 
@@ -145,13 +146,18 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoubleSubscriber m_floorMotorTargetRPMSub;
   private final DoubleSubscriber m_indexerMotorTargetRPMSub;
   private final DoubleSubscriber m_telemetryUpdatePeriodSub;
-  private final BooleanSubscriber m_velocityCompensationEnabledSub;
-  private final DoubleSubscriber m_rpmVelocityCompensationFactorSub;
   private final DoubleSubscriber m_angleCompensationFactorSub;
   private final DoubleSubscriber m_averageShotVelocitySub;
-  private final DoubleSubscriber m_trajectoryAngleSub;
-  private final DoubleSubscriber m_testRPMSub;
-  private final BooleanSubscriber m_testModeEnabledSub;
+
+  // Shuffleboard toggle button entries for writable booleans
+  private final GenericEntry m_velocityCompensationToggleEntry;
+  private final GenericEntry m_testModeToggleEntry;
+
+  // Publishers for config entries so they appear in SmartDashboard with default values
+  private final DoublePublisher m_angleCompensationFactorCfgPub;
+  private final DoublePublisher m_averageShotVelocityCfgPub;
+  private final GenericEntry m_trajectoryAngleEntry;
+  private final GenericEntry m_testRPMEntry;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784
@@ -234,17 +240,36 @@ public class ShooterSubsystem extends SubsystemBase {
     m_indexerMotorTargetRPMSub = configTable.getDoubleTopic("Indexer Motor Target RPM").subscribe(m_indexerMotorTargetRPM);
     m_telemetryUpdatePeriodSub = configTable.getDoubleTopic("Telemetry Update Period").subscribe(m_telemetryUpdatePeriod);
 
+    // Velocity Compensation Enabled — Shuffleboard toggle button (actually clickable)
+    m_velocityCompensationToggleEntry = Shuffleboard.getTab("Shooter Config")
+        .add("Velocity Compensation Enabled", m_velocityCompensationEnabled)
+        .withWidget(BuiltInWidgets.kToggleButton)
+        .getEntry();
+
     // Velocity compensation tuning parameters
-    m_velocityCompensationEnabledSub = configTable.getBooleanTopic("Velocity Compensation Enabled").subscribe(m_velocityCompensationEnabled);
-    m_rpmVelocityCompensationFactorSub = configTable.getDoubleTopic("RPM Velocity Compensation Factor").subscribe(m_rpmVelocityCompensationFactor);
     m_angleCompensationFactorSub = configTable.getDoubleTopic("Angle Compensation Factor").subscribe(m_angleCompensationFactor);
     m_averageShotVelocitySub = configTable.getDoubleTopic("Average Shot Velocity").subscribe(m_averageShotVelocity);
 
-    // Trajectory test parameters
-    NetworkTable testTable = NetworkTableInstance.getDefault().getTable("Shooter/TrajectoryTest");
-    m_trajectoryAngleSub = testTable.getDoubleTopic("Trajectory Angle (degrees)").subscribe(m_trajectoryAngle);
-    m_testRPMSub = testTable.getDoubleTopic("Test RPM").subscribe(m_testRPM);
-    m_testModeEnabledSub = testTable.getBooleanTopic("Test Mode Enabled").subscribe(m_testModeEnabled);
+    // Publish default values so velocity comp config entries appear in SmartDashboard
+    m_angleCompensationFactorCfgPub = configTable.getDoubleTopic("Angle Compensation Factor").publish();
+    m_angleCompensationFactorCfgPub.set(m_angleCompensationFactor);
+    m_averageShotVelocityCfgPub = configTable.getDoubleTopic("Average Shot Velocity").publish();
+    m_averageShotVelocityCfgPub.set(m_averageShotVelocity);
+
+    // Trajectory test parameters — editable text fields in Shuffleboard
+    var shooterConfigTab = Shuffleboard.getTab("Shooter Config");
+    m_testModeToggleEntry = shooterConfigTab
+        .add("Test Mode Enabled", m_testModeEnabled)
+        .withWidget(BuiltInWidgets.kToggleButton)
+        .getEntry();
+    m_trajectoryAngleEntry = shooterConfigTab
+        .add("Trajectory Angle (degrees)", m_trajectoryAngle)
+        .withWidget(BuiltInWidgets.kTextView)
+        .getEntry();
+    m_testRPMEntry = shooterConfigTab
+        .add("Test RPM", m_testRPM)
+        .withWidget(BuiltInWidgets.kTextView)
+        .getEntry();
   }
 
   public void runFloor(boolean reversed) {
@@ -702,16 +727,15 @@ public class ShooterSubsystem extends SubsystemBase {
     m_indexerMotorTargetRPM = m_indexerMotorTargetRPMSub.get();
     m_telemetryUpdatePeriod = (int) m_telemetryUpdatePeriodSub.get();
 
-    // Update velocity compensation parameters from NetworkTables
-    m_velocityCompensationEnabled = m_velocityCompensationEnabledSub.get();
-    m_rpmVelocityCompensationFactor = m_rpmVelocityCompensationFactorSub.get();
+    // Update velocity compensation parameters
+    m_velocityCompensationEnabled = m_velocityCompensationToggleEntry.getBoolean(ShooterConstants.kVelocityCompensationEnabled);
     m_angleCompensationFactor = m_angleCompensationFactorSub.get();
     m_averageShotVelocity = m_averageShotVelocitySub.get();
 
-    // Update trajectory test parameters from NetworkTables
-    m_trajectoryAngle = m_trajectoryAngleSub.get();
-    m_testRPM = m_testRPMSub.get();
-    m_testModeEnabled = m_testModeEnabledSub.get();
+    // Update trajectory test parameters from Shuffleboard
+    m_trajectoryAngle = m_trajectoryAngleEntry.getDouble(m_trajectoryAngle);
+    m_testRPM = m_testRPMEntry.getDouble(m_testRPM);
+    m_testModeEnabled = m_testModeToggleEntry.getBoolean(false);
 
     // DYNAMIC RPM ENABLED - Calculate RPM based on vision distance
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
@@ -721,7 +745,7 @@ public class ShooterSubsystem extends SubsystemBase {
       m_lastDistanceToTarget = distance;
 
       if (distance > 0) {
-        m_calculatedTargetRPM = getRPMForDistance(distance);
+        m_calculatedTargetRPM = getVelocityCompensatedRPM(distance);
       } else {
         // Fall back to default RPM if distance calculation fails
         m_calculatedTargetRPM = getShooterTargetRPM();
@@ -731,8 +755,6 @@ public class ShooterSubsystem extends SubsystemBase {
       m_calculatedTargetRPM = getShooterTargetRPM();
     }
 
-    // ALWAYS publish Target RPM and Distance (no throttling) so Elastic updates in real-time
-    m_targetRPMPub.set(m_calculatedTargetRPM);
     m_distanceToTargetPub.set(m_lastDistanceToTarget);
 
     // If shooter is active, continuously update motor commands with calculated RPM
@@ -748,6 +770,9 @@ public class ShooterSubsystem extends SubsystemBase {
           m_currentTargetRPM = m_calculatedTargetRPM;
         }
       }
+
+      // Publish the actual commanded RPM (reflects test mode override if active)
+      m_targetRPMPub.set(m_currentTargetRPM);
 
       m_leftShooterMotor.getClosedLoopController().setSetpoint(
         m_currentTargetRPM,
@@ -913,8 +938,12 @@ public class ShooterSubsystem extends SubsystemBase {
       return 0.0;
     }
 
-    // Get robot velocity in field coordinates
-    ChassisSpeeds chassisSpeeds = m_driveSubsystem.getChassisSpeeds();
+    // Get robot velocity in field coordinates, clamped to ignore bump-induced spikes
+    ChassisSpeeds rawSpeeds = m_driveSubsystem.getChassisSpeeds();
+    double maxCompVelocity = 3.0; // m/s — spikes above this are noise, not real movement
+    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vxMetersPerSecond));
+    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vyMetersPerSecond));
+    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, rawSpeeds.omegaRadiansPerSecond);
 
     // Get speaker position based on alliance
     var alliance = DriverStation.getAlliance();
@@ -956,33 +985,61 @@ public class ShooterSubsystem extends SubsystemBase {
     // Angular offset is the difference
     double angleOffset = futureAngle - currentAngle;
 
-    // Apply compensation factor (allows tuning from 0.0 to 1.0)
     return angleOffset * m_angleCompensationFactor;
   }
 
   /**
-   * Calculate compensated RPM based on robot velocity when shooting while moving.
-   * Optionally adjusts RPM based on effective distance change due to velocity.
+   * Calculate RPM for the predicted distance when the ball arrives at the speaker.
+   * Uses the radial component of robot velocity (toward/away from speaker) to predict
+   * where the robot will be after the ball's flight time, then looks up RPM for that distance.
    *
-   * @param baseRPM Base RPM calculated from distance
-   * @return Compensated RPM
+   * @param currentDistance Current vision-measured distance to speaker (meters)
+   * @return RPM for the predicted arrival distance
    */
-  public double getVelocityCompensatedRPM(double baseRPM) {
+  public double getVelocityCompensatedRPM(double currentDistance) {
     if (!m_velocityCompensationEnabled || m_driveSubsystem == null) {
-      return baseRPM;
+      return getRPMForDistance(currentDistance);
     }
 
-    // Get robot velocity magnitude
-    ChassisSpeeds chassisSpeeds = m_driveSubsystem.getChassisSpeeds();
-    double velocityMagnitude = Math.sqrt(
-        chassisSpeeds.vxMetersPerSecond * chassisSpeeds.vxMetersPerSecond +
-        chassisSpeeds.vyMetersPerSecond * chassisSpeeds.vyMetersPerSecond
-    );
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      return getRPMForDistance(currentDistance);
+    }
 
-    // Apply compensation factor (tunable via NetworkTables)
-    double rpmAdjustment = velocityMagnitude * m_rpmVelocityCompensationFactor;
+    Translation2d speakerPosition = alliance.get() == DriverStation.Alliance.Red
+        ? AutoConstants.redTarget
+        : AutoConstants.blueTarget;
 
-    return baseRPM + rpmAdjustment;
+    Translation2d robotPosition = m_driveSubsystem.getPose().getTranslation();
+    ChassisSpeeds rawSpeeds = m_driveSubsystem.getChassisSpeeds();
+    double maxCompVelocity = 3.0; // m/s — clamp to ignore bump-induced spikes
+    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vxMetersPerSecond));
+    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vyMetersPerSecond));
+    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, rawSpeeds.omegaRadiansPerSecond);
+
+    // Unit vector from robot toward speaker (used to extract radial velocity)
+    double dx = speakerPosition.getX() - robotPosition.getX();
+    double dy = speakerPosition.getY() - robotPosition.getY();
+    double poseDistance = Math.sqrt(dx * dx + dy * dy);
+
+    if (poseDistance < 0.1) {
+      return getRPMForDistance(currentDistance);
+    }
+
+    // Radial velocity: positive = moving toward speaker, negative = moving away
+    double radialVelocity = (chassisSpeeds.vxMetersPerSecond * dx +
+                             chassisSpeeds.vyMetersPerSecond * dy) / poseDistance;
+
+    // Predict distance at ball arrival
+    double flightTime = currentDistance / m_averageShotVelocity;
+    double predictedDistance = currentDistance - radialVelocity * flightTime;
+
+    // Clamp to the bounds of the velocity table
+    double minDist = ShooterConstants.kShooterVelocityTable[0][0];
+    double maxDist = ShooterConstants.kShooterVelocityTable[ShooterConstants.kShooterVelocityTable.length - 1][0];
+    predictedDistance = Math.max(minDist, Math.min(maxDist, predictedDistance));
+
+    return getRPMForDistance(predictedDistance);
   }
 
   /**
