@@ -9,8 +9,9 @@ Welcome to the official documentation for the 2026 Control Freaks FRC robot!
 
 ## Quick Links
 
-### For Today (Load-In Day)
-- [**📋 Load-In Test Plan**](load-in-test-plan.md) - Structured test checklist for March 27, 2026
+### Testing & Development
+- [**🧪 Test Workflow**](test-workflow.md) - Phase-by-phase testing checklist for new features
+- [**📐 Trajectory Testing**](trajectory-testing.md) - Hardware angle and RPM testing procedure
 
 ### For Drivers
 - [**Driver Controls Guide**](driver-controls.md) - Controller button mappings and operating instructions
@@ -83,6 +84,6 @@ Robot
 
 ---
 
-**Last Updated**: 2026-03-27
+**Last Updated**: 2026-03-31
 **Team**: FRC 5647 Vicksburg Control Freaks
-**Season**: 2026 Reefscape
+**Season**: 2026 Rebuilt Welded
