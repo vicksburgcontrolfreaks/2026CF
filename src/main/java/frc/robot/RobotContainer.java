@@ -268,6 +268,11 @@ public class RobotContainer {
       )
     );
 
+    // TRAJECTORY TESTING:
+    // Left trigger (manual shoot) automatically uses Test RPM when "Test Mode Enabled" is true
+    // To test: Enable in Shuffleboard (Shooter/TrajectoryTest/Test Mode Enabled = true)
+    //          Set Test RPM and Trajectory Angle, hold left trigger to shoot
+
   /*
     m_mechanismController.povUp().whileTrue(
       Commands.run(() -> m_climber.setSpeed(0.2), m_climber)

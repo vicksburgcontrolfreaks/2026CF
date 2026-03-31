@@ -25,6 +25,7 @@ import frc.robot.configs.ShooterConfig;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.ShooterConstants;
 import frc.robot.constants.TelemetryConstants;
+import frc.robot.constants.TrajectoryTestConstants;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
@@ -125,6 +126,11 @@ public class ShooterSubsystem extends SubsystemBase {
   private double m_angleCompensationFactor = ShooterConstants.kAngleCompensationFactor;
   private double m_averageShotVelocity = ShooterConstants.kAverageShotVelocity;
 
+  // Trajectory test parameters
+  private double m_trajectoryAngle = TrajectoryTestConstants.kBaselineTrajectoryAngle;
+  private double m_testRPM = TrajectoryTestConstants.kTestRPMDefault;
+  private boolean m_testModeEnabled = false;
+
   // NetworkTables subscribers for configurable constants
   private final DoubleSubscriber m_motorCurrentLimitSub;
   private final DoubleSubscriber m_shooterPSub;
@@ -143,6 +149,9 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoubleSubscriber m_rpmVelocityCompensationFactorSub;
   private final DoubleSubscriber m_angleCompensationFactorSub;
   private final DoubleSubscriber m_averageShotVelocitySub;
+  private final DoubleSubscriber m_trajectoryAngleSub;
+  private final DoubleSubscriber m_testRPMSub;
+  private final BooleanSubscriber m_testModeEnabledSub;
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784
@@ -230,6 +239,12 @@ public class ShooterSubsystem extends SubsystemBase {
     m_rpmVelocityCompensationFactorSub = configTable.getDoubleTopic("RPM Velocity Compensation Factor").subscribe(m_rpmVelocityCompensationFactor);
     m_angleCompensationFactorSub = configTable.getDoubleTopic("Angle Compensation Factor").subscribe(m_angleCompensationFactor);
     m_averageShotVelocitySub = configTable.getDoubleTopic("Average Shot Velocity").subscribe(m_averageShotVelocity);
+
+    // Trajectory test parameters
+    NetworkTable testTable = NetworkTableInstance.getDefault().getTable("Shooter/TrajectoryTest");
+    m_trajectoryAngleSub = testTable.getDoubleTopic("Trajectory Angle (degrees)").subscribe(m_trajectoryAngle);
+    m_testRPMSub = testTable.getDoubleTopic("Test RPM").subscribe(m_testRPM);
+    m_testModeEnabledSub = testTable.getBooleanTopic("Test Mode Enabled").subscribe(m_testModeEnabled);
   }
 
   public void runFloor(boolean reversed) {
@@ -693,6 +708,11 @@ public class ShooterSubsystem extends SubsystemBase {
     m_angleCompensationFactor = m_angleCompensationFactorSub.get();
     m_averageShotVelocity = m_averageShotVelocitySub.get();
 
+    // Update trajectory test parameters from NetworkTables
+    m_trajectoryAngle = m_trajectoryAngleSub.get();
+    m_testRPM = m_testRPMSub.get();
+    m_testModeEnabled = m_testModeEnabledSub.get();
+
     // DYNAMIC RPM ENABLED - Calculate RPM based on vision distance
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
     // This updates m_calculatedTargetRPM which is published to Elastic dashboard
@@ -717,11 +737,16 @@ public class ShooterSubsystem extends SubsystemBase {
 
     // If shooter is active, continuously update motor commands with calculated RPM
     if (m_isShooterActive) {
-      // Apply pre-spin RPM cap if enabled (until trigger is pulled)
-      if (m_useRPMCap) {
-        m_currentTargetRPM = Math.min(m_calculatedTargetRPM, ShooterConstants.kPreSpinRPMCap);
+      // Determine target RPM: test mode overrides distance-based calculation
+      if (m_testModeEnabled) {
+        m_currentTargetRPM = m_testRPM;
       } else {
-        m_currentTargetRPM = m_calculatedTargetRPM;
+        // Apply pre-spin RPM cap if enabled (until trigger is pulled)
+        if (m_useRPMCap) {
+          m_currentTargetRPM = Math.min(m_calculatedTargetRPM, ShooterConstants.kPreSpinRPMCap);
+        } else {
+          m_currentTargetRPM = m_calculatedTargetRPM;
+        }
       }
 
       m_leftShooterMotor.getClosedLoopController().setSetpoint(
@@ -841,6 +866,32 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public boolean isReadyToFeed() {
     return isShooterActive() && isAtTargetVelocity(100.0);
+  }
+
+  /**
+   * Get the current trajectory angle for testing.
+   * This is the physical hardware angle (baseline 22 degrees, adjustable in 2-degree increments).
+   * @return Trajectory angle in degrees
+   */
+  public double getTrajectoryAngle() {
+    return m_trajectoryAngle;
+  }
+
+  /**
+   * Get the test RPM for manual trajectory testing.
+   * @return Test RPM value
+   */
+  public double getTestRPM() {
+    return m_testRPM;
+  }
+
+  /**
+   * Check if test mode is enabled.
+   * When enabled, uses test RPM instead of distance-based calculation.
+   * @return True if test mode is enabled
+   */
+  public boolean isTestModeEnabled() {
+    return m_testModeEnabled;
   }
 
   /**
