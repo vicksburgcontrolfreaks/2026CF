@@ -97,7 +97,14 @@ public class ShooterWithAutoAimCommand extends Command {
     // Calculate the angle to the target
     double deltaX = targetPosition.getX() - currentPose.getX();
     double deltaY = targetPosition.getY() - currentPose.getY();
-    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
+    double targetAngleRadians = Math.atan2(deltaY, deltaX);
+
+    // Apply velocity compensation for moving shots
+    double angleCompensationOffset = m_shooter.getVelocityCompensatedAngleOffset();
+    targetAngleRadians += angleCompensationOffset;
+
+    // Convert to degrees
+    double targetAngleDegrees = Math.toDegrees(targetAngleRadians);
 
     // Add 180 degrees to point the BACK of the robot at the target (shooter is at the back)
     targetAngleDegrees = (targetAngleDegrees + 180) % 360;

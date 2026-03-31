@@ -40,4 +40,19 @@ public class ShooterConstants {
     {2.69, 3450},
     {3.3, 4000},
   };
+
+  // Velocity compensation for shooting while moving
+  // Estimated average shot velocity in m/s (used to calculate flight time)
+  public static final double kAverageShotVelocity = 10.0; // ~10 m/s for mid-range shots
+
+  // Enable/disable velocity compensation (tune via NetworkTables)
+  public static final boolean kVelocityCompensationEnabled = true;
+
+  // RPM compensation factor: how much to adjust RPM per m/s of velocity
+  // Positive value increases RPM when moving, compensating for effective distance change
+  public static final double kRPMVelocityCompensationFactor = 0.0; // Start at 0, tune as needed
+
+  // Angle compensation factor: multiplier for calculated angle offset
+  // 1.0 = full compensation, 0.0 = no compensation
+  public static final double kAngleCompensationFactor = 1.0;
 }

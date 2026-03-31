@@ -48,7 +48,7 @@ public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
   private final LEDSubsystem m_ledSubsystem = null;
-  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem);
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem, m_swerveDrive);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
 
   private final CommandXboxController m_driverController;
