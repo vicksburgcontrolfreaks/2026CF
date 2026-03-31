@@ -49,6 +49,52 @@ When code changes are made:
 3. After merging to main, remind user to run sync script: `.\sync-docs-to-pages.bat`
 4. Documentation site: https://vicksburgcontrolfreaks.github.io/2026CF/
 
+### Manual GitHub Pages Sync (if script fails)
+If sync-docs-to-pages.bat doesn't work or you need to publish from a feature branch:
+```bash
+# 1. Switch to gh-pages branch
+git checkout gh-pages
+
+# 2. Copy documentation files from source branch
+git checkout <source-branch> -- <FILE1>.md <FILE2>.md
+
+# 3. Create Jekyll-formatted versions with front matter
+echo "---
+layout: default
+title: Page Title
+---
+" > output-file.md && cat SOURCE_FILE.md >> output-file.md
+
+# 4. Remove source files (if they don't match output names)
+rm SOURCE_FILE.md
+
+# 5. Stage, commit, and push
+git add output-file.md
+git commit -m "Sync docs from <source-branch>"
+git push origin gh-pages
+
+# 6. Handle local changes if needed
+git stash  # if checkout fails due to local changes
+
+# 7. Return to original branch
+git checkout <source-branch>
+```
+
+Example that worked for dynamic-shooting-test branch:
+```bash
+git checkout gh-pages
+git checkout dynamic-shooting-test -- TRAJECTORY_TEST_PROCEDURE.md DYNAMIC_SHOOTING_TEST_WORKFLOW.md
+echo "---\nlayout: default\ntitle: Trajectory Testing\n---\n" > trajectory-testing.md && cat TRAJECTORY_TEST_PROCEDURE.md >> trajectory-testing.md
+echo "---\nlayout: default\ntitle: Test Workflow\n---\n" > test-workflow.md && cat DYNAMIC_SHOOTING_TEST_WORKFLOW.md >> test-workflow.md
+rm TRAJECTORY_TEST_PROCEDURE.md DYNAMIC_SHOOTING_TEST_WORKFLOW.md
+git reset  # if accidentally staged wrong files
+git add trajectory-testing.md test-workflow.md
+git commit -m "Add docs from dynamic-shooting-test branch"
+git push origin gh-pages
+git stash  # if local changes block checkout
+git checkout dynamic-shooting-test
+```
+
 ## Conversation Compaction
 When conversations get long and need compaction:
 1. These interaction preferences are preserved in this file
