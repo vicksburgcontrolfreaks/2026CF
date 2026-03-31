@@ -24,7 +24,7 @@ git checkout gh-pages
 
 REM Copy documentation files from the original branch
 echo Copying documentation files from %CURRENT_BRANCH%...
-git checkout %CURRENT_BRANCH% -- SHOOTER_TEST_USAGE.md PID_TUNING_GUIDE.md SHOOTER_SYSTEM_DOCUMENTATION.md SHOOT_WHILE_DRIVING.md
+git checkout %CURRENT_BRANCH% -- SHOOTER_TEST_USAGE.md PID_TUNING_GUIDE.md SHOOTER_SYSTEM_DOCUMENTATION.md SHOOT_WHILE_DRIVING.md TRAJECTORY_TEST_PROCEDURE.md
 
 REM Copy and add Jekyll front matter
 echo Processing files for GitHub Pages...
@@ -69,12 +69,22 @@ echo.
 type SHOOT_WHILE_DRIVING.md
 ) > shoot-while-driving.md
 
+REM TRAJECTORY_TEST_PROCEDURE.md -> trajectory-testing.md
+(
+echo ---
+echo layout: default
+echo title: Trajectory Testing
+echo ---
+echo.
+type TRAJECTORY_TEST_PROCEDURE.md
+) > trajectory-testing.md
+
 REM Remove the originals
-del SHOOTER_TEST_USAGE.md PID_TUNING_GUIDE.md SHOOTER_SYSTEM_DOCUMENTATION.md SHOOT_WHILE_DRIVING.md
+del SHOOTER_TEST_USAGE.md PID_TUNING_GUIDE.md SHOOTER_SYSTEM_DOCUMENTATION.md SHOOT_WHILE_DRIVING.md TRAJECTORY_TEST_PROCEDURE.md
 
 REM Stage the changes
 echo Staging changes...
-git add shooter-testing.md pid-tuning.md shooter-system.md shoot-while-driving.md
+git add shooter-testing.md pid-tuning.md shooter-system.md shoot-while-driving.md trajectory-testing.md
 
 REM Check if there are changes to commit
 git diff --staged --quiet
