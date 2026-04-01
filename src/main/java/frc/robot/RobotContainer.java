@@ -4,8 +4,6 @@
 
 package frc.robot;
 
-import java.util.Set;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -20,7 +18,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.auto.DriveAndShootCommand;
 import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
 import frc.robot.commands.auton.BlueTwoPieceAutoCommand;
-import frc.robot.commands.auton.RedRightLoopAndShootCommand;
 import frc.robot.commands.auton.RedTwoPieceAutoCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
@@ -39,7 +36,6 @@ import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import frc.robot.utils.ShooterTestLogger;
-import choreo.auto.AutoFactory;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.IntegerEntry;
 import edu.wpi.first.networktables.DoubleEntry;
@@ -55,7 +51,6 @@ public class RobotContainer {
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
-  private final AutoFactory autoFactory;
   private SendableChooser<Command> m_autoChooser;
 
   // Shooter test system
@@ -89,14 +84,6 @@ public class RobotContainer {
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
-
-      autoFactory = new AutoFactory(
-          m_swerveDrive::getPose,
-          m_swerveDrive::resetOdometry,
-          m_swerveDrive::followTrajectory,
-          false,
-          m_swerveDrive
-      );
 
       configureShooterTestSystem();
       configureAlignmentPIDTuning();

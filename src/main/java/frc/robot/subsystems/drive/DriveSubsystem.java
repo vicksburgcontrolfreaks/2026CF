@@ -30,7 +30,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.TelemetryConstants;
-import choreo.trajectory.SwerveSample;
 import edu.wpi.first.math.controller.PIDController;
 
 public class DriveSubsystem extends SubsystemBase {
@@ -533,36 +532,6 @@ public class DriveSubsystem extends SubsystemBase {
     );
   }
 
-  /**
-   * Follows a Choreo trajectory sample.
-   * This method is called by the AutoFactory to control the robot.
-   *
-   * @param sample The current trajectory sample to follow.
-   */
-  public void followTrajectory(SwerveSample sample) {
-    // Get current robot pose
-    Pose2d currentPose = getPose();
-
-    // Calculate PID feedback for position tracking (in field coordinates)
-    double xFeedback = m_xController.calculate(currentPose.getX(), sample.x);
-    double yFeedback = m_yController.calculate(currentPose.getY(), sample.y);
-    double thetaFeedback = m_thetaController.calculate(
-        currentPose.getRotation().getRadians(),
-        sample.heading
-    );
-
-    // Choreo provides field-relative velocities in SwerveSample
-    // Combine feedforward from trajectory with PID feedback, both in field coordinates
-    ChassisSpeeds targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        sample.vx + xFeedback,
-        sample.vy + yFeedback,
-        sample.omega + thetaFeedback,
-        currentPose.getRotation()
-    );
-
-    // Send robot-relative speeds to the drivetrain
-    setChassisSpeeds(targetSpeeds);
-  }
 
   public MAXSwerveModule getFrontLeftDriveMotor() {
     return m_frontLeft;
