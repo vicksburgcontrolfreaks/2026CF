@@ -7,6 +7,7 @@ package frc.robot;
 import java.util.Set;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -401,49 +402,82 @@ public class RobotContainer {
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
-
-    try {
-      // Create the RedRightLoopAndShoot autonomous command
-      RedRightLoopAndShootCommand redRightLoopAndShoot = new RedRightLoopAndShootCommand(
-        autoFactory,
-        m_collector,
-        m_shooterSubsystem,
-        m_visionSubsystem
-      );
-
-      // Add the routine to the chooser
-      m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
-      m_autoChooser.addOption("Do Nothing", Commands.none());
-      m_autoChooser.addOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-      m_autoChooser.addOption("Drive and Shoot (No Camera)", new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-      m_autoChooser.addOption("Red Two Piece", new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-      m_autoChooser.addOption("Blue Two Piece", new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-
-      // Add shooter test command
-      m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {
-        int ballsLoaded = (int) m_testBallsLoadedEntry.get();
-        double duration = m_testDurationEntry.get();
-        double shooterRPM = m_testShooterRPMEntry.get();
-        double indexerRPM = m_testIndexerRPMEntry.get();
-        double measuredDistance = m_testMeasuredDistanceEntry.get();
-        m_currentTestCommand = new ShooterTestCommand(m_shooterSubsystem, m_shooterTestLogger,
-            ballsLoaded, duration, shooterRPM, indexerRPM, measuredDistance);
-        return m_currentTestCommand;
-      }, Set.of(m_shooterSubsystem)));
-
-    } catch (Exception e) {
-      System.err.println("Failed to load Choreo trajectory: " + e.getMessage());
-      System.err.println("Make sure you have .traj files in src/main/deploy/choreo/");
-      e.printStackTrace();
-      m_autoChooser.setDefaultOption("Do Nothing", Commands.none());
-    }
-
-    // Send the chooser to SmartDashboard (which uses NetworkTables under the hood)
+    // Placeholder - actual command selected based on starting pose at autonomousInit
+    m_autoChooser.setDefaultOption("Smart Auto (Pose-Based)", Commands.none());
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
+    SmartDashboard.putString("Auto/Selected", "Not yet determined - will select based on pose at init");
   }
 
+  /**
+   * Selects autonomous command based on robot starting pose and vision availability.
+   *
+   * Alliance Detection (based on X position):
+   *   - x > 8.27m = Red alliance
+   *   - x ≤ 8.27m = Blue alliance
+   *
+   * Position Detection (based on Y position):
+   *   Red Alliance:
+   *     - y < 2.5m  = Red Left   (amp side)
+   *     - y > 5.5m  = Red Right  (source side)
+   *     - else      = Red Center
+   *   Blue Alliance:
+   *     - y > 5.5m  = Blue Left  (amp side)
+   *     - y < 2.5m  = Blue Right (source side)
+   *     - else      = Blue Center
+   *
+   * Fallback: If no vision cameras active, uses DriveAndShootNoCameraCommand
+   */
   public Command getAutonomousCommand() {
-    return m_autoChooser.getSelected();
+    // Fallback if no vision
+    if (m_visionSubsystem.getActiveCameraCount() == 0) {
+      SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
+      return new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+    }
+
+    // Get starting pose from vision-corrected odometry
+    Pose2d startPose = m_swerveDrive.getPose();
+    double x = startPose.getX();
+    double y = startPose.getY();
+
+    // Determine alliance based on X position (field is 16.54m long, center is 8.27m)
+    boolean isRed = x > 8.27;
+    String alliance = isRed ? "Red" : "Blue";
+
+    String name;
+    Command command;
+
+    // Select autonomous based on alliance and Y position
+    if (isRed) {
+      if (y < 2.5) {
+        name = "Red Left (Amp Side)";
+        command = new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else if (y > 5.5) {
+        name = "Red Right (Source Side)";
+        command = new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else {
+        name = "Red Center";
+        command = new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      }
+    } else {
+      if (y > 5.5) {
+        name = "Blue Left (Amp Side)";
+        command = new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else if (y < 2.5) {
+        name = "Blue Right (Source Side)";
+        command = new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else {
+        name = "Blue Center";
+        command = new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      }
+    }
+
+    // Publish selected auto to SmartDashboard for verification
+    String selectedInfo = String.format("%s | Alliance: %s | Pose: (%.2f, %.2f, %.1f°)",
+        name, alliance, x, y, startPose.getRotation().getDegrees());
+    SmartDashboard.putString("Auto/Selected", selectedInfo);
+    System.out.println("Auto Selected: " + selectedInfo);
+
+    return command;
   }
 
   /**
