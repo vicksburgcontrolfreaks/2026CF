@@ -709,9 +709,17 @@ public class ShooterSubsystem extends SubsystemBase {
     m_averageShotVelocity = m_averageShotVelocitySub.get();
 
     // Update trajectory test parameters from NetworkTables
+    double newTestRPM = m_testRPMSub.get();
+    boolean newTestModeEnabled = m_testModeEnabledSub.get();
+
+    // Debug: Log when test mode settings change
+    if (newTestRPM != m_testRPM || newTestModeEnabled != m_testModeEnabled) {
+      System.out.println("Test mode settings updated: TestRPM=" + newTestRPM + ", TestModeEnabled=" + newTestModeEnabled);
+    }
+
     m_trajectoryAngle = m_trajectoryAngleSub.get();
-    m_testRPM = m_testRPMSub.get();
-    m_testModeEnabled = m_testModeEnabledSub.get();
+    m_testRPM = newTestRPM;
+    m_testModeEnabled = newTestModeEnabled;
 
     // DYNAMIC RPM ENABLED - Calculate RPM based on vision distance
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
@@ -740,6 +748,7 @@ public class ShooterSubsystem extends SubsystemBase {
       // Determine target RPM: test mode overrides distance-based calculation
       if (m_testModeEnabled) {
         m_currentTargetRPM = m_testRPM;
+        System.out.println("TEST MODE: Using test RPM = " + m_testRPM);
       } else {
         // Apply pre-spin RPM cap if enabled (until trigger is pulled)
         if (m_useRPMCap) {

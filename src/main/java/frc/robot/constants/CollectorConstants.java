@@ -2,7 +2,7 @@ package frc.robot.constants;
 
 public class CollectorConstants {
   public static final int kUpperCollectorMotorId = 10;
-  public static final int kLowerCollectorMotorId = 11;
+  // Lower collector motor removed - CAN ID 11 no longer in use
   public static final int kHopperMotorId = 12;
 
   public static final int kMotorCurrentLimit = 60;
