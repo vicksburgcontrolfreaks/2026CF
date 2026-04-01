@@ -11,6 +11,7 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.DoublePublisher;
@@ -939,12 +940,15 @@ public class ShooterSubsystem extends SubsystemBase {
       return 0.0;
     }
 
-    // Get robot velocity in field coordinates, clamped to ignore bump-induced spikes
-    ChassisSpeeds rawSpeeds = m_driveSubsystem.getChassisSpeeds();
-    double maxCompVelocity = 3.0; // m/s — spikes above this are noise, not real movement
-    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vxMetersPerSecond));
-    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vyMetersPerSecond));
-    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, rawSpeeds.omegaRadiansPerSecond);
+    // Convert robot-relative speeds to field-relative, then clamp to reject bump spikes
+    ChassisSpeeds robotSpeeds = m_driveSubsystem.getChassisSpeeds();
+    Rotation2d heading = m_driveSubsystem.getPose().getRotation();
+    double vxField = robotSpeeds.vxMetersPerSecond * heading.getCos() - robotSpeeds.vyMetersPerSecond * heading.getSin();
+    double vyField = robotSpeeds.vxMetersPerSecond * heading.getSin() + robotSpeeds.vyMetersPerSecond * heading.getCos();
+    double maxCompVelocity = 3.0;
+    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vxField));
+    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vyField));
+    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, robotSpeeds.omegaRadiansPerSecond);
 
     // Get speaker position based on alliance
     var alliance = DriverStation.getAlliance();
@@ -1012,11 +1016,15 @@ public class ShooterSubsystem extends SubsystemBase {
         : AutoConstants.blueTarget;
 
     Translation2d robotPosition = m_driveSubsystem.getPose().getTranslation();
-    ChassisSpeeds rawSpeeds = m_driveSubsystem.getChassisSpeeds();
-    double maxCompVelocity = 3.0; // m/s — clamp to ignore bump-induced spikes
-    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vxMetersPerSecond));
-    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, rawSpeeds.vyMetersPerSecond));
-    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, rawSpeeds.omegaRadiansPerSecond);
+    // Convert robot-relative speeds to field-relative, then clamp to reject bump spikes
+    ChassisSpeeds robotSpeeds = m_driveSubsystem.getChassisSpeeds();
+    Rotation2d heading = m_driveSubsystem.getPose().getRotation();
+    double vxField = robotSpeeds.vxMetersPerSecond * heading.getCos() - robotSpeeds.vyMetersPerSecond * heading.getSin();
+    double vyField = robotSpeeds.vxMetersPerSecond * heading.getSin() + robotSpeeds.vyMetersPerSecond * heading.getCos();
+    double maxCompVelocity = 3.0;
+    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vxField));
+    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vyField));
+    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, robotSpeeds.omegaRadiansPerSecond);
 
     // Unit vector from robot toward speaker (used to extract radial velocity)
     double dx = speakerPosition.getX() - robotPosition.getX();
