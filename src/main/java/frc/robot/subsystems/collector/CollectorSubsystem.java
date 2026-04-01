@@ -20,16 +20,14 @@ import frc.robot.constants.TelemetryConstants;
 
 public class CollectorSubsystem extends SubsystemBase {
   private final SparkFlex m_upperCollectorMotor;
-  private final SparkFlex m_lowerCollectorMotor;
+  // Lower collector motor removed - CAN ID 11 no longer in use
   private final SparkMax m_hopperMotor;
 
   private int m_telemetryCounter = 0;
 
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_upperCollectorSpeedPub;
-  private final DoublePublisher m_lowerCollectorSpeedPub;
   private final DoublePublisher m_upperCollectorCurrentPub;
-  private final DoublePublisher m_lowerCollectorCurrentPub;
   private final DoublePublisher m_hopperMotorPosiotionPub;
 
   // Configurable constants (via NetworkTables)
@@ -55,11 +53,9 @@ public class CollectorSubsystem extends SubsystemBase {
 
   public CollectorSubsystem() {
     m_upperCollectorMotor = new SparkFlex(CollectorConstants.kUpperCollectorMotorId, MotorType.kBrushless);
-    m_lowerCollectorMotor = new SparkFlex(CollectorConstants.kLowerCollectorMotorId, MotorType.kBrushless);
     m_hopperMotor = new SparkMax(CollectorConstants.kHopperMotorId, MotorType.kBrushless);
 
     m_upperCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_lowerCollectorMotor.configure(CollectorConfig.collectorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     m_hopperMotor.configure(CollectorConfig.hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Set hopper to 0.07 position on enable (between up and halfway)
@@ -70,9 +66,7 @@ public class CollectorSubsystem extends SubsystemBase {
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Collector");
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
-    m_lowerCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Lower Collector Speed").publish();
     m_upperCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Upper Collector Current").publish();
-    m_lowerCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Lower Collector Current").publish();
     m_hopperMotorPosiotionPub = m_telemetryTable.getDoubleTopic("Hopper Position").publish();
 
     // Initialize NetworkTables subscribers for configurable constants
@@ -91,10 +85,8 @@ public class CollectorSubsystem extends SubsystemBase {
     if (!reversed)
     {
       m_upperCollectorMotor.set(-getCollectorSpeed());
-      m_lowerCollectorMotor.set(-getCollectorSpeed());
     } else {
       m_upperCollectorMotor.set(getCollectorSpeed());
-      m_lowerCollectorMotor.set(getCollectorSpeed());
     }
   }
 
@@ -107,26 +99,10 @@ public class CollectorSubsystem extends SubsystemBase {
       -rpm,
       SparkFlex.ControlType.kVelocity
     );
-    m_lowerCollectorMotor.getClosedLoopController().setSetpoint(
-      -rpm,
-      SparkFlex.ControlType.kVelocity
-    );
-  }
-
-  /**
-   * Run only lower collector at a specific RPM (for shooting sequence)
-   * @param rpm Target velocity in RPM (positive = forward, negative = reverse)
-   */
-  public void runLowerCollectorRPM(double rpm) {
-    m_lowerCollectorMotor.getClosedLoopController().setSetpoint(
-      -rpm,
-      SparkFlex.ControlType.kVelocity
-    );
   }
 
   public void stopCollector() {
     m_upperCollectorMotor.set(0);
-    m_lowerCollectorMotor.set(0);
   }
 
   public void retractHopper() {
@@ -274,9 +250,7 @@ public class CollectorSubsystem extends SubsystemBase {
       m_telemetryCounter = 0;
 
       m_upperCollectorSpeedPub.set(m_upperCollectorMotor.get());
-      m_lowerCollectorSpeedPub.set(m_lowerCollectorMotor.get());
       m_upperCollectorCurrentPub.set(m_upperCollectorMotor.getOutputCurrent());
-      m_lowerCollectorCurrentPub.set(m_lowerCollectorMotor.getOutputCurrent());
       m_hopperMotorPosiotionPub.set(m_hopperMotor.getAbsoluteEncoder().getPosition());
     }
   }

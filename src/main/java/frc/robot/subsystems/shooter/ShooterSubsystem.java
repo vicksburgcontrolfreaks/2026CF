@@ -762,6 +762,7 @@ public class ShooterSubsystem extends SubsystemBase {
       // Determine target RPM: test mode overrides distance-based calculation
       if (m_testModeEnabled) {
         m_currentTargetRPM = m_testRPM;
+        System.out.println("TEST MODE: Using test RPM = " + m_testRPM);
       } else {
         // Apply pre-spin RPM cap if enabled (until trigger is pulled)
         if (m_useRPMCap) {

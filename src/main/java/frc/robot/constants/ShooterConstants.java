@@ -31,7 +31,7 @@ public class ShooterConstants {
 
   // Pre-spin RPM cap (used when shooter active but not shooting)
   // Limits RPM to save energy until trigger is actually pulled
-  public static final double kPreSpinRPMCap = 4000;
+  public static final double kPreSpinRPMCap = 4500;
 
   // Shooter velocity lookup table: distance (meters) -> RPM
   // Reduced by ~18% to lower power output
@@ -39,7 +39,7 @@ public class ShooterConstants {
     {1.75, 2950},
     {2.69, 3450},
     {3.3, 4000},
-    {4.8, 4000},
+    {4.8, 4500},
   };
 
   // Velocity compensation for shooting while moving
