@@ -24,7 +24,8 @@ public final class CollectorConfig {
     collectorConfig
       .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(CollectorConstants.kCollectorP, CollectorConstants.kCollectorI, CollectorConstants.kCollectorD);
+        .pid(CollectorConstants.kCollectorP, CollectorConstants.kCollectorI, CollectorConstants.kCollectorD)
+        .velocityFF(CollectorConstants.kCollectorFF);
 
     hopperConfig
       .idleMode(IdleMode.kCoast)
