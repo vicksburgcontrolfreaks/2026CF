@@ -417,6 +417,58 @@ public class RobotContainer {
   }
 
   /**
+   * Updates SmartDashboard with the autonomous routine that would be selected
+   * based on current robot position. Call this during disabled periodic for
+   * continuous updates.
+   */
+  public void updateAutoDisplay() {
+    if (m_visionSubsystem.getActiveCameraCount() == 0) {
+      SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
+      SmartDashboard.putString("Auto/Alliance", "Unknown");
+      SmartDashboard.putString("Auto/Position", "N/A");
+      SmartDashboard.putString("Auto/Pose", "No Vision");
+      return;
+    }
+
+    edu.wpi.first.math.geometry.Pose2d startPose = m_swerveDrive.getPose();
+    double x = startPose.getX();
+    double y = startPose.getY();
+    boolean isRed = x > 8.27;
+    String alliance = isRed ? "Red" : "Blue";
+    String position;
+    String routineName;
+
+    if (isRed) {
+      if (y < 3.0) {
+        position = "Left";
+        routineName = "Red Left Collect and Shoot";
+      } else if (y > 5.0) {
+        position = "Right";
+        routineName = "Red Right Collect and Shoot";
+      } else {
+        position = "Center";
+        routineName = "Red Center Shoot";
+      }
+    } else {
+      if (y > 5.0) {
+        position = "Left";
+        routineName = "Blue Left Collect and Shoot";
+      } else if (y < 3.0) {
+        position = "Right";
+        routineName = "Blue Right Collect and Shoot";
+      } else {
+        position = "Center";
+        routineName = "Blue Center Shoot";
+      }
+    }
+
+    SmartDashboard.putString("Auto/Selected", routineName);
+    SmartDashboard.putString("Auto/Alliance", alliance);
+    SmartDashboard.putString("Auto/Position", position);
+    SmartDashboard.putString("Auto/Pose", String.format("(%.2f, %.2f)", x, y));
+  }
+
+  /**
    * Selects the autonomous command based on robot starting pose and vision availability.
    * Alliance: x > 8.27 = Red, x <= 8.27 = Blue.
    * Position: y < 3.0 = Left(Red)/Right(Blue), y > 5.0 = Right(Red)/Left(Blue), else Center.

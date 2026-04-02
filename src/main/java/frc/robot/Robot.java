@@ -30,7 +30,12 @@ public class Robot extends TimedRobot {
   }
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+    // Update SmartDashboard with autonomous selection based on current pose
+    // This updates continuously (every 20ms) while disabled so drivers can see
+    // which autonomous will run based on robot position
+    m_robotContainer.updateAutoDisplay();
+  }
 
   @Override
   public void autonomousInit() {
