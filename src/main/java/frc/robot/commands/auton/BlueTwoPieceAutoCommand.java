@@ -43,7 +43,7 @@ public class BlueTwoPieceAutoCommand extends Command {
   private final CollectorSubsystem m_collector;
   private final PIDController m_rotationController;
 
-  private static final Translation2d PICKUP_POSITION = new Translation2d(0.51,  0.68);
+  private static final Translation2d PICKUP_POSITION = new Translation2d(0.61,  0.68);
   private static final Translation2d SHOOT_POSITION  = new Translation2d(2.46,  2.69);
   private static final double DRIVE_TOLERANCE       = 0.15; // meters
   private static final double FIRST_SHOOT_DURATION  = 3.0;  // seconds
@@ -112,7 +112,7 @@ public class BlueTwoPieceAutoCommand extends Command {
         break;
 
       case DRIVE_TO_PICKUP:
-        driveToWaypoint(pose, PICKUP_POSITION, t);
+        driveToWaypoint(pose, PICKUP_POSITION, 180.0, t);
         break;
 
       case WAIT_AT_PICKUP:
@@ -130,7 +130,7 @@ public class BlueTwoPieceAutoCommand extends Command {
         break;
 
       case DRIVE_TO_SHOOT:
-        driveToWaypoint(pose, SHOOT_POSITION, t);
+        driveToWaypoint(pose, SHOOT_POSITION, 180.0, t);
         break;
 
       case SHOOT_SECOND:
@@ -187,25 +187,32 @@ public class BlueTwoPieceAutoCommand extends Command {
     }
   }
 
-  /** Drive toward waypoint with proportional speed; transition phase on arrival. */
-  private void driveToWaypoint(Pose2d pose, Translation2d waypoint, double t) {
+  /** Drive toward waypoint with proportional speed and heading control; transition phase on arrival. */
+  private void driveToWaypoint(Pose2d pose, Translation2d waypoint, double targetHeading, double t) {
     double dx = waypoint.getX() - pose.getX();
     double dy = waypoint.getY() - pose.getY();
     double dist = Math.sqrt(dx * dx + dy * dy);
 
+    double rot = m_rotationController.calculate(m_drive.getHeading(), targetHeading);
+    rot = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
+          Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
+
     if (dist < DRIVE_TOLERANCE) {
-      m_drive.drive(0, 0, 0, true);
-      if (m_phase == Phase.DRIVE_TO_PICKUP) {
-        m_phase = Phase.WAIT_AT_PICKUP;
-      } else if (m_phase == Phase.DRIVE_TO_SHOOT) {
-        m_phase = Phase.SHOOT_SECOND;
+      m_drive.drive(0, 0, rot * DriveConstants.kMaxAngularSpeed, true);
+      if (m_rotationController.atSetpoint()) {
+        m_drive.drive(0, 0, 0, true);
+        if (m_phase == Phase.DRIVE_TO_PICKUP) {
+          m_phase = Phase.WAIT_AT_PICKUP;
+        } else if (m_phase == Phase.DRIVE_TO_SHOOT) {
+          m_phase = Phase.SHOOT_SECOND;
+        }
+        m_phaseStartTime = t;
       }
-      m_phaseStartTime = t;
     } else {
       double speed = Math.min(0.5, dist * 2.0);
       double xSpeed = (dx / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
       double ySpeed = (dy / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
-      m_drive.drive(xSpeed, ySpeed, 0, true);
+      m_drive.drive(xSpeed, ySpeed, rot * DriveConstants.kMaxAngularSpeed, true);
     }
   }
 

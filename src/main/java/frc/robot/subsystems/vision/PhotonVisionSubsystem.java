@@ -242,13 +242,10 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     if (!validPoses.isEmpty()) {
       FusedPoseResult fusedResult = fusePoses(validPoses);
 
-      // !!!!! CRITICAL: When disabled, use 100% vision trust - NO standard deviation checks !!!!!
-      // When m_useVisionPoseReset is true (disabled mode), continuously reset pose to vision.
-      // This allows moving the robot while disabled and maintaining accurate position.
-      // DO NOT add stdDev checks here - they were removed on 2026-04-01 after debugging.
-      // When disabled, we ALWAYS want resetOdometry(), never addVisionMeasurement().
-      if (m_useVisionPoseReset) {
-        // Use 100% vision trust when disabled - ignore standard deviation
+      // When disabled with vision reset mode enabled, continuously reset pose to vision (100% trust)
+      // This allows moving the robot while disabled and maintaining accurate position
+      if (m_useVisionPoseReset && fusedResult.stdDevs.get(0, 0) <= PhotonVisionConstants.kMultiTagStdDevs[0]) {
+        // Only reset on multi-tag measurements (more reliable)
         m_swerveDrive.resetOdometry(fusedResult.fusedPose);
       } else {
         // Normal operation: add fused measurement to pose estimator (sensor fusion)
@@ -494,12 +491,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
 
     // Reject poses whose heading is wildly different from the current gyro heading.
     // Catches single-tag 180° flip ambiguity while still allowing vision to correct real drift.
-    //
-    // !!!!! CRITICAL: DO NOT REMOVE THIS !m_useVisionPoseReset CHECK !!!!!
-    // SKIP heading validation when vision pose reset is enabled (disabled mode) - we want 100% vision trust.
-    // When disabled, the robot may be positioned anywhere with any heading, so gyro comparison is meaningless.
-    // Without this skip, poses get rejected when gyro (0°) doesn't match vision (-130°) during disabled init.
-    // This was debugged on 2026-04-01 and took multiple attempts to identify. DO NOT BREAK THIS AGAIN!
+    // Skip this check when in vision pose reset mode (disabled) — gyro is untrusted at boot,
+    // and we want 100% vision trust to seed the pose before the match starts.
     if (!m_useVisionPoseReset) {
       double visionHeading = pose.estimatedPose.toPose2d().getRotation().getDegrees();
       double gyroHeading = m_swerveDrive.getHeading();

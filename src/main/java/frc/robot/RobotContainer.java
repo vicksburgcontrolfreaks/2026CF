@@ -16,11 +16,13 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.commands.auto.DriveAndShootCommand;
 import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
-import frc.robot.commands.auton.BlueTwoPieceAutoCommand;
-import frc.robot.commands.auton.RedRightLoopAndShootCommand;
-import frc.robot.commands.auton.RedTwoPieceAutoCommand;
+import frc.robot.commands.auton.BlueCenterShootCommand;
+import frc.robot.commands.auton.BlueLeftCollectAndShootCommand;
+import frc.robot.commands.auton.BlueRightCollectAndShootCommand;
+import frc.robot.commands.auton.RedCenterShootCommand;
+import frc.robot.commands.auton.RedLeftCollectAndShootCommand;
+import frc.robot.commands.auton.RedRightCollectAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
@@ -38,7 +40,6 @@ import frc.robot.subsystems.led.LEDSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 import frc.robot.utils.ShooterTestLogger;
-import choreo.auto.AutoFactory;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.IntegerEntry;
 import edu.wpi.first.networktables.DoubleEntry;
@@ -54,7 +55,6 @@ public class RobotContainer {
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
-  private final AutoFactory autoFactory;
   private SendableChooser<Command> m_autoChooser;
 
   // Shooter test system
@@ -88,14 +88,6 @@ public class RobotContainer {
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
-
-      autoFactory = new AutoFactory(
-          m_swerveDrive::getPose,
-          m_swerveDrive::resetOdometry,
-          m_swerveDrive::followTrajectory,
-          false,
-          m_swerveDrive
-      );
 
       configureShooterTestSystem();
       configureAlignmentPIDTuning();
@@ -263,8 +255,21 @@ public class RobotContainer {
       new ShooterWithAutoAimCommand(
         m_shooterSubsystem,
         m_swerveDrive,
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
+        m_collector,
+        () -> {
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+          return -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)
+                 * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier() * allianceFlip;
+        },
+        () -> {
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+          return -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)
+                 * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier() * allianceFlip;
+        }
       )
     );
 
@@ -406,49 +411,59 @@ public class RobotContainer {
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
-
-    try {
-      // Create the RedRightLoopAndShoot autonomous command
-      RedRightLoopAndShootCommand redRightLoopAndShoot = new RedRightLoopAndShootCommand(
-        autoFactory,
-        m_collector,
-        m_shooterSubsystem,
-        m_visionSubsystem
-      );
-
-      // Add the routine to the chooser
-      m_autoChooser.setDefaultOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
-      m_autoChooser.addOption("Do Nothing", Commands.none());
-      m_autoChooser.addOption("Drive and Shoot", new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-      m_autoChooser.addOption("Drive and Shoot (No Camera)", new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-      m_autoChooser.addOption("Red Two Piece", new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-      m_autoChooser.addOption("Blue Two Piece", new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector));
-
-      // Add shooter test command
-      m_autoChooser.addOption("Shooter Test", Commands.defer(() -> {
-        int ballsLoaded = (int) m_testBallsLoadedEntry.get();
-        double duration = m_testDurationEntry.get();
-        double shooterRPM = m_testShooterRPMEntry.get();
-        double indexerRPM = m_testIndexerRPMEntry.get();
-        double measuredDistance = m_testMeasuredDistanceEntry.get();
-        m_currentTestCommand = new ShooterTestCommand(m_shooterSubsystem, m_shooterTestLogger,
-            ballsLoaded, duration, shooterRPM, indexerRPM, measuredDistance);
-        return m_currentTestCommand;
-      }, Set.of(m_shooterSubsystem)));
-
-    } catch (Exception e) {
-      System.err.println("Failed to load Choreo trajectory: " + e.getMessage());
-      System.err.println("Make sure you have .traj files in src/main/deploy/choreo/");
-      e.printStackTrace();
-      m_autoChooser.setDefaultOption("Do Nothing", Commands.none());
-    }
-
-    // Send the chooser to SmartDashboard (which uses NetworkTables under the hood)
+    m_autoChooser.setDefaultOption("Auto", Commands.none()); // placeholder; real command built at init
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
+    SmartDashboard.putString("Auto/Selected", "Not yet determined");
   }
 
+  /**
+   * Selects the autonomous command based on robot starting pose and vision availability.
+   * Alliance: x > 8.27 = Red, x <= 8.27 = Blue.
+   * Position: y < 3.0 = Left(Red)/Right(Blue), y > 5.0 = Right(Red)/Left(Blue), else Center.
+   * If vision is unavailable, drives forward 1 meter and shoots.
+   */
   public Command getAutonomousCommand() {
-    return m_autoChooser.getSelected();
+    if (m_visionSubsystem.getActiveCameraCount() == 0) {
+      SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
+      return new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+    }
+
+    edu.wpi.first.math.geometry.Pose2d startPose = m_swerveDrive.getPose();
+    double x = startPose.getX();
+    double y = startPose.getY();
+    boolean isRed = x > 8.27;
+    String alliance = isRed ? "Red" : "Blue";
+
+    String name;
+    Command command;
+
+    if (isRed) {
+      if (y < 3.0) {
+        name = "Red Left Collect and Shoot";
+        command = new RedLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else if (y > 5.0) {
+        name = "Red Right Collect and Shoot";
+        command = new RedRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else {
+        name = "Red Center Shoot";
+        command = new RedCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      }
+    } else {
+      if (y > 5.0) {
+        name = "Blue Left Collect and Shoot";
+        command = new BlueLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else if (y < 3.0) {
+        name = "Blue Right Collect and Shoot";
+        command = new BlueRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else {
+        name = "Blue Center Shoot";
+        command = new BlueCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      }
+    }
+
+    SmartDashboard.putString("Auto/Selected",
+        String.format("%s | Alliance: %s | Pose: (%.2f, %.2f)", name, alliance, x, y));
+    return command;
   }
 
   /**
