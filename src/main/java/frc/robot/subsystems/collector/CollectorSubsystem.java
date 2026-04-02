@@ -33,6 +33,7 @@ public class CollectorSubsystem extends SubsystemBase {
   // Configurable constants (via NetworkTables)
   private int m_motorCurrentLimit = CollectorConstants.kMotorCurrentLimit;
   private double m_collectorSpeed = CollectorConstants.kCollectorSpeed;
+  private double m_collectorTargetRPM = CollectorConstants.kCollectorTargetRPM;
   private double m_upPosition = CollectorConstants.kUpPosition;
   private double m_downPosition = CollectorConstants.kDownPosition;
   private double m_hopperP = CollectorConstants.kHopperP;
@@ -43,6 +44,7 @@ public class CollectorSubsystem extends SubsystemBase {
   // NetworkTables subscribers for configurable constants
   private final DoubleSubscriber m_motorCurrentLimitSub;
   private final DoubleSubscriber m_collectorSpeedSub;
+  private final DoubleSubscriber m_collectorTargetRPMSub;
   private final DoubleSubscriber m_upPositionSub;
   private final DoubleSubscriber m_downPositionSub;
   private final DoubleSubscriber m_hopperPSub;
@@ -73,6 +75,7 @@ public class CollectorSubsystem extends SubsystemBase {
     NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Collector/Config");
     m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
     m_collectorSpeedSub = configTable.getDoubleTopic("Collector Speed").subscribe(m_collectorSpeed);
+    m_collectorTargetRPMSub = configTable.getDoubleTopic("Collector Target RPM").subscribe(m_collectorTargetRPM);
     m_upPositionSub = configTable.getDoubleTopic("Up Position").subscribe(m_upPosition);
     m_downPositionSub = configTable.getDoubleTopic("Down Position").subscribe(m_downPosition);
     m_hopperPSub = configTable.getDoubleTopic("Hopper P").subscribe(m_hopperP);
@@ -82,12 +85,12 @@ public class CollectorSubsystem extends SubsystemBase {
   }
 
   public void runCollector(boolean reversed) {
-    if (!reversed)
-    {
-      m_upperCollectorMotor.set(-getCollectorSpeed());
-    } else {
-      m_upperCollectorMotor.set(getCollectorSpeed());
-    }
+    // Use velocity control with target RPM
+    double targetRPM = reversed ? -getCollectorTargetRPM() : getCollectorTargetRPM();
+    m_upperCollectorMotor.getClosedLoopController().setSetpoint(
+      -targetRPM,  // Negative because motor is mounted reversed
+      SparkFlex.ControlType.kVelocity
+    );
   }
 
   /**
@@ -157,6 +160,14 @@ public class CollectorSubsystem extends SubsystemBase {
 
   public void setCollectorSpeed(double speed) {
     m_collectorSpeed = speed;
+  }
+
+  public double getCollectorTargetRPM() {
+    return m_collectorTargetRPM;
+  }
+
+  public void setCollectorTargetRPM(double rpm) {
+    m_collectorTargetRPM = rpm;
   }
 
   public double getUpPosition() {
@@ -230,6 +241,7 @@ public class CollectorSubsystem extends SubsystemBase {
     }
 
     m_collectorSpeed = m_collectorSpeedSub.get();
+    m_collectorTargetRPM = m_collectorTargetRPMSub.get();
     m_upPosition = m_upPositionSub.get();
     m_downPosition = m_downPositionSub.get();
 
