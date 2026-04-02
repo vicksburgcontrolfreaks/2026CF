@@ -27,7 +27,8 @@
       "Bash(JAVA_HOME=\"C:/Users/CFLT5/wpilib/2026/jdk\" ./gradlew compileJava)",
       "Bash(sed -n '36,54p' src/main/java/frc/robot/Robot.java)",
       "Bash(sed -n '270,310p' src/main/java/frc/robot/subsystems/shooter/ShooterSubsystem.java)",
-      "Bash(sed -n '825,845p' src/main/java/frc/robot/subsystems/shooter/ShooterSubsystem.java)"
+      "Bash(sed -n '825,845p' src/main/java/frc/robot/subsystems/shooter/ShooterSubsystem.java)",
+      "Bash(git add:*)"
     ]
   }
 }
