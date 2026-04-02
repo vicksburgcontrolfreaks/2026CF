@@ -35,6 +35,10 @@ public class CollectorSubsystem extends SubsystemBase {
   private int m_motorCurrentLimit = CollectorConstants.kMotorCurrentLimit;
   private double m_collectorSpeed = CollectorConstants.kCollectorSpeed;
   private double m_collectorTargetRPM = CollectorConstants.kCollectorTargetRPM;
+  private double m_collectorP = CollectorConstants.kCollectorP;
+  private double m_collectorI = CollectorConstants.kCollectorI;
+  private double m_collectorD = CollectorConstants.kCollectorD;
+  private double m_collectorFF = CollectorConstants.kCollectorFF;
   private double m_upPosition = CollectorConstants.kUpPosition;
   private double m_downPosition = CollectorConstants.kDownPosition;
   private double m_hopperP = CollectorConstants.kHopperP;
@@ -46,6 +50,10 @@ public class CollectorSubsystem extends SubsystemBase {
   private final DoubleSubscriber m_motorCurrentLimitSub;
   private final DoubleSubscriber m_collectorSpeedSub;
   private final DoubleSubscriber m_collectorTargetRPMSub;
+  private final DoubleSubscriber m_collectorPSub;
+  private final DoubleSubscriber m_collectorISub;
+  private final DoubleSubscriber m_collectorDSub;
+  private final DoubleSubscriber m_collectorFFSub;
   private final DoubleSubscriber m_upPositionSub;
   private final DoubleSubscriber m_downPositionSub;
   private final DoubleSubscriber m_hopperPSub;
@@ -57,6 +65,10 @@ public class CollectorSubsystem extends SubsystemBase {
   private final DoublePublisher m_motorCurrentLimitPub;
   private final DoublePublisher m_collectorSpeedPub;
   private final DoublePublisher m_collectorTargetRPMPub;
+  private final DoublePublisher m_collectorPPub;
+  private final DoublePublisher m_collectorIPub;
+  private final DoublePublisher m_collectorDPub;
+  private final DoublePublisher m_collectorFFPub;
   private final DoublePublisher m_upPositionPub;
   private final DoublePublisher m_downPositionPub;
   private final DoublePublisher m_hopperPPub;
@@ -91,6 +103,10 @@ public class CollectorSubsystem extends SubsystemBase {
     m_motorCurrentLimitPub = configTable.getDoubleTopic("Motor Current Limit").publish();
     m_collectorSpeedPub = configTable.getDoubleTopic("Collector Speed").publish();
     m_collectorTargetRPMPub = configTable.getDoubleTopic("Collector Target RPM").publish();
+    m_collectorPPub = configTable.getDoubleTopic("Collector P").publish();
+    m_collectorIPub = configTable.getDoubleTopic("Collector I").publish();
+    m_collectorDPub = configTable.getDoubleTopic("Collector D").publish();
+    m_collectorFFPub = configTable.getDoubleTopic("Collector FF").publish();
     m_upPositionPub = configTable.getDoubleTopic("Up Position").publish();
     m_downPositionPub = configTable.getDoubleTopic("Down Position").publish();
     m_hopperPPub = configTable.getDoubleTopic("Hopper P").publish();
@@ -101,6 +117,10 @@ public class CollectorSubsystem extends SubsystemBase {
     m_motorCurrentLimitPub.set(m_motorCurrentLimit);
     m_collectorSpeedPub.set(m_collectorSpeed);
     m_collectorTargetRPMPub.set(m_collectorTargetRPM);
+    m_collectorPPub.set(m_collectorP);
+    m_collectorIPub.set(m_collectorI);
+    m_collectorDPub.set(m_collectorD);
+    m_collectorFFPub.set(m_collectorFF);
     m_upPositionPub.set(m_upPosition);
     m_downPositionPub.set(m_downPosition);
     m_hopperPPub.set(m_hopperP);
@@ -112,6 +132,10 @@ public class CollectorSubsystem extends SubsystemBase {
     m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
     m_collectorSpeedSub = configTable.getDoubleTopic("Collector Speed").subscribe(m_collectorSpeed);
     m_collectorTargetRPMSub = configTable.getDoubleTopic("Collector Target RPM").subscribe(m_collectorTargetRPM);
+    m_collectorPSub = configTable.getDoubleTopic("Collector P").subscribe(m_collectorP);
+    m_collectorISub = configTable.getDoubleTopic("Collector I").subscribe(m_collectorI);
+    m_collectorDSub = configTable.getDoubleTopic("Collector D").subscribe(m_collectorD);
+    m_collectorFFSub = configTable.getDoubleTopic("Collector FF").subscribe(m_collectorFF);
     m_upPositionSub = configTable.getDoubleTopic("Up Position").subscribe(m_upPosition);
     m_downPositionSub = configTable.getDoubleTopic("Down Position").subscribe(m_downPosition);
     m_hopperPSub = configTable.getDoubleTopic("Hopper P").subscribe(m_hopperP);
@@ -268,6 +292,18 @@ public class CollectorSubsystem extends SubsystemBase {
     m_hopperMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
   }
 
+  /**
+   * Update collector motor PID + FF values by reconfiguring motor
+   */
+  private void updateCollectorPID() {
+    com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
+    config.closedLoop
+      .pid(m_collectorP, m_collectorI, m_collectorD)
+      .velocityFF(m_collectorFF);
+
+    m_upperCollectorMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+  }
+
   @Override
   public void periodic() {
     // Read configurable values from NetworkTables and update if changed
@@ -287,6 +323,24 @@ public class CollectorSubsystem extends SubsystemBase {
     if (newCollectorTargetRPM != m_collectorTargetRPM) {
       m_collectorTargetRPM = newCollectorTargetRPM;
       m_collectorTargetRPMPub.set(m_collectorTargetRPM);
+    }
+
+    // Read collector PID values and update motor if changed
+    double newCollectorP = m_collectorPSub.get();
+    double newCollectorI = m_collectorISub.get();
+    double newCollectorD = m_collectorDSub.get();
+    double newCollectorFF = m_collectorFFSub.get();
+    if (newCollectorP != m_collectorP || newCollectorI != m_collectorI ||
+        newCollectorD != m_collectorD || newCollectorFF != m_collectorFF) {
+      m_collectorP = newCollectorP;
+      m_collectorI = newCollectorI;
+      m_collectorD = newCollectorD;
+      m_collectorFF = newCollectorFF;
+      m_collectorPPub.set(m_collectorP);
+      m_collectorIPub.set(m_collectorI);
+      m_collectorDPub.set(m_collectorD);
+      m_collectorFFPub.set(m_collectorFF);
+      updateCollectorPID();
     }
 
     double newUpPosition = m_upPositionSub.get();
