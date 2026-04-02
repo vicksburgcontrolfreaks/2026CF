@@ -27,6 +27,7 @@ public class CollectorSubsystem extends SubsystemBase {
 
   private final NetworkTable m_telemetryTable;
   private final DoublePublisher m_upperCollectorSpeedPub;
+  private final DoublePublisher m_upperCollectorVelocityPub;
   private final DoublePublisher m_upperCollectorCurrentPub;
   private final DoublePublisher m_hopperMotorPosiotionPub;
 
@@ -68,11 +69,26 @@ public class CollectorSubsystem extends SubsystemBase {
 
     m_telemetryTable = NetworkTableInstance.getDefault().getTable("Collector");
     m_upperCollectorSpeedPub = m_telemetryTable.getDoubleTopic("Upper Collector Speed").publish();
+    m_upperCollectorVelocityPub = m_telemetryTable.getDoubleTopic("Upper Collector Velocity (RPM)").publish();
     m_upperCollectorCurrentPub = m_telemetryTable.getDoubleTopic("Upper Collector Current").publish();
     m_hopperMotorPosiotionPub = m_telemetryTable.getDoubleTopic("Hopper Position").publish();
 
-    // Initialize NetworkTables subscribers for configurable constants
+    // Initialize NetworkTables subscribers AND publishers for configurable constants
+    // Use GenericEntry for bidirectional control (read from dashboard, publish initial values)
     NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Collector/Config");
+
+    // Publish initial values so they show up in dashboard
+    configTable.getDoubleTopic("Motor Current Limit").publish().set(m_motorCurrentLimit);
+    configTable.getDoubleTopic("Collector Speed").publish().set(m_collectorSpeed);
+    configTable.getDoubleTopic("Collector Target RPM").publish().set(m_collectorTargetRPM);
+    configTable.getDoubleTopic("Up Position").publish().set(m_upPosition);
+    configTable.getDoubleTopic("Down Position").publish().set(m_downPosition);
+    configTable.getDoubleTopic("Hopper P").publish().set(m_hopperP);
+    configTable.getDoubleTopic("Hopper I").publish().set(m_hopperI);
+    configTable.getDoubleTopic("Hopper D").publish().set(m_hopperD);
+    configTable.getDoubleTopic("Telemetry Update Period").publish().set(m_telemetryUpdatePeriod);
+
+    // Subscribe to read updates from dashboard
     m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
     m_collectorSpeedSub = configTable.getDoubleTopic("Collector Speed").subscribe(m_collectorSpeed);
     m_collectorTargetRPMSub = configTable.getDoubleTopic("Collector Target RPM").subscribe(m_collectorTargetRPM);
@@ -262,6 +278,7 @@ public class CollectorSubsystem extends SubsystemBase {
       m_telemetryCounter = 0;
 
       m_upperCollectorSpeedPub.set(m_upperCollectorMotor.get());
+      m_upperCollectorVelocityPub.set(m_upperCollectorMotor.getEncoder().getVelocity());
       m_upperCollectorCurrentPub.set(m_upperCollectorMotor.getOutputCurrent());
       m_hopperMotorPosiotionPub.set(m_hopperMotor.getAbsoluteEncoder().getPosition());
     }
