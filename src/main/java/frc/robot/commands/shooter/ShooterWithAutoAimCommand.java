@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
+import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 
@@ -32,10 +33,13 @@ import java.util.function.DoubleSupplier;
 public class ShooterWithAutoAimCommand extends Command {
   private final ShooterSubsystem m_shooter;
   private final DriveSubsystem m_swerveDrive;
+  private final CollectorSubsystem m_collector;
   private final DoubleSupplier m_xSpeedSupplier;
   private final DoubleSupplier m_ySpeedSupplier;
   private final PIDController m_rotationController;
   private boolean m_feedingStarted = false;
+  private boolean m_hopperPopHigh = false;
+  private double m_lastPopTime = 0.0;
 
   /**
    * Creates a new ShooterWithAutoAimCommand.
@@ -48,10 +52,12 @@ public class ShooterWithAutoAimCommand extends Command {
   public ShooterWithAutoAimCommand(
       ShooterSubsystem shooter,
       DriveSubsystem swerveDrive,
+      CollectorSubsystem collector,
       DoubleSupplier xSpeedSupplier,
       DoubleSupplier ySpeedSupplier) {
     m_shooter = shooter;
     m_swerveDrive = swerveDrive;
+    m_collector = collector;
     m_xSpeedSupplier = xSpeedSupplier;
     m_ySpeedSupplier = ySpeedSupplier;
 
@@ -65,7 +71,7 @@ public class ShooterWithAutoAimCommand extends Command {
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
-    addRequirements(shooter, swerveDrive);
+    addRequirements(shooter, swerveDrive, collector);
   }
 
   @Override
@@ -75,6 +81,8 @@ public class ShooterWithAutoAimCommand extends Command {
 
     // Reset feeding state
     m_feedingStarted = false;
+    m_hopperPopHigh = false;
+    m_lastPopTime = 0.0;
 
     // Shooter wheels are already spinning from teleopInit()
     // Don't start feeding yet - wait for alignment in execute()
@@ -123,19 +131,30 @@ public class ShooterWithAutoAimCommand extends Command {
         true
     );
 
-    // Check if we should feed balls: aligned AND at target RPM
-    boolean isAligned = m_rotationController.atSetpoint();
-    boolean isAtRPM = m_shooter.isReadyToFeed();
-    boolean shouldFeed = isAligned && isAtRPM;
+    // Check if we should feed balls: aligned (shooter is always pre-spinning, no RPM wait needed)
+    boolean shouldFeed = m_rotationController.atSetpoint();
 
     if (shouldFeed && !m_feedingStarted) {
       // Start feeding
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
+      m_collector.runCollector(false);
+      m_collector.setHopperPosition(0.02);
+      m_hopperPopHigh = false;
+      m_lastPopTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
       m_feedingStarted = true;
     }
     // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
     // The feeding will continue until the command ends (trigger released)
+
+    if (m_feedingStarted) {
+      double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+      if (now - m_lastPopTime >= 0.25) {
+        m_hopperPopHigh = !m_hopperPopHigh;
+        m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
+        m_lastPopTime = now;
+      }
+    }
   }
 
   @Override
@@ -144,6 +163,7 @@ public class ShooterWithAutoAimCommand extends Command {
     // Shooter wheels continue spinning
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
+    m_collector.stopCollector();
 
     // Stop the drive subsystem
     m_swerveDrive.stop();

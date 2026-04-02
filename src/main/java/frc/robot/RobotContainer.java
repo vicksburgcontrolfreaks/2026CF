@@ -4,8 +4,9 @@
 
 package frc.robot;
 
+import java.util.Set;
+
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -15,10 +16,13 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.commands.auto.DriveAndShootCommand;
 import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
-import frc.robot.commands.auton.BlueTwoPieceAutoCommand;
-import frc.robot.commands.auton.RedTwoPieceAutoCommand;
+import frc.robot.commands.auton.BlueCenterShootCommand;
+import frc.robot.commands.auton.BlueLeftCollectAndShootCommand;
+import frc.robot.commands.auton.BlueRightCollectAndShootCommand;
+import frc.robot.commands.auton.RedCenterShootCommand;
+import frc.robot.commands.auton.RedLeftCollectAndShootCommand;
+import frc.robot.commands.auton.RedRightCollectAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
@@ -251,6 +255,7 @@ public class RobotContainer {
       new ShooterWithAutoAimCommand(
         m_shooterSubsystem,
         m_swerveDrive,
+        m_collector,
         () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
         () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
       )
@@ -389,81 +394,58 @@ public class RobotContainer {
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
-    // Placeholder - actual command selected based on starting pose at autonomousInit
-    m_autoChooser.setDefaultOption("Smart Auto (Pose-Based)", Commands.none());
+    m_autoChooser.setDefaultOption("Auto", Commands.none()); // placeholder; real command built at init
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
-    SmartDashboard.putString("Auto/Selected", "Not yet determined - will select based on pose at init");
+    SmartDashboard.putString("Auto/Selected", "Not yet determined");
   }
 
   /**
-   * Selects autonomous command based on robot starting pose and vision availability.
-   *
-   * Alliance Detection (based on X position):
-   *   - x > 8.27m = Red alliance
-   *   - x ≤ 8.27m = Blue alliance
-   *
-   * Position Detection (based on Y position):
-   *   Red Alliance:
-   *     - y < 2.5m  = Red Left   (amp side)
-   *     - y > 5.5m  = Red Right  (source side)
-   *     - else      = Red Center
-   *   Blue Alliance:
-   *     - y > 5.5m  = Blue Left  (amp side)
-   *     - y < 2.5m  = Blue Right (source side)
-   *     - else      = Blue Center
-   *
-   * Fallback: If no vision cameras active, uses DriveAndShootNoCameraCommand
+   * Selects the autonomous command based on robot starting pose and vision availability.
+   * Alliance: x > 8.27 = Red, x <= 8.27 = Blue.
+   * Position: y < 3.0 = Left(Red)/Right(Blue), y > 5.0 = Right(Red)/Left(Blue), else Center.
+   * If vision is unavailable, drives forward 1 meter and shoots.
    */
   public Command getAutonomousCommand() {
-    // Fallback if no vision
     if (m_visionSubsystem.getActiveCameraCount() == 0) {
       SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
       return new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
     }
 
-    // Get starting pose from vision-corrected odometry
-    Pose2d startPose = m_swerveDrive.getPose();
+    edu.wpi.first.math.geometry.Pose2d startPose = m_swerveDrive.getPose();
     double x = startPose.getX();
     double y = startPose.getY();
-
-    // Determine alliance based on X position (field is 16.54m long, center is 8.27m)
     boolean isRed = x > 8.27;
     String alliance = isRed ? "Red" : "Blue";
 
     String name;
     Command command;
 
-    // Select autonomous based on alliance and Y position
     if (isRed) {
-      if (y < 2.5) {
-        name = "Red Left (Amp Side)";
-        command = new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
-      } else if (y > 5.5) {
-        name = "Red Right (Source Side)";
-        command = new RedTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      if (y < 3.0) {
+        name = "Red Left Collect and Shoot";
+        command = new RedLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else if (y > 5.0) {
+        name = "Red Right Collect and Shoot";
+        command = new RedRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
       } else {
-        name = "Red Center";
-        command = new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+        name = "Red Center Shoot";
+        command = new RedCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
       }
     } else {
-      if (y > 5.5) {
-        name = "Blue Left (Amp Side)";
-        command = new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
-      } else if (y < 2.5) {
-        name = "Blue Right (Source Side)";
-        command = new BlueTwoPieceAutoCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      if (y > 5.0) {
+        name = "Blue Left Collect and Shoot";
+        command = new BlueLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      } else if (y < 3.0) {
+        name = "Blue Right Collect and Shoot";
+        command = new BlueRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
       } else {
-        name = "Blue Center";
-        command = new DriveAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+        name = "Blue Center Shoot";
+        command = new BlueCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
       }
     }
 
-    // Publish selected auto to SmartDashboard for verification
-    String selectedInfo = String.format("%s | Alliance: %s | Pose: (%.2f, %.2f, %.1f°)",
-        name, alliance, x, y, startPose.getRotation().getDegrees());
-    SmartDashboard.putString("Auto/Selected", selectedInfo);
-    System.out.println("Auto Selected: " + selectedInfo);
-
+    SmartDashboard.putString("Auto/Selected",
+        String.format("%s | Alliance: %s | Pose: (%.2f, %.2f)", name, alliance, x, y));
     return command;
   }
 
