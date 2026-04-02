@@ -1,0 +1,15 @@
+{
+  "robotMass": 45.0,
+  "MOI": 6.0,
+  "wheelbase": 0.6731,
+  "trackwidth": 0.6731,
+  "wheelRadius": 0.0508,
+  "gearing": 6.75,
+  "maxDriveSpeed": 4.8,
+  "maxAcceleration": 3.0,
+  "maxAngularVelocity": 540.0,
+  "maxAngularAcceleration": 720.0,
+  "optimalCurrentLimit": 40.0,
+  "motorType": "NEO",
+  "holonomic": true
+}

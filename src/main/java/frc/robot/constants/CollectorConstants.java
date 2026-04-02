@@ -18,8 +18,8 @@ public class CollectorConstants {
   public static final double kHalfwayPosition = 0.095;  // Halfway between up and down
   public static final double kDownPosition = 0.180;
 
-  public static final double kHopperP = 0.5;
-  public static final double kHopperI = 0.001;
+  public static final double kHopperP = 2.5;
+  public static final double kHopperI = 0.0;
   public static final double kHopperD = 0.0;
 
   // Hopper MAXMotion limits
