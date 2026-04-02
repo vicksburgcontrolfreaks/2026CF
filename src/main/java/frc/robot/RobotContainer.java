@@ -256,8 +256,20 @@ public class RobotContainer {
         m_shooterSubsystem,
         m_swerveDrive,
         m_collector,
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier(),
-        () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier()
+        () -> {
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+          return -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)
+                 * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier() * allianceFlip;
+        },
+        () -> {
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+          return -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)
+                 * m_swerveDrive.getMaxSpeedMetersPerSecond() * getSpeedMultiplier() * allianceFlip;
+        }
       )
     );
 
