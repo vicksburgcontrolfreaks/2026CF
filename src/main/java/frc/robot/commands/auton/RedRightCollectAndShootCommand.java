@@ -20,16 +20,23 @@ import frc.robot.subsystems.shooter.ShooterSubsystem;
  * Red alliance RIGHT collect-and-shoot autonomous (upper field, y near 7.62).
  *
  * Sequence:
- * 1. Drive to (10.69, 7.62) @ 180° — deploy hopper, start collector
- * 2. Drive to (8.78,  6.54) @ -90° — collector running
- * 3. Drive to (8.78,  4.54) @ -90° — collecting balls; stop collector on arrival
- * 4. Drive to (10.69, 7.50) @ 0°
- * 5. Drive to (12.88, 7.62) @ 0°
- * 6. Drive to (13.33, 5.62) @ 60°
- * 7. Aim and shoot (4 sec)
- * 8. Drive to outpost (15.88, 7.39) @ 0° — red wall minus 26 inches
- * 9. Wait 2 seconds
- * 10. Drive back to (13.33, 5.62) @ 60°, aim and shoot again (4 sec)
+ * 1.  Drive to (10.69, 7.62) @ 180° — deploy hopper, start collector
+ * 2.  Drive to (8.78,  6.54) @ -90° — collector running
+ * 3.  Drive to (8.78,  5.78) @ -90° — collecting balls
+ * 4a. Sweep   to (9.68,  5.78) @ 180° — CW sweep mid, collector still running
+ * 4b. Sweep   to (10.58, 5.78) @ 90°  — CW sweep end, collector still running
+ * 4c. Drive to (10.78, 7.50)  @ 0°   — crash avoidance
+ * 5.  Drive to (12.88, 7.62) @ 0°  — collector still running
+ * 6.  Drive to (13.33, 5.62) @ 60°
+ * 7.  Aim and shoot (4 sec)
+ * 8.  Drive back to (8.78, 6.54) @ -90° — redeploy hopper, restart collector
+ * 9.  Drive to (8.78,  5.78) @ -90° — collecting
+ * 10a.Sweep   to (9.68,  5.78) @ 180° — CW sweep mid
+ * 10b.Sweep   to (10.58, 5.78) @ 90°  — CW sweep end
+ * 10c.Drive to (10.78, 7.50)  @ 0°   — crash avoidance
+ * 11. Drive to (12.88, 7.62) @ 0°
+ * 12. Drive to (13.33, 5.62) @ 60°
+ * 13. Aim and shoot again (4 sec)
  */
 public class RedRightCollectAndShootCommand extends Command {
 
@@ -37,12 +44,20 @@ public class RedRightCollectAndShootCommand extends Command {
     DRIVE_TO_COLLECTOR_DEPLOY,
     DRIVE_TO_COLLECT_ALIGN,
     DRIVE_COLLECT,
-    DRIVE_TO_MIDPOINT,
+    DRIVE_SWEEP_MID,
+    DRIVE_SWEEP,
+    DRIVE_AVOID,
     DRIVE_TO_TRANSIT,
     DRIVE_TO_SHOOT,
     SHOOT,
-    DRIVE_TO_OUTPOST,
-    WAIT_AT_OUTPOST,
+    DRIVE_TO_TRENCH_ENTRY,
+    DRIVE_THROUGH_TRENCH,
+    DRIVE_BACK_TO_COLLECT,
+    DRIVE_COLLECT_2,
+    DRIVE_SWEEP_MID_2,
+    DRIVE_SWEEP_2,
+    DRIVE_AVOID_2,
+    DRIVE_TO_TRANSIT_2,
     DRIVE_TO_SHOOT_AGAIN,
     SHOOT_AGAIN,
     DONE
@@ -55,19 +70,20 @@ public class RedRightCollectAndShootCommand extends Command {
 
   private static final Translation2d COLLECTOR_DEPLOY_POS = new Translation2d(10.69, 7.62);
   private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(8.78,  6.54);
-  private static final Translation2d COLLECT_POS          = new Translation2d(8.78,  4.54);
-  private static final Translation2d MIDPOINT_POS         = new Translation2d(10.69, 7.50);
+  private static final Translation2d COLLECT_POS          = new Translation2d(8.78,  5.78);
+  private static final Translation2d SWEEP_MID_POS        = new Translation2d(9.68,  5.00);
+  private static final Translation2d SWEEP_POS            = new Translation2d(10.58, 5.78);
+  private static final Translation2d AVOID_POS            = new Translation2d(10.78, 7.50);
+  private static final Translation2d TRENCH_ENTRY_POS     = new Translation2d(13.33, 7.62);
+  private static final Translation2d TRENCH_EXIT_POS      = new Translation2d(10.62, 7.62);
   private static final Translation2d TRANSIT_POS          = new Translation2d(12.88, 7.62);
-  private static final Translation2d SHOOT_POS            = new Translation2d(13.33, 5.62);
-  private static final Translation2d OUTPOST_POS          = new Translation2d(15.88, 7.39);
-  private static final double DRIVE_TOLERANCE             = 0.15;
+  private static final Translation2d SHOOT_POS            = new Translation2d(13.33, 6.68);
+  private static final double DRIVE_TOLERANCE             = 0.25;
   private static final double SHOOT_DURATION              = 4.0;
-  private static final double OUTPOST_WAIT_DURATION       = 2.0;
 
   private Phase m_phase;
   private boolean m_shootingStarted;
   private double m_shootingStartTime;
-  private double m_waitStartTime;
   private boolean m_hopperPopHigh;
   private double m_lastPopTime;
 
@@ -118,14 +134,19 @@ public class RedRightCollectAndShootCommand extends Command {
         break;
 
       case DRIVE_COLLECT:
-        driveToWaypoint(pose, COLLECT_POS, -90.0, Phase.DRIVE_TO_MIDPOINT);
-        if (m_phase == Phase.DRIVE_TO_MIDPOINT) {
-          m_collector.stopCollector();
-        }
+        driveToWaypoint(pose, COLLECT_POS, -90.0, Phase.DRIVE_SWEEP_MID);
         break;
 
-      case DRIVE_TO_MIDPOINT:
-        driveToWaypoint(pose, MIDPOINT_POS, 0.0, Phase.DRIVE_TO_TRANSIT);
+      case DRIVE_SWEEP_MID:
+        driveToWaypoint(pose, SWEEP_MID_POS, 0.0, Phase.DRIVE_SWEEP);
+        break;
+
+      case DRIVE_SWEEP:
+        driveToWaypoint(pose, SWEEP_POS, 90.0, Phase.DRIVE_AVOID);
+        break;
+
+      case DRIVE_AVOID:
+        driveToWaypoint(pose, AVOID_POS, 0.0, Phase.DRIVE_TO_TRANSIT);
         break;
 
       case DRIVE_TO_TRANSIT:
@@ -143,27 +164,48 @@ public class RedRightCollectAndShootCommand extends Command {
           m_shooter.StopIndexer();
           m_shooter.enableRPMCap();
           m_collector.stopCollector();
-          m_rotationController.reset();
-          m_phase = Phase.DRIVE_TO_OUTPOST;
-        }
-        break;
-
-      case DRIVE_TO_OUTPOST:
-        driveToWaypoint(pose, OUTPOST_POS, 0.0, Phase.WAIT_AT_OUTPOST);
-        if (m_phase == Phase.WAIT_AT_OUTPOST) {
-          m_waitStartTime = now();
-        }
-        break;
-
-      case WAIT_AT_OUTPOST:
-        m_drive.drive(0, 0, 0, true);
-        if ((t - m_waitStartTime) >= OUTPOST_WAIT_DURATION) {
           m_shootingStarted = false;
           m_hopperPopHigh = false;
           m_lastPopTime = 0;
           m_rotationController.reset();
-          m_phase = Phase.DRIVE_TO_SHOOT_AGAIN;
+          m_phase = Phase.DRIVE_TO_TRENCH_ENTRY;
         }
+        break;
+
+      case DRIVE_TO_TRENCH_ENTRY:
+        driveToWaypoint(pose, TRENCH_ENTRY_POS, 180.0, Phase.DRIVE_THROUGH_TRENCH);
+        break;
+
+      case DRIVE_THROUGH_TRENCH:
+        driveToWaypoint(pose, TRENCH_EXIT_POS, 180.0, Phase.DRIVE_BACK_TO_COLLECT);
+        break;
+
+      case DRIVE_BACK_TO_COLLECT:
+        driveToWaypoint(pose, COLLECT_ALIGN_POS, -90.0, Phase.DRIVE_COLLECT_2);
+        if (m_phase == Phase.DRIVE_COLLECT_2) {
+          m_collector.extendHopper();
+          m_collector.runCollector(false);
+        }
+        break;
+
+      case DRIVE_COLLECT_2:
+        driveToWaypoint(pose, COLLECT_POS, -90.0, Phase.DRIVE_SWEEP_MID_2);
+        break;
+
+      case DRIVE_SWEEP_MID_2:
+        driveToWaypoint(pose, SWEEP_MID_POS, 180.0, Phase.DRIVE_SWEEP_2);
+        break;
+
+      case DRIVE_SWEEP_2:
+        driveToWaypoint(pose, SWEEP_POS, 90.0, Phase.DRIVE_AVOID_2);
+        break;
+
+      case DRIVE_AVOID_2:
+        driveToWaypoint(pose, AVOID_POS, 0.0, Phase.DRIVE_TO_TRANSIT_2);
+        break;
+
+      case DRIVE_TO_TRANSIT_2:
+        driveToWaypoint(pose, TRANSIT_POS, 0.0, Phase.DRIVE_TO_SHOOT_AGAIN);
         break;
 
       case DRIVE_TO_SHOOT_AGAIN:
@@ -194,12 +236,8 @@ public class RedRightCollectAndShootCommand extends Command {
           Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
 
     if (dist < DRIVE_TOLERANCE) {
-      m_drive.drive(0, 0, rot * DriveConstants.kMaxAngularSpeed, true);
-      if (m_rotationController.atSetpoint()) {
-        m_drive.drive(0, 0, 0, true);
-        m_rotationController.reset();
-        m_phase = nextPhase;
-      }
+      m_rotationController.reset();
+      m_phase = nextPhase;
     } else {
       double speed = Math.min(0.5, dist * 2.0);
       double xSpeed = (dx / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
