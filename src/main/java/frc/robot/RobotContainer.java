@@ -23,6 +23,8 @@ import frc.robot.commands.auton.BlueRightCollectAndShootCommand;
 import frc.robot.commands.auton.RedCenterShootCommand;
 import frc.robot.commands.auton.RedLeftCollectAndShootCommand;
 import frc.robot.commands.auton.RedRightCollectAndShootCommand;
+import frc.robot.commands.auton.RedRightOverHumpCommand;
+import frc.robot.commands.auton.WaypointPIDTestCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
@@ -191,6 +193,7 @@ public class RobotContainer {
     // A Button: Run collector in collection mode (forward) - stays on until X or B pressed
     m_mechanismController.a().onTrue(
       Commands.runOnce(() -> {
+        m_collector.setHopperPosition(0.18);
         m_collector.runCollector(false);
         m_shooterSubsystem.runFloor(false);
         m_shooterSubsystem.runIndexer(true);
@@ -411,7 +414,9 @@ public class RobotContainer {
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
-    m_autoChooser.setDefaultOption("Auto", Commands.none()); // placeholder; real command built at init
+    m_autoChooser.setDefaultOption("Auto (Pose-Based)", Commands.none());
+    m_autoChooser.addOption("Red Right Over Hump", new RedRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem));
+    m_autoChooser.addOption("Waypoint PID Test", new WaypointPIDTestCommand(m_swerveDrive, m_shooterSubsystem));
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
     SmartDashboard.putString("Auto/Selected", "Not yet determined");
   }
@@ -475,6 +480,11 @@ public class RobotContainer {
    * If vision is unavailable, drives forward 1 meter and shoots.
    */
   public Command getAutonomousCommand() {
+    Command selected = m_autoChooser.getSelected();
+    if (selected != null && selected.getName() != null && !selected.getName().equals("none")) {
+      return selected;
+    }
+
     if (m_visionSubsystem.getActiveCameraCount() == 0) {
       SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
       return new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector);

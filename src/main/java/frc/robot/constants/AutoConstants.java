@@ -28,4 +28,10 @@ public final class AutoConstants {
   public static final double kRotateToTargetD = 0.0;
   public static final double kRotateToTargetTolerance = 3.0;
   public static final double kRotateToTargetMaxVelocity = 0.5;
+
+  // Waypoint positional PID — controls drive speed as a function of distance to waypoint
+  public static final double kWaypointP        = 1.15;  // proportional: speed per meter of error
+  public static final double kWaypointI        = 0.0;
+  public static final double kWaypointD        = 0.001;
+  public static final double kWaypointMaxSpeed = 0.5;   // fraction of kMaxSpeedMetersPerSecond
 }

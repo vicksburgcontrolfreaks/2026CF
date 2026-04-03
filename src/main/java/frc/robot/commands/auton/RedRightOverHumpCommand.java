@@ -4,12 +4,9 @@
 
 package frc.robot.commands.auton;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.networktables.DoubleEntry;
-import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -18,50 +15,55 @@ import frc.robot.constants.DriveConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
+import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 /**
- * Red alliance RIGHT collect-and-shoot autonomous (upper field, y near 7.62).
+ * Red alliance RIGHT collect-and-shoot autonomous — OVER HUMP variant.
+ * Returns over the hump both times instead of going under the trench.
  *
  * Sequence:
  * 1.  Drive to (10.69, 7.62) @ 180° — deploy hopper, start collector
- * 2.  Drive to (8.78,  6.54) @ -90° — collector running
- * 3.  Drive to (8.78,  5.78) @ -90° — collecting balls
- * 4a. Sweep   to (9.68,  5.78) @ 180° — CW sweep mid, collector still running
- * 4b. Sweep   to (10.58, 5.78) @ 90°  — CW sweep end, collector still running
- * 4c. Drive to (10.78, 7.50)  @ 0°   — crash avoidance
- * 5.  Drive to (12.88, 7.62) @ 0°  — collector still running
- * 6.  Drive to (13.33, 5.62) @ 60°
- * 7.  Aim and shoot (4 sec)
- * 8.  Drive back to (8.78, 6.54) @ -90° — redeploy hopper, restart collector
- * 9.  Drive to (8.78,  5.78) @ -90° — collecting
- * 10a.Sweep   to (9.68,  5.78) @ 180° — CW sweep mid
- * 10b.Sweep   to (10.58, 5.78) @ 90°  — CW sweep end
- * 10c.Drive to (10.78, 7.50)  @ 0°   — crash avoidance
- * 11. Drive to (12.88, 7.62) @ 0°
- * 12. Drive to (13.33, 5.62) @ 60°
- * 13. Aim and shoot again (4 sec)
+ * 2.  Drive to (9.4,   6.5)  @ -135°
+ * 3.  Drive to (8.8,   5.5)  @ -90°  — collecting
+ * 4.  Drive to (9.5,   4.5)  @ -45°
+ * 5.  Drive to (10.3,  5.7)  @ 45°   — pre-hump
+ * 6.  Drive over hump to (13.5, 5.6) @ 45°
+ *     SETTLE — hold position until multi-tag pose (≥2 tags) or 1.5s timeout
+ * 7.  Aim and shoot (2.5 sec)
+ * 8.  Drive back over hump to (10.3, 5.7) @ 180°
+ *     SETTLE — hold position until multi-tag pose (≥2 tags) or 1.5s timeout
+ * 9.  Drive back to (9.4, 6.5) @ -90° — redeploy hopper, restart collector
+ * 10. Drive to (8.8,  5.5)  @ -90°
+ * 11. Drive to (9.5,  4.5)  @ -45°
+ * 12. Drive to (10.3, 5.7)  @ 45°
+ * 13. Drive over hump to (13.5, 5.6) @ 45°
+ *     SETTLE — hold position until multi-tag pose (≥2 tags) or 1.5s timeout
+ * 14. Aim and shoot again (2.5 sec)
+ *
+ * Odometry note: the hump crossing causes wheel slip. Vision settle phases
+ * stop the robot and wait for ≥2 AprilTags to correct the pose before
+ * proceeding. A 1.5s timeout prevents the robot from getting stuck if tags
+ * are not visible.
  */
-public class RedRightCollectAndShootCommand extends Command {
+public class RedRightOverHumpCommand extends Command {
 
   private enum Phase {
     DRIVE_TO_COLLECTOR_DEPLOY,
     DRIVE_TO_COLLECT_ALIGN,
     DRIVE_COLLECT,
     DRIVE_SWEEP_MID,
-    DRIVE_SWEEP,
-    DRIVE_AVOID,
-    DRIVE_TO_TRANSIT,
-    DRIVE_TO_SHOOT,
+    DRIVE_PRE_HUMP,
+    DRIVE_OVER_HUMP,
+    VISION_SETTLE,
     SHOOT,
-    DRIVE_TO_TRENCH_ENTRY,
-    DRIVE_THROUGH_TRENCH,
+    DRIVE_BACK_OVER_HUMP,
+    VISION_SETTLE_RETURN,
     DRIVE_BACK_TO_COLLECT,
     DRIVE_COLLECT_2,
     DRIVE_SWEEP_MID_2,
-    DRIVE_SWEEP_2,
-    DRIVE_AVOID_2,
-    DRIVE_TO_TRANSIT_2,
-    DRIVE_TO_SHOOT_AGAIN,
+    DRIVE_PRE_HUMP_2,
+    DRIVE_OVER_HUMP_2,
+    VISION_SETTLE_2,
     SHOOT_AGAIN,
     DONE
   }
@@ -69,39 +71,34 @@ public class RedRightCollectAndShootCommand extends Command {
   private final DriveSubsystem m_drive;
   private final ShooterSubsystem m_shooter;
   private final CollectorSubsystem m_collector;
+  private final PhotonVisionSubsystem m_vision;
   private final PIDController m_rotationController;
-  private final PIDController m_translationController;
-
-  private final DoubleEntry m_waypointPEntry;
-  private final DoubleEntry m_waypointIEntry;
-  private final DoubleEntry m_waypointDEntry;
-  private final DoubleEntry m_waypointMaxSpeedEntry;
 
   private static final Translation2d COLLECTOR_DEPLOY_POS = new Translation2d(10.69, 7.62);
-  private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(8.78,  6.54);
-  private static final Translation2d COLLECT_POS          = new Translation2d(8.78,  5.78);
-  private static final Translation2d SWEEP_MID_POS        = new Translation2d(9.68,  5.00);
-  private static final Translation2d SWEEP_POS            = new Translation2d(10.58, 5.78);
-  private static final Translation2d AVOID_POS            = new Translation2d(10.78, 7.50);
-  private static final Translation2d TRENCH_ENTRY_POS     = new Translation2d(13.33, 7.62);
-  private static final Translation2d TRENCH_EXIT_POS      = new Translation2d(10.62, 7.62);
-  private static final Translation2d TRANSIT_POS          = new Translation2d(12.88, 7.62);
-  private static final Translation2d SHOOT_POS            = new Translation2d(13.33, 6.68);
+  private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(9.4,   6.5);
+  private static final Translation2d COLLECT_POS          = new Translation2d(8.8,   5.5);
+  private static final Translation2d SWEEP_MID_POS        = new Translation2d(9.5,   4.5);
+  private static final Translation2d PRE_HUMP_POS         = new Translation2d(10.3,  5.7);
+  private static final Translation2d SHOOT_POS            = new Translation2d(13.5,  5.6);
   private static final double DRIVE_TOLERANCE             = 0.25;
+  private static final double HUMP_SPEED                  = 0.5;
   private static final double SHOOT_DURATION              = 2.5;
+  private static final int    VISION_SETTLE_MIN_TAGS      = 2;
+  private static final double VISION_SETTLE_TIMEOUT       = 1.5;
 
   private Phase m_phase;
   private boolean m_shootingStarted;
   private double m_shootingStartTime;
+  private double m_settleStartTime;
   private boolean m_hopperPopHigh;
   private double m_lastPopTime;
-  private double m_waypointMaxSpeed = AutoConstants.kWaypointMaxSpeed;
 
-  public RedRightCollectAndShootCommand(DriveSubsystem drive, ShooterSubsystem shooter,
-                                        CollectorSubsystem collector) {
+  public RedRightOverHumpCommand(DriveSubsystem drive, ShooterSubsystem shooter,
+                                 CollectorSubsystem collector, PhotonVisionSubsystem vision) {
     m_drive = drive;
     m_shooter = shooter;
     m_collector = collector;
+    m_vision = vision;
 
     m_rotationController = new PIDController(
       AutoConstants.kRotateToTargetP,
@@ -111,23 +108,6 @@ public class RedRightCollectAndShootCommand extends Command {
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
-    m_translationController = new PIDController(
-      AutoConstants.kWaypointP,
-      AutoConstants.kWaypointI,
-      AutoConstants.kWaypointD
-    );
-    m_translationController.setTolerance(DRIVE_TOLERANCE);
-
-    var table = NetworkTableInstance.getDefault().getTable("WaypointPID");
-    m_waypointPEntry        = table.getDoubleTopic("P").getEntry(AutoConstants.kWaypointP);
-    m_waypointIEntry        = table.getDoubleTopic("I").getEntry(AutoConstants.kWaypointI);
-    m_waypointDEntry        = table.getDoubleTopic("D").getEntry(AutoConstants.kWaypointD);
-    m_waypointMaxSpeedEntry = table.getDoubleTopic("MaxSpeed").getEntry(AutoConstants.kWaypointMaxSpeed);
-    m_waypointPEntry.setDefault(AutoConstants.kWaypointP);
-    m_waypointIEntry.setDefault(AutoConstants.kWaypointI);
-    m_waypointDEntry.setDefault(AutoConstants.kWaypointD);
-    m_waypointMaxSpeedEntry.setDefault(AutoConstants.kWaypointMaxSpeed);
-
     addRequirements(drive, shooter, collector);
   }
 
@@ -136,21 +116,14 @@ public class RedRightCollectAndShootCommand extends Command {
     m_phase = Phase.DRIVE_TO_COLLECTOR_DEPLOY;
     m_shootingStarted = false;
     m_shootingStartTime = 0;
+    m_settleStartTime = 0;
     m_hopperPopHigh = false;
     m_lastPopTime = 0;
     m_rotationController.reset();
-    m_translationController.reset();
   }
 
   @Override
   public void execute() {
-    m_translationController.setPID(
-      m_waypointPEntry.get(),
-      m_waypointIEntry.get(),
-      m_waypointDEntry.get()
-    );
-    m_waypointMaxSpeed = m_waypointMaxSpeedEntry.get();
-
     double t = now();
     Pose2d pose = m_drive.getPose();
 
@@ -165,7 +138,7 @@ public class RedRightCollectAndShootCommand extends Command {
         break;
 
       case DRIVE_TO_COLLECT_ALIGN:
-        driveToWaypoint(pose, COLLECT_ALIGN_POS, -90.0, Phase.DRIVE_COLLECT);
+        driveToWaypoint(pose, COLLECT_ALIGN_POS, -135.0, Phase.DRIVE_COLLECT);
         break;
 
       case DRIVE_COLLECT:
@@ -173,23 +146,26 @@ public class RedRightCollectAndShootCommand extends Command {
         break;
 
       case DRIVE_SWEEP_MID:
-        driveToWaypoint(pose, SWEEP_MID_POS, 0.0, Phase.DRIVE_SWEEP);
+        driveToWaypoint(pose, SWEEP_MID_POS, -45.0, Phase.DRIVE_PRE_HUMP);
         break;
 
-      case DRIVE_SWEEP:
-        driveToWaypoint(pose, SWEEP_POS, 90.0, Phase.DRIVE_AVOID);
+      case DRIVE_PRE_HUMP:
+        driveToWaypoint(pose, PRE_HUMP_POS, 45.0, Phase.DRIVE_OVER_HUMP);
         break;
 
-      case DRIVE_AVOID:
-        driveToWaypoint(pose, AVOID_POS, 0.0, Phase.DRIVE_TO_TRANSIT);
+      case DRIVE_OVER_HUMP:
+        driveOverHump(pose, SHOOT_POS, 45.0, Phase.VISION_SETTLE);
+        if (m_phase == Phase.VISION_SETTLE) {
+          m_settleStartTime = now();
+        }
         break;
 
-      case DRIVE_TO_TRANSIT:
-        driveToWaypoint(pose, TRANSIT_POS, 0.0, Phase.DRIVE_TO_SHOOT);
-        break;
-
-      case DRIVE_TO_SHOOT:
-        driveToWaypoint(pose, SHOOT_POS, 60.0, Phase.SHOOT);
+      case VISION_SETTLE:
+        m_drive.drive(0, 0, 0, true);
+        if (m_vision.getTotalTagCount() >= VISION_SETTLE_MIN_TAGS ||
+            (t - m_settleStartTime) >= VISION_SETTLE_TIMEOUT) {
+          m_phase = Phase.SHOOT;
+        }
         break;
 
       case SHOOT:
@@ -203,16 +179,23 @@ public class RedRightCollectAndShootCommand extends Command {
           m_hopperPopHigh = false;
           m_lastPopTime = 0;
           m_rotationController.reset();
-          m_phase = Phase.DRIVE_TO_TRENCH_ENTRY;
+          m_phase = Phase.DRIVE_BACK_OVER_HUMP;
         }
         break;
 
-      case DRIVE_TO_TRENCH_ENTRY:
-        driveToWaypoint(pose, TRENCH_ENTRY_POS, 180.0, Phase.DRIVE_THROUGH_TRENCH);
+      case DRIVE_BACK_OVER_HUMP:
+        driveOverHump(pose, PRE_HUMP_POS, 180.0, Phase.VISION_SETTLE_RETURN);
+        if (m_phase == Phase.VISION_SETTLE_RETURN) {
+          m_settleStartTime = now();
+        }
         break;
 
-      case DRIVE_THROUGH_TRENCH:
-        driveToWaypoint(pose, TRENCH_EXIT_POS, 180.0, Phase.DRIVE_BACK_TO_COLLECT);
+      case VISION_SETTLE_RETURN:
+        m_drive.drive(0, 0, 0, true);
+        if (m_vision.getTotalTagCount() >= VISION_SETTLE_MIN_TAGS ||
+            (t - m_settleStartTime) >= VISION_SETTLE_TIMEOUT) {
+          m_phase = Phase.DRIVE_BACK_TO_COLLECT;
+        }
         break;
 
       case DRIVE_BACK_TO_COLLECT:
@@ -228,23 +211,26 @@ public class RedRightCollectAndShootCommand extends Command {
         break;
 
       case DRIVE_SWEEP_MID_2:
-        driveToWaypoint(pose, SWEEP_MID_POS, 0.0, Phase.DRIVE_SWEEP_2);
+        driveToWaypoint(pose, SWEEP_MID_POS, -45.0, Phase.DRIVE_PRE_HUMP_2);
         break;
 
-      case DRIVE_SWEEP_2:
-        driveToWaypoint(pose, SWEEP_POS, 90.0, Phase.DRIVE_AVOID_2);
+      case DRIVE_PRE_HUMP_2:
+        driveToWaypoint(pose, PRE_HUMP_POS, 45.0, Phase.DRIVE_OVER_HUMP_2);
         break;
 
-      case DRIVE_AVOID_2:
-        driveToWaypoint(pose, AVOID_POS, 0.0, Phase.DRIVE_TO_TRANSIT_2);
+      case DRIVE_OVER_HUMP_2:
+        driveOverHump(pose, SHOOT_POS, 45.0, Phase.VISION_SETTLE_2);
+        if (m_phase == Phase.VISION_SETTLE_2) {
+          m_settleStartTime = now();
+        }
         break;
 
-      case DRIVE_TO_TRANSIT_2:
-        driveToWaypoint(pose, TRANSIT_POS, 0.0, Phase.DRIVE_TO_SHOOT_AGAIN);
-        break;
-
-      case DRIVE_TO_SHOOT_AGAIN:
-        driveToWaypoint(pose, SHOOT_POS, 60.0, Phase.SHOOT_AGAIN);
+      case VISION_SETTLE_2:
+        m_drive.drive(0, 0, 0, true);
+        if (m_vision.getTotalTagCount() >= VISION_SETTLE_MIN_TAGS ||
+            (t - m_settleStartTime) >= VISION_SETTLE_TIMEOUT) {
+          m_phase = Phase.SHOOT_AGAIN;
+        }
         break;
 
       case SHOOT_AGAIN:
@@ -271,11 +257,32 @@ public class RedRightCollectAndShootCommand extends Command {
           Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
 
     if (dist < DRIVE_TOLERANCE) {
-      m_translationController.reset();
       m_rotationController.reset();
       m_phase = nextPhase;
     } else {
-      double speed = MathUtil.clamp(m_translationController.calculate(0, dist), 0, m_waypointMaxSpeed);
+      double speed = Math.min(0.5, dist * 2.0);
+      double xSpeed = (dx / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
+      double ySpeed = (dy / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
+      m_drive.drive(xSpeed, ySpeed, rot * DriveConstants.kMaxAngularSpeed, true);
+    }
+  }
+
+  /** Same as driveToWaypoint but caps speed to HUMP_SPEED to reduce wheel slip over the bump. */
+  private void driveOverHump(Pose2d pose, Translation2d waypoint, double targetHeading,
+                              Phase nextPhase) {
+    double dx = waypoint.getX() - pose.getX();
+    double dy = waypoint.getY() - pose.getY();
+    double dist = Math.sqrt(dx * dx + dy * dy);
+
+    double rot = m_rotationController.calculate(m_drive.getHeading(), targetHeading);
+    rot = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
+          Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
+
+    if (dist < DRIVE_TOLERANCE) {
+      m_rotationController.reset();
+      m_phase = nextPhase;
+    } else {
+      double speed = Math.min(HUMP_SPEED, dist * 2.0);
       double xSpeed = (dx / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
       double ySpeed = (dy / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
       m_drive.drive(xSpeed, ySpeed, rot * DriveConstants.kMaxAngularSpeed, true);
