@@ -4,14 +4,12 @@
 
 package frc.robot.commands.auton;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.networktables.DoubleEntry;
-import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
@@ -70,12 +68,6 @@ public class RedRightCollectAndShootCommand extends Command {
   private final ShooterSubsystem m_shooter;
   private final CollectorSubsystem m_collector;
   private final PIDController m_rotationController;
-  private final PIDController m_translationController;
-
-  private final DoubleEntry m_waypointPEntry;
-  private final DoubleEntry m_waypointIEntry;
-  private final DoubleEntry m_waypointDEntry;
-  private final DoubleEntry m_waypointMaxSpeedEntry;
 
   private static final Translation2d COLLECTOR_DEPLOY_POS = new Translation2d(10.69, 7.62);
   private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(8.78,  6.54);
@@ -95,7 +87,6 @@ public class RedRightCollectAndShootCommand extends Command {
   private double m_shootingStartTime;
   private boolean m_hopperPopHigh;
   private double m_lastPopTime;
-  private double m_waypointMaxSpeed = AutoConstants.kWaypointMaxSpeed;
 
   public RedRightCollectAndShootCommand(DriveSubsystem drive, ShooterSubsystem shooter,
                                         CollectorSubsystem collector) {
@@ -111,23 +102,6 @@ public class RedRightCollectAndShootCommand extends Command {
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
-    m_translationController = new PIDController(
-      AutoConstants.kWaypointP,
-      AutoConstants.kWaypointI,
-      AutoConstants.kWaypointD
-    );
-    m_translationController.setTolerance(DRIVE_TOLERANCE);
-
-    var table = NetworkTableInstance.getDefault().getTable("WaypointPID");
-    m_waypointPEntry        = table.getDoubleTopic("P").getEntry(AutoConstants.kWaypointP);
-    m_waypointIEntry        = table.getDoubleTopic("I").getEntry(AutoConstants.kWaypointI);
-    m_waypointDEntry        = table.getDoubleTopic("D").getEntry(AutoConstants.kWaypointD);
-    m_waypointMaxSpeedEntry = table.getDoubleTopic("MaxSpeed").getEntry(AutoConstants.kWaypointMaxSpeed);
-    m_waypointPEntry.setDefault(AutoConstants.kWaypointP);
-    m_waypointIEntry.setDefault(AutoConstants.kWaypointI);
-    m_waypointDEntry.setDefault(AutoConstants.kWaypointD);
-    m_waypointMaxSpeedEntry.setDefault(AutoConstants.kWaypointMaxSpeed);
-
     addRequirements(drive, shooter, collector);
   }
 
@@ -139,20 +113,28 @@ public class RedRightCollectAndShootCommand extends Command {
     m_hopperPopHigh = false;
     m_lastPopTime = 0;
     m_rotationController.reset();
-    m_translationController.reset();
+
+    // DEBUG: Confirm command is initialized
+    SmartDashboard.putString("RedRight/Status", "INITIALIZED");
+    SmartDashboard.putNumber("RedRight/InitTime", System.currentTimeMillis() / 1000.0);
+    System.out.println("RedRightCollectAndShootCommand INITIALIZED at " + m_drive.getPose());
   }
 
   @Override
   public void execute() {
-    m_translationController.setPID(
-      m_waypointPEntry.get(),
-      m_waypointIEntry.get(),
-      m_waypointDEntry.get()
-    );
-    m_waypointMaxSpeed = m_waypointMaxSpeedEntry.get();
-
     double t = now();
     Pose2d pose = m_drive.getPose();
+
+    // DEBUG: Confirm execute() is being called (only log occasionally to avoid spam)
+    if (m_phase == Phase.DRIVE_TO_COLLECTOR_DEPLOY) {
+      System.out.println("RedRight execute() called - Phase: " + m_phase + " Pose: " + pose);
+    }
+
+    // Debug output
+    SmartDashboard.putString("RedRight/Phase", m_phase.toString());
+    SmartDashboard.putNumber("RedRight/PoseX", pose.getX());
+    SmartDashboard.putNumber("RedRight/PoseY", pose.getY());
+    SmartDashboard.putNumber("RedRight/Heading", m_drive.getHeading());
 
     switch (m_phase) {
 
@@ -271,11 +253,11 @@ public class RedRightCollectAndShootCommand extends Command {
           Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
 
     if (dist < DRIVE_TOLERANCE) {
-      m_translationController.reset();
       m_rotationController.reset();
       m_phase = nextPhase;
     } else {
-      double speed = MathUtil.clamp(m_translationController.calculate(0, dist), 0, m_waypointMaxSpeed);
+      // Simple proportional speed control (proven to work)
+      double speed = Math.min(0.5, dist * 2.0);
       double xSpeed = (dx / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
       double ySpeed = (dy / dist) * speed * DriveConstants.kMaxSpeedMetersPerSecond;
       m_drive.drive(xSpeed, ySpeed, rot * DriveConstants.kMaxAngularSpeed, true);
@@ -322,6 +304,11 @@ public class RedRightCollectAndShootCommand extends Command {
 
   @Override
   public void end(boolean interrupted) {
+    // DEBUG: Log why command ended
+    SmartDashboard.putString("RedRight/Status", interrupted ? "INTERRUPTED" : "FINISHED");
+    SmartDashboard.putString("RedRight/EndPhase", m_phase.toString());
+    System.out.println("RedRightCollectAndShootCommand ENDED - interrupted=" + interrupted + " phase=" + m_phase);
+
     m_drive.drive(0, 0, 0, false);
     m_shooter.StopFloor();
     m_shooter.StopIndexer();

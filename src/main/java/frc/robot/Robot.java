@@ -27,6 +27,7 @@ public class Robot extends TimedRobot {
     // Enable 100% vision trust while disabled to maintain accurate field-relative pose
     // This allows moving the robot while disabled and corrects field orientation
     m_robotContainer.getVisionSubsystem().enableVisionPoseReset();
+    System.out.println(">>> DISABLED INIT CALLED <<<");
   }
 
   @Override
@@ -47,9 +48,26 @@ public class Robot extends TimedRobot {
 
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
+    // DEBUG: Log which command was selected (both console and SmartDashboard)
+    System.out.println("=== AUTONOMOUS INIT ===");
+    System.out.println("Selected command: " + (m_autonomousCommand != null ? m_autonomousCommand.getClass().getSimpleName() : "NULL"));
+    System.out.println("Robot pose: " + m_robotContainer.getSwerveDrive().getPose());
+
+    edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putString("Debug/AutoCommand",
+        m_autonomousCommand != null ? m_autonomousCommand.getClass().getSimpleName() : "NULL");
+    edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putString("Debug/AutoPose",
+        m_robotContainer.getSwerveDrive().getPose().toString());
+
     // Schedule the autonomous command
     if (m_autonomousCommand != null) {
+      System.out.println("Scheduling autonomous command...");
+      edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("Debug/SchedulingCommand", true);
       m_autonomousCommand.schedule();
+      System.out.println("Command scheduled!");
+      edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("Debug/CommandScheduled", true);
+    } else {
+      System.out.println("ERROR: Autonomous command is NULL!");
+      edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("Debug/CommandNULL", true);
     }
   }
 
@@ -58,6 +76,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    System.out.println(">>> TELEOP INIT CALLED <<<");
+
     // Switch to sensor fusion mode (vision + odometry)
     m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
 

@@ -414,7 +414,7 @@ public class RobotContainer {
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
-    m_autoChooser.setDefaultOption("Auto (Pose-Based)", Commands.none());
+    m_autoChooser.setDefaultOption("Auto (Pose-Based)", null);
     m_autoChooser.addOption("Red Right Over Hump", new RedRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem));
     m_autoChooser.addOption("Waypoint PID Test", new WaypointPIDTestCommand(m_swerveDrive, m_shooterSubsystem));
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
