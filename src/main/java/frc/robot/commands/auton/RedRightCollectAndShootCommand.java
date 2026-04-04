@@ -70,15 +70,15 @@ public class RedRightCollectAndShootCommand extends Command {
   private final PIDController m_rotationController;
 
   private static final Translation2d COLLECTOR_DEPLOY_POS = new Translation2d(10.69, 7.62);
-  private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(8.78,  6.54);
-  private static final Translation2d COLLECT_POS          = new Translation2d(8.78,  5.78);
+  private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(8.72,  6.90);
+  private static final Translation2d COLLECT_POS          = new Translation2d(8.72,  5.78);
   private static final Translation2d SWEEP_MID_POS        = new Translation2d(9.68,  5.00);
   private static final Translation2d SWEEP_POS            = new Translation2d(10.58, 5.78);
   private static final Translation2d AVOID_POS            = new Translation2d(10.78, 7.50);
   private static final Translation2d TRENCH_ENTRY_POS     = new Translation2d(13.33, 7.62);
   private static final Translation2d TRENCH_EXIT_POS      = new Translation2d(10.62, 7.62);
   private static final Translation2d TRANSIT_POS          = new Translation2d(12.88, 7.62);
-  private static final Translation2d SHOOT_POS            = new Translation2d(13.33, 6.68);
+  private static final Translation2d SHOOT_POS            = new Translation2d(13.33, 6.10);
   private static final double DRIVE_TOLERANCE             = 0.25;
   private static final double SHOOT_DURATION              = 2.5;
 
@@ -87,6 +87,7 @@ public class RedRightCollectAndShootCommand extends Command {
   private double m_shootingStartTime;
   private boolean m_hopperPopHigh;
   private double m_lastPopTime;
+  private double m_settleStartTime;
 
   public RedRightCollectAndShootCommand(DriveSubsystem drive, ShooterSubsystem shooter,
                                         CollectorSubsystem collector) {
@@ -112,6 +113,7 @@ public class RedRightCollectAndShootCommand extends Command {
     m_shootingStartTime = 0;
     m_hopperPopHigh = false;
     m_lastPopTime = 0;
+    m_settleStartTime = 0;
     m_rotationController.reset();
 
     // DEBUG: Confirm command is initialized
@@ -265,6 +267,15 @@ public class RedRightCollectAndShootCommand extends Command {
   }
 
   private void aimAndShoot(Pose2d pose) {
+    // Settle for 0.25s on first entry to bleed off forward momentum
+    if (m_settleStartTime == 0) {
+      m_settleStartTime = now();
+    }
+    if (now() - m_settleStartTime < 0.25) {
+      m_drive.drive(0, 0, 0, true);
+      return;
+    }
+
     boolean isRed = DriverStation.getAlliance().isPresent() &&
                     DriverStation.getAlliance().get() == Alliance.Red;
     Translation2d target = isRed ? AutoConstants.redTarget : AutoConstants.blueTarget;
@@ -279,7 +290,11 @@ public class RedRightCollectAndShootCommand extends Command {
           Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
 
     m_shooter.enableFullRPM();
-    m_drive.drive(0, 0, rot * DriveConstants.kMaxAngularSpeed, true);
+    if (m_shootingStarted) {
+      m_drive.setX();
+    } else {
+      m_drive.drive(0, 0, rot * DriveConstants.kMaxAngularSpeed, true);
+    }
 
     if (!m_shootingStarted && m_rotationController.atSetpoint()) {
       m_shooter.runIndexer(false);

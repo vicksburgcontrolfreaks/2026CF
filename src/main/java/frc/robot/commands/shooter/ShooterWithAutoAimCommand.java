@@ -137,13 +137,18 @@ public class ShooterWithAutoAimCommand extends Command {
     rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
                              Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
 
-    // Apply drive command with driver's translational input and automatic rotation
-    m_swerveDrive.drive(
-        m_xSpeedSupplier.getAsDouble(),
-        m_ySpeedSupplier.getAsDouble(),
-        rotationSpeed * DriveConstants.kMaxAngularSpeed,
-        true
-    );
+    // Once feeding has started, lock wheels in X formation to resist bumps
+    // Before that, drive normally with translational input and rotation PID
+    if (m_feedingStarted) {
+      m_swerveDrive.setX();
+    } else {
+      m_swerveDrive.drive(
+          m_xSpeedSupplier.getAsDouble(),
+          m_ySpeedSupplier.getAsDouble(),
+          rotationSpeed * DriveConstants.kMaxAngularSpeed,
+          true
+      );
+    }
 
     // Check if we should feed balls: aligned (shooter is always pre-spinning, no RPM wait needed)
     boolean shouldFeed = m_rotationController.atSetpoint();
