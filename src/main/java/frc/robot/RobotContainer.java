@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-// import frc.robot.commands.auton.RedRightLoopAndShootCommand;
 import frc.robot.commands.auton.ExtendBackupAndShootCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
@@ -28,7 +27,8 @@ import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
-// import choreo.auto.AutoFactory;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 
 
 public class RobotContainer {
@@ -40,20 +40,11 @@ public class RobotContainer {
   private final CommandXboxController m_driverController;
   private final CommandXboxController m_mechanismController;
 
-  // private final AutoFactory autoFactory;
   private SendableChooser<Command> m_autoChooser;
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
-
-      // autoFactory = new AutoFactory(
-      //     m_swerveDrive::getPose,
-      //     m_swerveDrive::resetOdometry,
-      //     m_swerveDrive::followTrajectory,
-      //     false,
-      //     m_swerveDrive
-      // );
 
       configureAutos();
 
@@ -75,9 +66,16 @@ public class RobotContainer {
             speedMultiplier = OIConstants.kNormalSpeedLimit;
           }
 
+          // For Red alliance, flip X/Y inputs so "forward" drives toward blue alliance (X=0)
+          // Blue alliance: 0° = forward toward red side (positive X)
+          // Red alliance: 180° = forward toward blue side (negative X)
+          boolean isRed = DriverStation.getAlliance().isPresent() &&
+                          DriverStation.getAlliance().get() == Alliance.Red;
+          double allianceFlip = isRed ? -1.0 : 1.0;
+
           m_swerveDrive.drive(
-            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier,
-            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
+            -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
             -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
             true);
         },
@@ -181,29 +179,21 @@ public class RobotContainer {
   }
 
   /*
-   * Configures autonomous commands using Choreo trajectories.
-   * Place your .traj files in src/main/deploy/choreo/
+   * Configures autonomous commands using PathPlanner.
+   * Create paths in PathPlanner GUI and place in src/main/deploy/pathplanner/
    *
    * The chooser will appear on the SmartDashboard/Shuffleboard.
-   * Add more paths by creating .traj files and adding them here.
    *
-   * To add markers to your trajectory:
-   * 1. Open the trajectory in Choreo
-   * 2. Add event markers at specific timestamps (e.g., "startCollector", "shoot", "stopCollector")
-   * 3. Bind commands to those markers using trajectory.atTime("markerName")
+   * To add event markers to your path:
+   * 1. Open the path in PathPlanner GUI
+   * 2. Add event markers (e.g., "startCollector", "shoot", "stopCollector")
+   * 3. Register named commands below using NamedCommands.registerCommand()
    */
   private void configureAutos() {
-    m_autoChooser = new SendableChooser<>();
+    // Register named commands that can be called from PathPlanner paths
+    registerNamedCommands();
 
     try {
-      // Create the RedRightLoopAndShoot autonomous command (CHOREO - COMMENTED OUT)
-      // RedRightLoopAndShootCommand redRightLoopAndShoot = new RedRightLoopAndShootCommand(
-      //   autoFactory,
-      //   m_collector,
-      //   m_shooterSubsystem,
-      //   m_visionSubsystem
-      // );
-
       // Create the ExtendBackupAndShoot autonomous command
       ExtendBackupAndShootCommand extendBackupAndShoot = new ExtendBackupAndShootCommand(
         m_collector,
@@ -211,19 +201,53 @@ public class RobotContainer {
         m_shooterSubsystem
       );
 
-      // Add the routines to the chooser
-      m_autoChooser.setDefaultOption("ExtendBackupAndShoot", extendBackupAndShoot);
-      // m_autoChooser.addOption("RedRightLoopAndShoot", redRightLoopAndShoot.getCommand());
+      // Build auto chooser from PathPlanner GUI
+      // This will automatically include all autos created in PathPlanner
+      m_autoChooser = AutoBuilder.buildAutoChooser();
+
+      // Add custom/fallback options
+      m_autoChooser.addOption("ExtendBackupAndShoot", extendBackupAndShoot);
       m_autoChooser.addOption("Do Nothing", Commands.none());
 
     } catch (Exception e) {
-      System.err.println("Failed to load autonomous command: " + e.getMessage());
+      System.err.println("Failed to load autonomous commands: " + e.getMessage());
       e.printStackTrace();
+      m_autoChooser = new SendableChooser<>();
       m_autoChooser.setDefaultOption("Do Nothing", Commands.none());
     }
 
     // Send the chooser to SmartDashboard (which uses NetworkTables under the hood)
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
+  }
+
+  /**
+   * Register named commands that can be used in PathPlanner paths.
+   * These commands will be triggered when the path reaches an event marker with the corresponding name.
+   */
+  private void registerNamedCommands() {
+    // Linked to "Blue 1 to collect and shoot" path event markers
+    NamedCommands.registerCommand("DeployHopper",
+      new ExtendHopperCommand(m_collector));
+
+    NamedCommands.registerCommand("RunCollector",
+      new RunCollectorCommand(m_collector, false).alongWith(
+        Commands.run(() -> {
+          m_shooterSubsystem.runFloor(false);
+          m_shooterSubsystem.runIndexer(true);
+        }, m_shooterSubsystem)
+      ));
+
+    NamedCommands.registerCommand("StopCollector",
+      new StopCollectorCommand(m_collector).alongWith(
+        Commands.runOnce(() -> {
+          m_shooterSubsystem.StopFloor();
+          m_shooterSubsystem.StopIndexer();
+        }, m_shooterSubsystem)
+      ));
+
+    // Additional named commands
+    NamedCommands.registerCommand("Shoot",
+      new ShooterWithAutoAimCommand(m_shooterSubsystem, m_swerveDrive, null, null, null, null).withTimeout(4.0));
   }
 
   public Command getAutonomousCommand() {

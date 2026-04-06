@@ -23,9 +23,9 @@ public final class AutoConstants {
   public static final Translation2d blueTarget = new Translation2d(4.639, 4.02);
   public static final Translation2d redTarget = new Translation2d(11.942, 4.02);
 
-  public static final double kRotateToTargetP = 0.02;
-  public static final double kRotateToTargetI = 0.0001;
-  public static final double kRotateToTargetD = 0.003;
-  public static final double kRotateToTargetTolerance = 2.0;
+  public static final double kRotateToTargetP = 0.015;
+  public static final double kRotateToTargetI = 0.0;
+  public static final double kRotateToTargetD = 0.0;
+  public static final double kRotateToTargetTolerance = 3.0;
   public static final double kRotateToTargetMaxVelocity = 0.5;
 }

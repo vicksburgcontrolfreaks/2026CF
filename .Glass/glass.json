@@ -41,21 +41,16 @@
     },
     "windows": {
       "/SmartDashboard/Field": {
-        "bottom": 1914,
         "builtin": "",
         "height": 8.069275856018066,
-        "left": 245,
-        "right": 3942,
-        "top": 118,
+        "image": "C:\\Users\\Vicksburg FTC\\Documents\\CF2026\\2026CF\\2026-field.png",
         "width": 16.54119300842285,
         "window": {
-          "name": "2026"
+          "name": "2026",
+          "visible": true
         }
       }
     }
-  },
-  "NetworkTables Info": {
-    "visible": true
   },
   "NetworkTables Settings": {
     "mode": "Client (NT4)",

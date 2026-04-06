@@ -3,6 +3,7 @@ package frc.robot.constants;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.util.Units;
+import com.pathplanner.lib.config.PIDConstants;
 
 public final class DriveConstants {
   // Maximum capable speeds
@@ -35,4 +36,10 @@ public final class DriveConstants {
   public static final int kRearRightTurningCanId = 7;
 
   public static final boolean kGyroReversed = false;
+
+  // PathPlanner PID constants for autonomous path following
+  // Translation PID (X and Y movement)
+  public static final PIDConstants kPathFollowingTranslationPID = new PIDConstants(5.0, 0.0, 0.0);
+  // Rotation PID (theta/heading)
+  public static final PIDConstants kPathFollowingRotationPID = new PIDConstants(5.0, 0.0, 0.0);
 }

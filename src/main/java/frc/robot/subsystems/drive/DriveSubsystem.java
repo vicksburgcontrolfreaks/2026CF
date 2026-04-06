@@ -28,8 +28,10 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.constants.DriveConstants;
 import frc.robot.constants.TelemetryConstants;
-import choreo.trajectory.SwerveSample;
-import edu.wpi.first.math.controller.PIDController;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import java.io.IOException;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
@@ -56,10 +58,6 @@ public class DriveSubsystem extends SubsystemBase {
   // The gyro sensor
   private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
 
-  // Gyro offset for field-relative orientation
-  // This allows the robot to start in any orientation and align to field coordinates
-  private double m_gyroOffsetDegrees = 0.0;
-
   // Field2d for visualizing robot pose in Glass
   private final Field2d m_field = new Field2d();
 
@@ -77,10 +75,9 @@ public class DriveSubsystem extends SubsystemBase {
   private final DoublePublisher m_currentXPub;
   private final DoublePublisher m_currentYPub;
   // Pose estimator for tracking robot pose with vision fusion
-  // Initialized with zero rotation - will be set correctly on first periodic() call
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
       DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(0),
+      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY) * (DriveConstants.kGyroReversed ? -1.0 : 1.0)),
       new SwerveModulePosition[] {
           m_frontLeft.getPosition(),
           m_frontRight.getPosition(),
@@ -89,37 +86,14 @@ public class DriveSubsystem extends SubsystemBase {
       },
       new Pose2d());
 
-  // PID controllers for Choreo trajectory following
-  private final PIDController m_xController = new PIDController(8.0, 0, 0.3);
-  private final PIDController m_yController = new PIDController(8.0, 0, 0.3);
-  private final PIDController m_thetaController = new PIDController(5.0, 0, 0);
-
   // Configurable constants (via NetworkTables)
   private double m_maxSpeedMetersPerSecond = DriveConstants.kMaxSpeedMetersPerSecond;
   private double m_maxAngularSpeed = DriveConstants.kMaxAngularSpeed;
-  private double m_xControllerP = 8.0;
-  private double m_xControllerI = 0.0;
-  private double m_xControllerD = 0.3;
-  private double m_yControllerP = 8.0;
-  private double m_yControllerI = 0.0;
-  private double m_yControllerD = 0.3;
-  private double m_thetaControllerP = 5.0;
-  private double m_thetaControllerI = 0.0;
-  private double m_thetaControllerD = 0.0;
   private int m_telemetryUpdatePeriod = TelemetryConstants.kTelemetryUpdatePeriod;
 
   // NetworkTables subscribers for configurable constants
   private final DoubleSubscriber m_maxSpeedMetersPerSecondSub;
   private final DoubleSubscriber m_maxAngularSpeedSub;
-  private final DoubleSubscriber m_xControllerPSub;
-  private final DoubleSubscriber m_xControllerISub;
-  private final DoubleSubscriber m_xControllerDSub;
-  private final DoubleSubscriber m_yControllerPSub;
-  private final DoubleSubscriber m_yControllerISub;
-  private final DoubleSubscriber m_yControllerDSub;
-  private final DoubleSubscriber m_thetaControllerPSub;
-  private final DoubleSubscriber m_thetaControllerISub;
-  private final DoubleSubscriber m_thetaControllerDSub;
   private final DoubleSubscriber m_telemetryUpdatePeriodSub;
 
   /** Creates a new DriveSubsystem. */
@@ -137,8 +111,6 @@ public class DriveSubsystem extends SubsystemBase {
     m_headingPub = m_gyroTable.getDoubleTopic("Heading").publish();
     m_currentXPub = m_gyroTable.getDoubleTopic("Current X").publish();
     m_currentYPub = m_gyroTable.getDoubleTopic("Current Y").publish();
-    // Configure theta controller for continuous input
-    m_thetaController.enableContinuousInput(-Math.PI, Math.PI);
 
     // Publish Field2d to SmartDashboard for Glass visualization
     SmartDashboard.putData("Field", m_field);
@@ -147,16 +119,49 @@ public class DriveSubsystem extends SubsystemBase {
     NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Drive/Config");
     m_maxSpeedMetersPerSecondSub = configTable.getDoubleTopic("Max Speed Meters Per Second").subscribe(m_maxSpeedMetersPerSecond);
     m_maxAngularSpeedSub = configTable.getDoubleTopic("Max Angular Speed").subscribe(m_maxAngularSpeed);
-    m_xControllerPSub = configTable.getDoubleTopic("X Controller P").subscribe(m_xControllerP);
-    m_xControllerISub = configTable.getDoubleTopic("X Controller I").subscribe(m_xControllerI);
-    m_xControllerDSub = configTable.getDoubleTopic("X Controller D").subscribe(m_xControllerD);
-    m_yControllerPSub = configTable.getDoubleTopic("Y Controller P").subscribe(m_yControllerP);
-    m_yControllerISub = configTable.getDoubleTopic("Y Controller I").subscribe(m_yControllerI);
-    m_yControllerDSub = configTable.getDoubleTopic("Y Controller D").subscribe(m_yControllerD);
-    m_thetaControllerPSub = configTable.getDoubleTopic("Theta Controller P").subscribe(m_thetaControllerP);
-    m_thetaControllerISub = configTable.getDoubleTopic("Theta Controller I").subscribe(m_thetaControllerI);
-    m_thetaControllerDSub = configTable.getDoubleTopic("Theta Controller D").subscribe(m_thetaControllerD);
     m_telemetryUpdatePeriodSub = configTable.getDoubleTopic("Telemetry Update Period").subscribe(m_telemetryUpdatePeriod);
+
+    // Configure PathPlanner AutoBuilder
+    configurePathPlanner();
+  }
+
+  /**
+   * Configures PathPlanner's AutoBuilder for autonomous path following.
+   * This must be called after the drivetrain is initialized.
+   */
+  private void configurePathPlanner() {
+    try {
+      // Load the robot configuration from deploy directory
+      // This file is generated by PathPlanner GUI
+      RobotConfig config = RobotConfig.fromGUISettings();
+
+      // Configure AutoBuilder with holonomic drive controller
+      AutoBuilder.configure(
+          this::getPose, // Supplier of current robot pose
+          this::resetOdometry, // Consumer to reset odometry
+          this::getChassisSpeeds, // Supplier of current robot-relative chassis speeds
+          (speeds, feedforwards) -> driveRobotRelative(speeds), // Consumer of ChassisSpeeds to drive the robot
+          new PPHolonomicDriveController(
+              // PID constants for path following (tune these for your robot)
+              DriveConstants.kPathFollowingTranslationPID,
+              DriveConstants.kPathFollowingRotationPID
+          ),
+          config, // Robot configuration
+          () -> {
+            // Boolean supplier that returns true if path should be flipped for red alliance
+            // PathPlanner paths are designed for blue alliance by default
+            var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
+            return alliance.isPresent() && alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red;
+          },
+          this // Subsystem requirement
+      );
+    } catch (IOException e) {
+      System.err.println("Failed to load PathPlanner config: " + e.getMessage());
+      e.printStackTrace();
+    } catch (Exception e) {
+      System.err.println("Failed to configure PathPlanner: " + e.getMessage());
+      e.printStackTrace();
+    }
   }
 
   @Override
@@ -164,42 +169,11 @@ public class DriveSubsystem extends SubsystemBase {
     // Read configurable values from NetworkTables
     m_maxSpeedMetersPerSecond = m_maxSpeedMetersPerSecondSub.get();
     m_maxAngularSpeed = m_maxAngularSpeedSub.get();
-
-    double newXP = m_xControllerPSub.get();
-    double newXI = m_xControllerISub.get();
-    double newXD = m_xControllerDSub.get();
-    if (newXP != m_xControllerP || newXI != m_xControllerI || newXD != m_xControllerD) {
-      m_xControllerP = newXP;
-      m_xControllerI = newXI;
-      m_xControllerD = newXD;
-      m_xController.setPID(m_xControllerP, m_xControllerI, m_xControllerD);
-    }
-
-    double newYP = m_yControllerPSub.get();
-    double newYI = m_yControllerISub.get();
-    double newYD = m_yControllerDSub.get();
-    if (newYP != m_yControllerP || newYI != m_yControllerI || newYD != m_yControllerD) {
-      m_yControllerP = newYP;
-      m_yControllerI = newYI;
-      m_yControllerD = newYD;
-      m_yController.setPID(m_yControllerP, m_yControllerI, m_yControllerD);
-    }
-
-    double newThetaP = m_thetaControllerPSub.get();
-    double newThetaI = m_thetaControllerISub.get();
-    double newThetaD = m_thetaControllerDSub.get();
-    if (newThetaP != m_thetaControllerP || newThetaI != m_thetaControllerI || newThetaD != m_thetaControllerD) {
-      m_thetaControllerP = newThetaP;
-      m_thetaControllerI = newThetaI;
-      m_thetaControllerD = newThetaD;
-      m_thetaController.setPID(m_thetaControllerP, m_thetaControllerI, m_thetaControllerD);
-    }
-
     m_telemetryUpdatePeriod = (int) m_telemetryUpdatePeriodSub.get();
 
     // Update the pose estimator in the periodic block
     m_poseEstimator.update(
-        getRotation2d(),
+        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY) * (DriveConstants.kGyroReversed ? -1.0 : 1.0)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -244,87 +218,6 @@ public class DriveSubsystem extends SubsystemBase {
     m_maxAngularSpeed = speed;
   }
 
-  public double getXControllerP() {
-    return m_xControllerP;
-  }
-
-  public void setXControllerP(double p) {
-    m_xControllerP = p;
-    m_xController.setP(p);
-  }
-
-  public double getXControllerI() {
-    return m_xControllerI;
-  }
-
-  public void setXControllerI(double i) {
-    m_xControllerI = i;
-    m_xController.setI(i);
-  }
-
-  public double getXControllerD() {
-    return m_xControllerD;
-  }
-
-  public void setXControllerD(double d) {
-    m_xControllerD = d;
-    m_xController.setD(d);
-  }
-
-  public double getYControllerP() {
-    return m_yControllerP;
-  }
-
-  public void setYControllerP(double p) {
-    m_yControllerP = p;
-    m_yController.setP(p);
-  }
-
-  public double getYControllerI() {
-    return m_yControllerI;
-  }
-
-  public void setYControllerI(double i) {
-    m_yControllerI = i;
-    m_yController.setI(i);
-  }
-
-  public double getYControllerD() {
-    return m_yControllerD;
-  }
-
-  public void setYControllerD(double d) {
-    m_yControllerD = d;
-    m_yController.setD(d);
-  }
-
-  public double getThetaControllerP() {
-    return m_thetaControllerP;
-  }
-
-  public void setThetaControllerP(double p) {
-    m_thetaControllerP = p;
-    m_thetaController.setP(p);
-  }
-
-  public double getThetaControllerI() {
-    return m_thetaControllerI;
-  }
-
-  public void setThetaControllerI(double i) {
-    m_thetaControllerI = i;
-    m_thetaController.setI(i);
-  }
-
-  public double getThetaControllerD() {
-    return m_thetaControllerD;
-  }
-
-  public void setThetaControllerD(double d) {
-    m_thetaControllerD = d;
-    m_thetaController.setD(d);
-  }
-
   public int getTelemetryUpdatePeriod() {
     return m_telemetryUpdatePeriod;
   }
@@ -344,12 +237,17 @@ public class DriveSubsystem extends SubsystemBase {
 
   /**
    * Resets the odometry to the specified pose.
+   * Also resets the gyro to match the pose rotation, eliminating any offset.
    *
    * @param pose The pose to which to set the odometry.
    */
   public void resetOdometry(Pose2d pose) {
+    // Reset gyro to match the desired pose rotation
+    // This eliminates offset between gyro and vision measurements
+    m_gyro.setGyroAngleY(pose.getRotation().getDegrees() * (DriveConstants.kGyroReversed ? -1.0 : 1.0));
+
     m_poseEstimator.resetPosition(
-        getRotation2d(),
+        pose.getRotation(),  // Use the desired rotation directly
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -387,9 +285,10 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
     // Create chassis speeds from inputs
-    // Use corrected rotation that includes gyro offset for proper field-relative control
+    // Use pose estimator rotation (fused with vision) instead of raw gyro for field-relative
     ChassisSpeeds speeds = fieldRelative
-        ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot, getRotation2d())
+        ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
+            getPose().getRotation())
         : new ChassisSpeeds(xSpeed, ySpeed, rot);
 
     // Discretize chassis speeds to prevent skew/drift during motion
@@ -437,58 +336,33 @@ public class DriveSubsystem extends SubsystemBase {
     m_rearRight.resetEncoders();
   }
 
-  /** Zeroes the heading of the robot. */
+  /**
+   * Zeroes the heading of the robot by resetting both gyro and pose estimator.
+   * This ensures field-oriented drive treats the current direction as "forward".
+   */
   public void zeroHeading() {
     m_gyro.reset();
-    m_gyroOffsetDegrees = 0.0;
-  }
-
-  /**
-   * Gets the current rotation of the robot with gyro offset applied.
-   * This returns the field-relative rotation when setHeading() has been called.
-   *
-   * @return The corrected rotation as Rotation2d
-   */
-  private Rotation2d getRotation2d() {
-    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kY) + m_gyroOffsetDegrees);
-  }
-
-  /**
-   * Sets the gyro heading to a specific field-relative angle.
-   * This is useful for aligning the gyro with vision-based pose estimation.
-   * Allows the robot to start in any orientation and align to field coordinates.
-   *
-   * @param fieldRelativeAngle The desired field-relative angle in Rotation2d
-   */
-  public void setHeading(Rotation2d fieldRelativeAngle) {
-    // Calculate the offset needed to make current gyro reading equal to desired field angle
-    double currentGyroAngle = m_gyro.getAngle(IMUAxis.kY);
-    m_gyroOffsetDegrees = fieldRelativeAngle.getDegrees() - currentGyroAngle;
-
-    // Get current position to preserve it
-    Pose2d currentPose = getPose();
-
-    // Update pose estimator with the desired field-relative angle
-    // while keeping the same position
+    // Also reset the pose estimator to match, keeping current X/Y position
+    Pose2d currentPose = m_poseEstimator.getEstimatedPosition();
     m_poseEstimator.resetPosition(
-        getRotation2d(),
+        Rotation2d.fromDegrees(0.0),  // Gyro now reads 0
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
             m_rearLeft.getPosition(),
             m_rearRight.getPosition()
         },
-        new Pose2d(currentPose.getTranslation(), fieldRelativeAngle)
+        new Pose2d(currentPose.getTranslation(), Rotation2d.fromDegrees(0.0))  // Keep position, reset rotation to 0
     );
   }
 
   /**
-   * Returns the heading of the robot.
+   * Returns the heading of the robot from the pose estimator (fused with vision).
    *
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return getRotation2d().getDegrees();
+    return getPose().getRotation().getDegrees();
   }
 
   /**
@@ -511,20 +385,8 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Sets the chassis speeds for autonomous path following.
-   * Used by Choreo for trajectory following.
-   *
-   * @param speeds The desired chassis speeds.
-   */
-  public void setChassisSpeeds(ChassisSpeeds speeds) {
-    var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(speeds);
-    SwerveDriveKinematics.desaturateWheelSpeeds(
-        swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
-    setModuleStates(swerveModuleStates);
-  }
-
-  /**
-   * Returns the current robot ChassisSpeeds.
+   * Returns the current robot-relative chassis speeds.
+   * Used by PathPlanner for autonomous path following.
    *
    * @return The current chassis speeds.
    */
@@ -538,34 +400,19 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Follows a Choreo trajectory sample.
-   * This method is called by the AutoFactory to control the robot.
+   * Drives the robot using robot-relative chassis speeds.
+   * Used by PathPlanner for autonomous path following.
    *
-   * @param sample The current trajectory sample to follow.
+   * @param speeds The desired robot-relative chassis speeds.
    */
-  public void followTrajectory(SwerveSample sample) {
-    // Get current robot pose
-    Pose2d currentPose = getPose();
+  public void driveRobotRelative(ChassisSpeeds speeds) {
+    // Discretize chassis speeds to prevent skew/drift during motion
+    speeds = ChassisSpeeds.discretize(speeds, 0.02);
 
-    // Calculate PID feedback for position tracking (in field coordinates)
-    double xFeedback = m_xController.calculate(currentPose.getX(), sample.x);
-    double yFeedback = m_yController.calculate(currentPose.getY(), sample.y);
-    double thetaFeedback = m_thetaController.calculate(
-        currentPose.getRotation().getRadians(),
-        sample.heading
-    );
-
-    // Choreo provides field-relative velocities in SwerveSample
-    // Combine feedforward from trajectory with PID feedback, both in field coordinates
-    ChassisSpeeds targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        sample.vx + xFeedback,
-        sample.vy + yFeedback,
-        sample.omega + thetaFeedback,
-        currentPose.getRotation()
-    );
-
-    // Send robot-relative speeds to the drivetrain
-    setChassisSpeeds(targetSpeeds);
+    var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(speeds);
+    SwerveDriveKinematics.desaturateWheelSpeeds(
+        swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
+    setModuleStates(swerveModuleStates);
   }
 
   public MAXSwerveModule getFrontLeftDriveMotor() {
