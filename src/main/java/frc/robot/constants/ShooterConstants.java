@@ -1,7 +1,7 @@
 package frc.robot.constants;
 
 public class ShooterConstants {
-  public static final int kFloorMotorId = 13;
+  public static final int kFloorMotorId = 22;
 
   public static final int kRIndexerMotorId = 14;
   public static final int kLIndexerMotorId = 15;
@@ -26,7 +26,7 @@ public class ShooterConstants {
 
   // max rpm 6784+
   public static final double kShooterTargetRPM = 3000;
-  public static final double kFloorMotorTargetRPM = -1000;
+  public static final double kFloorMotorTargetRPM = 1000;  // Positive since motor is inverted in hardware
   public static final double kIndexerMotorTargetRPM = 1000;
 
   // Pre-spin RPM cap (used when shooter active but not shooting)

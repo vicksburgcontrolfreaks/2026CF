@@ -23,10 +23,11 @@ public final class AutoConstants {
   public static final Translation2d blueTarget = new Translation2d(4.639, 4.02);
   public static final Translation2d redTarget = new Translation2d(11.942, 4.02);
 
-  // Rotational PID for waypoint navigation - tuned to reduce oscillation
-  public static final double kRotateToTargetP = 0.020;  // Increased for more responsive turning
+  // Rotational PID for waypoint navigation and auto-aim
+  // Reverted to main branch values to fix unwanted rotation during teleop
+  public static final double kRotateToTargetP = 0.015;
   public static final double kRotateToTargetI = 0.0;
-  public static final double kRotateToTargetD = 0.002;  // Small D term to dampen without sluggishness
+  public static final double kRotateToTargetD = 0.0;
   public static final double kRotateToTargetTolerance = 3.0;
   public static final double kRotateToTargetMaxVelocity = 0.5;
 

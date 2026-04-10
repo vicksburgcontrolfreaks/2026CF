@@ -176,13 +176,74 @@ public class ShooterSubsystem extends SubsystemBase {
     m_middleIndexerMotor = new SparkFlex(ShooterConstants.kMIndexerMotorId, MotorType.kBrushless);
 
 
-    m_leftShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_middleShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_floorMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    // Configure floor motor with inverted direction
+    SparkFlexConfig floorMotorConfig = new SparkFlexConfig();
+    floorMotorConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kIndexerP, ShooterConstants.kIndexerI, ShooterConstants.kIndexerD)
+          .velocityFF(ShooterConstants.kIndexerFF);
+    m_floorMotor.configure(floorMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure left shooter with inverted direction
+    SparkFlexConfig leftShooterConfig = new SparkFlexConfig();
+    leftShooterConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
+    m_leftShooterMotor.configure(leftShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure right shooter with inverted direction
+    SparkFlexConfig rightShooterConfig = new SparkFlexConfig();
+    rightShooterConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
+    m_rightShooterMotor.configure(rightShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure middle shooter with inverted direction
+    SparkFlexConfig middleShooterConfig = new SparkFlexConfig();
+    middleShooterConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
+    m_middleShooterMotor.configure(middleShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure left indexer (not inverted)
     m_leftIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_middleIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure right indexer with inverted direction
+    SparkFlexConfig rightIndexerConfig = new SparkFlexConfig();
+    rightIndexerConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kIndexerP, ShooterConstants.kIndexerI, ShooterConstants.kIndexerD)
+          .velocityFF(ShooterConstants.kIndexerFF);
+    m_rightIndexerMotor.configure(rightIndexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure middle indexer with inverted direction
+    SparkFlexConfig middleIndexerConfig = new SparkFlexConfig();
+    middleIndexerConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kIndexerP, ShooterConstants.kIndexerI, ShooterConstants.kIndexerD)
+          .velocityFF(ShooterConstants.kIndexerFF);
+    m_middleIndexerMotor.configure(middleIndexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     
     m_leftIndexerMotor.set(0);
@@ -274,15 +335,15 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void runFloor(boolean reversed) {
-    double targetRPM = getFloorMotorTargetRPM();
-    if (reversed) {
-      targetRPM = -targetRPM;
-    }
+    // Run floor motor at 30% duty cycle (no PID)
+    double dutyCycle = reversed ? -0.30 : 0.30;
+    m_floorMotor.set(dutyCycle);
+  }
 
-    m_floorMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
-      ControlType.kVelocity
-    );
+  public void runFloorSlow(boolean reversed) {
+    // Run floor motor at 15% duty cycle for slow feeding during collection
+    double dutyCycle = reversed ? -0.15 : 0.15;
+    m_floorMotor.set(dutyCycle);
   }
 
   public void StopFloor() {
@@ -459,13 +520,15 @@ public class ShooterSubsystem extends SubsystemBase {
       rpm = -rpm;
     }
 
+    // Left indexer runs in one direction
     m_leftIndexerMotor.getClosedLoopController().setSetpoint(
       rpm,
       ControlType.kVelocity
     );
 
+    // Right and middle indexers run in opposite direction (reversed)
     m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,
+      -rpm,
       ControlType.kVelocity
     );
 
@@ -482,20 +545,21 @@ public class ShooterSubsystem extends SubsystemBase {
   public void runIndexerMiddleReversed() {
     double rpm = ShooterConstants.kIndexerMotorTargetRPM;
 
-    // Run left and right indexers forward
+    // Run left indexer forward
     m_leftIndexerMotor.getClosedLoopController().setSetpoint(
       rpm,
       ControlType.kVelocity
     );
 
+    // Run right indexer in reverse (opposite of left)
     m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,
+      -rpm,
       ControlType.kVelocity
     );
 
-    // Run middle indexer in reverse
+    // Run middle indexer in extra reverse (same direction as right)
     m_middleIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,  // Positive RPM for reverse (opposite of normal)
+      rpm,
       ControlType.kVelocity
     );
   }
@@ -510,13 +574,15 @@ public class ShooterSubsystem extends SubsystemBase {
       rpm = -rpm;
     }
 
+    // Left indexer runs in one direction
     m_leftIndexerMotor.getClosedLoopController().setSetpoint(
       rpm,
       ControlType.kVelocity
     );
 
+    // Right and middle indexers run in opposite direction (reversed)
     m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,
+      -rpm,
       ControlType.kVelocity
     );
 
@@ -663,11 +729,14 @@ public class ShooterSubsystem extends SubsystemBase {
    * Update shooter motor PID values by reconfiguring motors
    */
   private void updateShooterPID() {
+    // Configure all three shooter motors with inverted direction
     com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
-    config.closedLoop
-      .pid(m_shooterP, m_shooterI, m_shooterD)
-      .velocityFF(m_shooterFF)
-      .outputRange(-1, 1);
+    config
+      .inverted(true)
+      .closedLoop
+        .pid(m_shooterP, m_shooterI, m_shooterD)
+        .velocityFF(m_shooterFF)
+        .outputRange(-1, 1);
 
     m_leftShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
     m_rightShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
@@ -678,15 +747,24 @@ public class ShooterSubsystem extends SubsystemBase {
    * Update indexer motor PID values by reconfiguring motors
    */
   private void updateIndexerPID() {
-    com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
-    config.closedLoop
+    // Configure left indexer (not inverted)
+    com.revrobotics.spark.config.SparkFlexConfig leftConfig = new com.revrobotics.spark.config.SparkFlexConfig();
+    leftConfig.closedLoop
       .pid(m_indexerP, m_indexerI, m_indexerD)
       .velocityFF(m_indexerFF)
       .outputRange(-1, 1);
+    m_leftIndexerMotor.configure(leftConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
-    m_leftIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    m_rightIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    m_middleIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    // Configure right and middle indexers with inverted direction
+    com.revrobotics.spark.config.SparkFlexConfig invertedConfig = new com.revrobotics.spark.config.SparkFlexConfig();
+    invertedConfig
+      .inverted(true)
+      .closedLoop
+        .pid(m_indexerP, m_indexerI, m_indexerD)
+        .velocityFF(m_indexerFF)
+        .outputRange(-1, 1);
+    m_rightIndexerMotor.configure(invertedConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_middleIndexerMotor.configure(invertedConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
   }
 
   @Override
@@ -787,7 +865,7 @@ public class ShooterSubsystem extends SubsystemBase {
       );
 
       m_middleShooterMotor.getClosedLoopController().setSetpoint(
-        -m_currentTargetRPM,
+        m_currentTargetRPM,
         ControlType.kVelocity
       );
     }
@@ -1154,10 +1232,13 @@ public class ShooterSubsystem extends SubsystemBase {
     if (shooterP != m_lastShooterP || shooterI != m_lastShooterI ||
         shooterD != m_lastShooterD || shooterFF != m_lastShooterFF) {
 
+      // Configure all three shooter motors with inverted direction
       SparkFlexConfig shooterConfig = new SparkFlexConfig();
-      shooterConfig.closedLoop
-        .pid(shooterP, shooterI, shooterD)
-        .velocityFF(shooterFF);
+      shooterConfig
+        .inverted(true)
+        .closedLoop
+          .pid(shooterP, shooterI, shooterD)
+          .velocityFF(shooterFF);
 
       m_leftShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
       m_rightShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
@@ -1176,14 +1257,22 @@ public class ShooterSubsystem extends SubsystemBase {
     if (indexerP != m_lastIndexerP || indexerI != m_lastIndexerI ||
         indexerD != m_lastIndexerD || indexerFF != m_lastIndexerFF) {
 
-      SparkFlexConfig indexerConfig = new SparkFlexConfig();
-      indexerConfig.closedLoop
+      // Configure left indexer (not inverted)
+      SparkFlexConfig leftIndexerConfig = new SparkFlexConfig();
+      leftIndexerConfig.closedLoop
         .pid(indexerP, indexerI, indexerD)
         .velocityFF(indexerFF);
+      m_leftIndexerMotor.configure(leftIndexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
-      m_leftIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-      m_rightIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-      m_middleIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      // Configure right and middle indexers with inverted direction
+      SparkFlexConfig invertedIndexerConfig = new SparkFlexConfig();
+      invertedIndexerConfig
+        .inverted(true)
+        .closedLoop
+          .pid(indexerP, indexerI, indexerD)
+          .velocityFF(indexerFF);
+      m_rightIndexerMotor.configure(invertedIndexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      m_middleIndexerMotor.configure(invertedIndexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
       // Update cached values
       m_lastIndexerP = indexerP;

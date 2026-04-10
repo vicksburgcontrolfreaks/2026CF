@@ -184,6 +184,10 @@ public class ShooterWithAutoAimCommand extends Command {
     m_shooter.StopIndexer();
     m_collector.stopCollector();
 
+    // IMPORTANT: Reset rotation PID to prevent residual commands
+    m_rotationController.reset();
+    m_angleOffsetFilter.reset();
+
     // Stop the drive subsystem
     m_swerveDrive.stop();
   }

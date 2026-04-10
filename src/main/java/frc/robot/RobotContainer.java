@@ -127,7 +127,7 @@ public class RobotContainer {
           m_swerveDrive.drive(
             -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
             -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
-            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kRotationDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
             true);
         },
         m_swerveDrive)
@@ -195,7 +195,7 @@ public class RobotContainer {
       Commands.runOnce(() -> {
         m_collector.setHopperPosition(0.18);
         m_collector.runCollector(false);
-        m_shooterSubsystem.runFloor(false);
+        m_shooterSubsystem.runFloorSlow(true);  // Run live bottom slowly in reverse during collection
         m_shooterSubsystem.runIndexer(true);
       }, m_collector, m_shooterSubsystem)
     );
