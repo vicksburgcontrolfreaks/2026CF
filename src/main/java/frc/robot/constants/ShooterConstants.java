@@ -36,10 +36,14 @@ public class ShooterConstants {
   // Shooter velocity lookup table: distance (meters) -> RPM
   // Reduced by ~18% to lower power output
   public static final double[][] kShooterVelocityTable = {
-    {1.75, 2950},
-    {2.69, 3450},
-    {3.3, 4000},
-    {4.8, 4500},
+    // {1.75, 2950}, original values
+    // {2.69, 3450},
+    // {3.3, 4000},
+    // {4.8, 4500},
+     {1.82, 0}, // 6 ft
+    {2.44, 0}, // 8 ft
+    {3.05, 0}, // 10 ft
+    {3.66, 0}, // 12 ft
   };
 
   // Velocity compensation for shooting while moving
