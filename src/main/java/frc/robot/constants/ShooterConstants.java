@@ -3,12 +3,12 @@ package frc.robot.constants;
 public class ShooterConstants {
   public static final int kFloorMotorId = 22;
 
-  public static final int kRIndexerMotorId = 14;
-  public static final int kLIndexerMotorId = 15;
+  public static final int kRIndexerMotorId = 21;
+  public static final int kLIndexerMotorId = 14;
   public static final int kMIndexerMotorId = 16;
 
-  public static final int kRightShooterId = 17;
-  public static final int kLeftShooterId = 18;
+  public static final int kRightShooterId = 18;
+  public static final int kLeftShooterId = 17;
   public static final int kMiddleShooterId = 19;
 
   public static final int kMotorCurrentLimit = 60;
@@ -40,7 +40,7 @@ public class ShooterConstants {
     // {2.69, 3450},
     // {3.3, 4000},
     // {4.8, 4500},
-     {1.82, 0}, // 6 ft
+     {1.82, 2000}, // 6 ft
     {2.44, 0}, // 8 ft
     {3.05, 0}, // 10 ft
     {3.66, 0}, // 12 ft
