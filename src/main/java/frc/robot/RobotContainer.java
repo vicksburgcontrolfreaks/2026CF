@@ -29,6 +29,7 @@ import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
+import frc.robot.commands.collector.HopperPopCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
@@ -75,29 +76,23 @@ public class RobotContainer {
   public DoubleEntry m_alignmentDEntry;
   public DoubleEntry m_alignmentToleranceEntry;
 
-  // Shooter motor PID tuning (public for ShooterSubsystem access)
-  public DoubleEntry m_shooterPEntry;
-  public DoubleEntry m_shooterIEntry;
-  public DoubleEntry m_shooterDEntry;
-  public DoubleEntry m_shooterFFEntry;
-
-  // Indexer motor PID tuning (public for ShooterSubsystem access)
-  public DoubleEntry m_indexerPEntry;
-  public DoubleEntry m_indexerIEntry;
-  public DoubleEntry m_indexerDEntry;
-  public DoubleEntry m_indexerFFEntry;
+  // NOTE: Shooter/Indexer PID tuning moved to ShooterDashboard for better organization
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
+      // BEST PRACTICE: Initialize dashboard manager early so Shuffleboard tabs are created
+      // before subsystem initialization completes
+      frc.robot.dashboard.DashboardManager.getInstance().initialize();
+
       configureShooterTestSystem();
       configureAlignmentPIDTuning();
-      configureMotorPIDTuning();
+      // configureMotorPIDTuning();  // REMOVED - now handled by ShooterDashboard
       configureAutos();
 
       // Connect shooter subsystem to this container for PID tuning access
-      m_shooterSubsystem.setContainer(this);
+      // m_shooterSubsystem.setContainer(this);  // REMOVED - no longer needed with dashboard
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -219,12 +214,27 @@ public class RobotContainer {
       )
     );
 
+    // Y Button: Run floor motor only (for testing/manual feeding)
+    m_mechanismController.y().whileTrue(
+      Commands.run(() -> {
+        m_shooterSubsystem.runFloor(false);  // Run floor motor forward
+      }, m_shooterSubsystem)
+      .finallyDo(() -> {
+        m_shooterSubsystem.StopFloor();
+      })
+    );
+
     m_mechanismController.povUp().onTrue(
       new RetractHopperCommand(m_collector)
     );
 
     m_mechanismController.povDown().onTrue(
       new ExtendHopperCommand(m_collector)
+    );
+
+    // Left Bumper: Hopper pop command - alternates hopper up/down every 0.25s while held
+    m_mechanismController.leftBumper().whileTrue(
+      new HopperPopCommand(m_collector)
     );
 
     // Manual shoot — shooter already spinning at 3500, just feed immediately, no alignment/vision needed
@@ -316,16 +326,10 @@ public class RobotContainer {
     m_testIndexerRPMEntry.setDefault(1500);
     m_testMeasuredDistanceEntry.setDefault(0.0);
 
-    // Add controller bindings for scored ball input during test mode
-    // Left bumper: Increment scored count
-    m_mechanismController.leftBumper().onTrue(
-      Commands.runOnce(() -> {
-        int current = (int) m_testBallsScoredEntry.get();
-        m_testBallsScoredEntry.set(current + 1);
-      })
-    );
+    // NOTE: Left and right bumper bindings for test mode ball scoring have been removed
+    // Left bumper is now bound to HopperPopCommand in configureMechanismBindings()
 
-    // Right bumper: Decrement scored count
+    // Right bumper: Decrement scored count (test mode only)
     m_mechanismController.rightBumper().onTrue(
       Commands.runOnce(() -> {
         int current = (int) m_testBallsScoredEntry.get();
@@ -370,35 +374,14 @@ public class RobotContainer {
   }
 
   /**
-   * Configure shooter and indexer motor PID tuning parameters via NetworkTables
-   * Allows real-time tuning of motor velocity control without redeploying code
+   * NOTE: Motor PID tuning has been moved to ShooterDashboard for better organization.
+   * This provides all shooter-related configuration in one organized Shuffleboard tab.
+   * Access PID tuning via the "Shooter" tab in Shuffleboard under "PID Tuning" layout.
+   *
+   * BEST PRACTICE: Centralize dashboard configuration in dedicated dashboard classes
+   * rather than scattering NetworkTables setup across multiple files. This makes it
+   * easier to find values during competition and maintain the codebase.
    */
-  private void configureMotorPIDTuning() {
-    var shooterTable = NetworkTableInstance.getDefault().getTable("ShooterMotorPID");
-    var indexerTable = NetworkTableInstance.getDefault().getTable("IndexerMotorPID");
-
-    // Shooter motor PID
-    m_shooterPEntry = shooterTable.getDoubleTopic("P").getEntry(ShooterConstants.kShooterP);
-    m_shooterIEntry = shooterTable.getDoubleTopic("I").getEntry(ShooterConstants.kShooterI);
-    m_shooterDEntry = shooterTable.getDoubleTopic("D").getEntry(ShooterConstants.kShooterD);
-    m_shooterFFEntry = shooterTable.getDoubleTopic("FF").getEntry(ShooterConstants.kShooterFF);
-
-    m_shooterPEntry.setDefault(ShooterConstants.kShooterP);
-    m_shooterIEntry.setDefault(ShooterConstants.kShooterI);
-    m_shooterDEntry.setDefault(ShooterConstants.kShooterD);
-    m_shooterFFEntry.setDefault(ShooterConstants.kShooterFF);
-
-    // Indexer motor PID
-    m_indexerPEntry = indexerTable.getDoubleTopic("P").getEntry(ShooterConstants.kIndexerP);
-    m_indexerIEntry = indexerTable.getDoubleTopic("I").getEntry(ShooterConstants.kIndexerI);
-    m_indexerDEntry = indexerTable.getDoubleTopic("D").getEntry(ShooterConstants.kIndexerD);
-    m_indexerFFEntry = indexerTable.getDoubleTopic("FF").getEntry(ShooterConstants.kIndexerFF);
-
-    m_indexerPEntry.setDefault(ShooterConstants.kIndexerP);
-    m_indexerIEntry.setDefault(ShooterConstants.kIndexerI);
-    m_indexerDEntry.setDefault(ShooterConstants.kIndexerD);
-    m_indexerFFEntry.setDefault(ShooterConstants.kIndexerFF);
-  }
 
   /*
    * Configures autonomous commands using Choreo trajectories.
