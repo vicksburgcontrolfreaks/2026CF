@@ -31,7 +31,6 @@ import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.HopperPopCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
-import frc.robot.commands.led.AprilTagLEDCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
@@ -51,7 +50,7 @@ import edu.wpi.first.networktables.DoubleEntry;
 public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final LEDSubsystem m_ledSubsystem = null;
+  private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem, m_swerveDrive);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
 
@@ -128,11 +127,7 @@ public class RobotContainer {
         m_swerveDrive)
     );
 
-    if (m_visionSubsystem != null && m_ledSubsystem != null) {
-      m_ledSubsystem.setDefaultCommand(
-        new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
-      );
-    }
+    // LED subsystem manages its own modes in periodic() - no default command needed
   }
 
   private void configureDriverBindings() {
@@ -190,8 +185,8 @@ public class RobotContainer {
       Commands.runOnce(() -> {
         m_collector.setHopperPosition(0.18);
         m_collector.runCollector(false);
-        m_shooterSubsystem.runFloorSlow(true);  // Run live bottom slowly in reverse during collection
-        m_shooterSubsystem.runIndexer(true);
+        m_shooterSubsystem.runFloorRPM(1500);  // Run floor forward at 1500 RPM during collection
+        m_shooterSubsystem.runIndexerWithRPM(1000, true);  // Run indexer backwards at 1000 RPM during collection
       }, m_collector, m_shooterSubsystem)
     );
 

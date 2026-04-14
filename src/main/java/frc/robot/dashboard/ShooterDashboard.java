@@ -46,6 +46,7 @@ public class ShooterDashboard {
 
   private GenericEntry floorMotorVelocityEntry;
   private GenericEntry floorMotorCurrentEntry;
+  private GenericEntry floorMotorSetpointEntry;
 
   private GenericEntry leftIndexerVelocityEntry;
   private GenericEntry rightIndexerVelocityEntry;
@@ -161,6 +162,7 @@ public class ShooterDashboard {
     // Floor motor telemetry
     floorMotorVelocityEntry = motorsLayout.add("Floor Motor Velocity", 0.0).getEntry();
     floorMotorCurrentEntry = motorsLayout.add("Floor Motor Current", 0.0).getEntry();
+    floorMotorSetpointEntry = motorsLayout.add("Floor Motor Setpoint", 0.0).getEntry();
 
     // Indexer motor telemetry
     leftIndexerVelocityEntry = motorsLayout.add("Left Indexer Velocity", 0.0).getEntry();
@@ -332,6 +334,7 @@ public class ShooterDashboard {
     // Floor motor
     floorMotorVelocityEntry.setDouble(shooter.getFloorMotorVelocity());
     floorMotorCurrentEntry.setDouble(shooter.getFloorMotorCurrent());
+    floorMotorSetpointEntry.setDouble(shooter.getFloorMotorSetpoint());
 
     // Indexer velocities
     leftIndexerVelocityEntry.setDouble(shooter.getLeftIndexerVelocity());

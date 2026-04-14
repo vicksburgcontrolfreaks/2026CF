@@ -33,7 +33,6 @@ public class CollectorSubsystem extends SubsystemBase {
 
   // Configurable constants (via NetworkTables)
   private int m_motorCurrentLimit = CollectorConstants.kMotorCurrentLimit;
-  private double m_collectorSpeed = CollectorConstants.kCollectorSpeed;
   private double m_collectorTargetRPM = CollectorConstants.kCollectorTargetRPM;
   private double m_collectorP = CollectorConstants.kCollectorP;
   private double m_collectorI = CollectorConstants.kCollectorI;
@@ -48,7 +47,6 @@ public class CollectorSubsystem extends SubsystemBase {
 
   // NetworkTables subscribers for configurable constants
   private final DoubleSubscriber m_motorCurrentLimitSub;
-  private final DoubleSubscriber m_collectorSpeedSub;
   private final DoubleSubscriber m_collectorTargetRPMSub;
   private final DoubleSubscriber m_collectorPSub;
   private final DoubleSubscriber m_collectorISub;
@@ -63,7 +61,6 @@ public class CollectorSubsystem extends SubsystemBase {
 
   // NetworkTables publishers for configurable constants (so values appear in dashboard)
   private final DoublePublisher m_motorCurrentLimitPub;
-  private final DoublePublisher m_collectorSpeedPub;
   private final DoublePublisher m_collectorTargetRPMPub;
   private final DoublePublisher m_collectorPPub;
   private final DoublePublisher m_collectorIPub;
@@ -101,7 +98,6 @@ public class CollectorSubsystem extends SubsystemBase {
 
     // Create publishers and set initial values
     m_motorCurrentLimitPub = configTable.getDoubleTopic("Motor Current Limit").publish();
-    m_collectorSpeedPub = configTable.getDoubleTopic("Collector Speed").publish();
     m_collectorTargetRPMPub = configTable.getDoubleTopic("Collector Target RPM").publish();
     m_collectorPPub = configTable.getDoubleTopic("Collector P").publish();
     m_collectorIPub = configTable.getDoubleTopic("Collector I").publish();
@@ -115,7 +111,6 @@ public class CollectorSubsystem extends SubsystemBase {
     m_telemetryUpdatePeriodPub = configTable.getDoubleTopic("Telemetry Update Period").publish();
 
     m_motorCurrentLimitPub.set(m_motorCurrentLimit);
-    m_collectorSpeedPub.set(m_collectorSpeed);
     m_collectorTargetRPMPub.set(m_collectorTargetRPM);
     m_collectorPPub.set(m_collectorP);
     m_collectorIPub.set(m_collectorI);
@@ -130,7 +125,6 @@ public class CollectorSubsystem extends SubsystemBase {
 
     // Subscribe to read updates from dashboard
     m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
-    m_collectorSpeedSub = configTable.getDoubleTopic("Collector Speed").subscribe(m_collectorSpeed);
     m_collectorTargetRPMSub = configTable.getDoubleTopic("Collector Target RPM").subscribe(m_collectorTargetRPM);
     m_collectorPSub = configTable.getDoubleTopic("Collector P").subscribe(m_collectorP);
     m_collectorISub = configTable.getDoubleTopic("Collector I").subscribe(m_collectorI);
@@ -212,14 +206,6 @@ public class CollectorSubsystem extends SubsystemBase {
 
   public void setMotorCurrentLimit(int limit) {
     m_motorCurrentLimit = limit;
-  }
-
-  public double getCollectorSpeed() {
-    return m_collectorSpeed;
-  }
-
-  public void setCollectorSpeed(double speed) {
-    m_collectorSpeed = speed;
   }
 
   public double getCollectorTargetRPM() {
@@ -311,12 +297,6 @@ public class CollectorSubsystem extends SubsystemBase {
     if (newMotorCurrentLimit != m_motorCurrentLimit) {
       m_motorCurrentLimit = (int) newMotorCurrentLimit;
       m_motorCurrentLimitPub.set(m_motorCurrentLimit);
-    }
-
-    double newCollectorSpeed = m_collectorSpeedSub.get();
-    if (newCollectorSpeed != m_collectorSpeed) {
-      m_collectorSpeed = newCollectorSpeed;
-      m_collectorSpeedPub.set(m_collectorSpeed);
     }
 
     double newCollectorTargetRPM = m_collectorTargetRPMSub.get();

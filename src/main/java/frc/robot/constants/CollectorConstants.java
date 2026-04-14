@@ -7,8 +7,7 @@ public class CollectorConstants {
 
   public static final int kMotorCurrentLimit = 60;
 
-  public static final double kCollectorSpeed = 0.35;  // Duty cycle (deprecated, use RPM)
-  public static final double kCollectorTargetRPM = 2500.0;  // Target velocity in RPM (tuned for reliable collection)
+  public static final double kCollectorTargetRPM = 2250.0;  // Target velocity in RPM (tuned for reliable collection)
 
   // Collector velocity PID constants (for RPM control)
   // Tuned values achieve 2500 RPM with reliable collection performance

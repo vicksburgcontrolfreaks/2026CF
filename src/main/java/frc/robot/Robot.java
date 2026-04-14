@@ -4,9 +4,11 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.subsystems.led.LEDSubsystem.LEDMode;
 
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
@@ -28,6 +30,9 @@ public class Robot extends TimedRobot {
     // This allows moving the robot while disabled and corrects field orientation
     m_robotContainer.getVisionSubsystem().enableVisionPoseReset();
     System.out.println(">>> DISABLED INIT CALLED <<<");
+
+    // Set LED mode to DISABLED (show auto selection pattern)
+    m_robotContainer.getLEDSubsystem().setMode(LEDMode.DISABLED);
   }
 
   @Override
@@ -36,6 +41,20 @@ public class Robot extends TimedRobot {
     // This updates continuously (every 20ms) while disabled so drivers can see
     // which autonomous will run based on robot position
     m_robotContainer.updateAutoDisplay();
+
+    // Update LED auto position based on current pose
+    var pose = m_robotContainer.getSwerveDrive().getPose();
+    m_robotContainer.getLEDSubsystem().setAutoPositionFromPose(pose.getX(), pose.getY());
+
+    // Check if AprilTags are visible
+    int activeCameras = m_robotContainer.getVisionSubsystem().getActiveCameraCount();
+    if (activeCameras == 0) {
+      // No AprilTags detected - flash yellow
+      m_robotContainer.getLEDSubsystem().setMode(LEDMode.NO_APRILTAGS);
+    } else {
+      // AprilTags detected - show auto selection
+      m_robotContainer.getLEDSubsystem().setMode(LEDMode.DISABLED);
+    }
   }
 
   @Override
@@ -45,6 +64,9 @@ public class Robot extends TimedRobot {
 
     // Start shooter spinning at the beginning of autonomous
     m_robotContainer.getShooterSubsystem().activateShooter();
+
+    // Set LED mode to AUTONOMOUS (flash alliance color)
+    m_robotContainer.getLEDSubsystem().setMode(LEDMode.AUTONOMOUS);
 
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
@@ -90,6 +112,19 @@ public class Robot extends TimedRobot {
 
     // Deploy hopper to down position on teleop enable
     m_robotContainer.getCollector().extendHopper();
+
+    // Set LED mode to TELEOP (show hub status and warnings)
+    m_robotContainer.getLEDSubsystem().setMode(LEDMode.TELEOP);
+
+    // Get hub game data from FMS
+    String gameData = DriverStation.getGameSpecificMessage();
+    if (gameData != null && gameData.length() > 0) {
+      char hubData = gameData.charAt(0);
+      m_robotContainer.getLEDSubsystem().setHubGameData(hubData);
+      System.out.println("Hub game data: " + hubData);
+    } else {
+      System.out.println("No hub game data available");
+    }
   }
 
   @Override

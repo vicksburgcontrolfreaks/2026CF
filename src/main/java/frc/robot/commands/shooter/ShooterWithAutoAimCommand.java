@@ -40,8 +40,6 @@ public class ShooterWithAutoAimCommand extends Command {
   private final PIDController m_rotationController;
   private final LinearFilter m_angleOffsetFilter;
   private boolean m_feedingStarted = false;
-  private boolean m_hopperPopHigh = false;
-  private double m_lastPopTime = 0.0;
 
   /**
    * Creates a new ShooterWithAutoAimCommand.
@@ -88,8 +86,10 @@ public class ShooterWithAutoAimCommand extends Command {
 
     // Reset feeding state
     m_feedingStarted = false;
-    m_hopperPopHigh = false;
-    m_lastPopTime = 0.0;
+
+    // Disable RPM cap so shooter can ramp up to full calculated RPM
+    // This allows the shooter to go from pre-spin (2000 RPM) to full power (e.g. 4300 RPM)
+    m_shooter.enableFullRPM();
 
     // Shooter wheels are already spinning from teleopInit()
     // Don't start feeding yet - wait for alignment in execute()
@@ -158,22 +158,10 @@ public class ShooterWithAutoAimCommand extends Command {
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
       m_collector.runCollector(false);
-      m_collector.setHopperPosition(0.02);
-      m_hopperPopHigh = false;
-      m_lastPopTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
       m_feedingStarted = true;
     }
     // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
     // The feeding will continue until the command ends (trigger released)
-
-    if (m_feedingStarted) {
-      double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
-      if (now - m_lastPopTime >= 0.25) {
-        m_hopperPopHigh = !m_hopperPopHigh;
-        m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
-        m_lastPopTime = now;
-      }
-    }
   }
 
   @Override
@@ -183,6 +171,10 @@ public class ShooterWithAutoAimCommand extends Command {
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
     m_collector.stopCollector();
+
+    // Re-enable RPM cap to drop back to pre-spin RPM (energy saving)
+    // Rate limiting will prevent the 149A regenerative braking spike
+    m_shooter.enableRPMCap();
 
     // IMPORTANT: Reset rotation PID to prevent residual commands
     m_rotationController.reset();

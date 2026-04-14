@@ -21,6 +21,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -101,6 +102,19 @@ public class ShooterSubsystem extends SubsystemBase {
 
   // Live-tunable pre-spin RPM cap (updated from dashboard)
   private double m_preSpinRPMCap = ShooterConstants.kPreSpinRPMCap;
+
+  // RPM rate limiting to prevent regenerative braking spikes
+  private double m_lastCommandedRPM = 0.0;
+
+  // Floor motor jam detection and auto-recovery state machine
+  private enum FloorMotorState { NORMAL, JAM_DETECTED, REVERSING, RECOVERY }
+  private FloorMotorState m_floorMotorState = FloorMotorState.NORMAL;
+  private double m_jamReverseStartTime = 0.0;
+  private double m_savedFloorMotorRPM = 0.0;
+  private boolean m_floorMotorWasRunning = false;
+  private boolean m_floorMotorCommandedToRun = false;  // Track if we commanded motor to run
+  private double m_lastJamRecoveryTime = 0.0;  // Timestamp of last recovery to prevent rapid re-triggering
+  private static final double JAM_RECOVERY_COOLDOWN = 2.0;  // Wait 2 seconds after recovery before detecting again
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784
@@ -214,6 +228,7 @@ public class ShooterSubsystem extends SubsystemBase {
       rpm = -rpm;
     }
     m_floorMotor.getClosedLoopController().setSetpoint(rpm, ControlType.kVelocity);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
   }
 
   public void runFloorSlow(boolean reversed) {
@@ -223,16 +238,111 @@ public class ShooterSubsystem extends SubsystemBase {
       rpm = -rpm;
     }
     m_floorMotor.getClosedLoopController().setSetpoint(rpm, ControlType.kVelocity);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
+  }
+
+  /**
+   * Run floor motor at a specific RPM using velocity control
+   * @param rpm Target velocity in RPM (positive = forward, negative = reverse)
+   */
+  public void runFloorRPM(double rpm) {
+    m_floorMotor.getClosedLoopController().setSetpoint(rpm, ControlType.kVelocity);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
   }
 
   public void StopFloor() {
     m_floorMotor.set(0);
+    m_floorMotorCommandedToRun = false;  // Track that we stopped the motor
   }
 
   public void StopIndexer() {
     m_leftIndexerMotor.set(0);
     m_rightIndexerMotor.set(0);
     m_middleIndexerMotor.set(0);
+  }
+
+  /**
+   * Handle floor motor jam detection and automatic recovery.
+   *
+   * State machine:
+   * - NORMAL: Monitor for jam conditions (low velocity + high current)
+   * - JAM_DETECTED: Save current state and transition to reversing
+   * - REVERSING: Run motor in reverse for kFloorJamReverseTime seconds
+   * - RECOVERY: Return to previous state (running or stopped)
+   *
+   * This prevents game pieces from getting stuck by automatically clearing jams.
+   */
+  private void handleFloorMotorJamDetection() {
+    // Get current floor motor velocity for jam detection
+    double floorVelocity = Math.abs(m_floorMotor.getEncoder().getVelocity());
+
+    switch (m_floorMotorState) {
+      case NORMAL:
+        // Check for jam: low velocity indicates motor is stalled
+        // Use our command tracking instead of SparkFlex setpoint (which may be cleared by controller)
+        // Apply cooldown period after recovery to prevent rapid re-triggering
+        double timeSinceLastRecovery = Timer.getFPGATimestamp() - m_lastJamRecoveryTime;
+        boolean cooldownExpired = timeSinceLastRecovery > JAM_RECOVERY_COOLDOWN;
+
+        // Only enable jam detection when running at high speed (shooting, not collection)
+        // Collection runs at 1500 RPM, shooting at 2500 RPM - only detect jams during shooting
+        double currentSetpoint = m_floorMotor.getClosedLoopController().getSetpoint();
+        boolean runningAtShootingSpeed = Math.abs(currentSetpoint) > 2000; // High speed (shooting mode)
+
+        if (m_floorMotorCommandedToRun &&
+            runningAtShootingSpeed &&
+            floorVelocity < ShooterConstants.kFloorJamVelocityThreshold &&
+            cooldownExpired) {
+
+          // Jam detected! Save current state
+          m_savedFloorMotorRPM = currentSetpoint;
+          m_floorMotorWasRunning = true;
+          m_floorMotorState = FloorMotorState.JAM_DETECTED;
+
+          System.out.println("FLOOR JAM DETECTED! Velocity: " + floorVelocity + " RPM (target: " + ShooterConstants.kFloorMotorTargetRPM + " RPM, current setpoint: " + currentSetpoint + " RPM)");
+        }
+        break;
+
+      case JAM_DETECTED:
+        // Transition immediately to reversing
+        // Use duty cycle control (percent output) instead of velocity control
+        // This applies full reverse power even when jammed, unlike velocity control which backs off
+        m_jamReverseStartTime = Timer.getFPGATimestamp();
+        m_floorMotor.set(-0.5);  // 50% reverse power (negative = reverse direction)
+        m_floorMotorState = FloorMotorState.REVERSING;
+        System.out.println("Starting jam reversal at 50% reverse power");
+        break;
+
+      case REVERSING:
+        // Check if reverse time has elapsed
+        double reverseElapsed = Timer.getFPGATimestamp() - m_jamReverseStartTime;
+        if (reverseElapsed >= ShooterConstants.kFloorJamReverseTime) {
+          m_floorMotorState = FloorMotorState.RECOVERY;
+          System.out.println("Jam reversal complete, returning to previous state");
+        }
+        break;
+
+      case RECOVERY:
+        // Return to previous state
+        if (m_floorMotorWasRunning) {
+          // Restore previous setpoint
+          m_floorMotor.getClosedLoopController().setSetpoint(
+            m_savedFloorMotorRPM,
+            ControlType.kVelocity
+          );
+          System.out.println("Restored floor motor to " + m_savedFloorMotorRPM + " RPM");
+        } else {
+          // Motor was stopped
+          StopFloor();
+          System.out.println("Stopped floor motor (was not running before jam)");
+        }
+
+        // Record recovery time and reset to normal state
+        m_lastJamRecoveryTime = Timer.getFPGATimestamp();
+        m_floorMotorState = FloorMotorState.NORMAL;
+        System.out.println("Jam recovery complete. Cooldown active for " + JAM_RECOVERY_COOLDOWN + " seconds.");
+        break;
+    }
   }
 
   /**
@@ -549,6 +659,15 @@ public class ShooterSubsystem extends SubsystemBase {
         }
       }
 
+      // Apply RPM rate limiting to prevent regenerative braking current spikes
+      // Limits how quickly RPM can change per cycle (prevents 4300->2000 in 0.4s = 149A spike)
+      double rpmDelta = m_currentTargetRPM - m_lastCommandedRPM;
+      if (Math.abs(rpmDelta) > ShooterConstants.kMaxRPMChangePerCycle) {
+        // Limit the change rate to prevent dangerous current spikes
+        m_currentTargetRPM = m_lastCommandedRPM + Math.signum(rpmDelta) * ShooterConstants.kMaxRPMChangePerCycle;
+      }
+      m_lastCommandedRPM = m_currentTargetRPM;
+
       // Note: Target RPM and distance telemetry now published by dashboard
 
       m_leftShooterMotor.getClosedLoopController().setSetpoint(
@@ -566,6 +685,9 @@ public class ShooterSubsystem extends SubsystemBase {
         ControlType.kVelocity
       );
     }
+
+    // Floor motor jam detection and auto-recovery
+    handleFloorMotorJamDetection();
 
     // Velocity capture system - capture data when velocity dips (ball contact)
     captureVelocityData();
@@ -694,6 +816,14 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public double getFloorMotorCurrent() {
     return m_floorMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get floor motor velocity setpoint
+   * @return Setpoint in RPM
+   */
+  public double getFloorMotorSetpoint() {
+    return m_floorMotor.getClosedLoopController().getSetpoint();
   }
 
   /**

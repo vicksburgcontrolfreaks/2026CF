@@ -13,9 +13,9 @@ public class ShooterConstants {
 
   // BEST PRACTICE: Separate current limits allow independent tuning per motor type
   public static final int kMotorCurrentLimit = 60;  // Shooter wheels and indexers
-  public static final int kFloorMotorCurrentLimit = 80;  // Higher limit for floor motor under load
+  public static final int kFloorMotorCurrentLimit = 45;  // Higher limit for floor motor under load
 
-  public static final double kShooterP = 0.00045; //0.00045
+  public static final double kShooterP = 0.00045; //0.00045 
   public static final double kShooterI = 0.00000025; //0.00000025
   public static final double kShooterD = 0.001; //0.0001
   public static final double kShooterFF = 3.0 / MotorConstants.NeoVortex.kFreeSpeedRpm;
@@ -39,7 +39,17 @@ public class ShooterConstants {
 
   // Pre-spin RPM cap (used when shooter active but not shooting)
   // Limits RPM to save energy until trigger is actually pulled
-  public static final double kPreSpinRPMCap = 2000;
+  public static final double kPreSpinRPMCap = 3000;
+
+  // RPM rate limiting to prevent regenerative braking current spikes
+  // Maximum RPM change per 20ms cycle (100 RPM/cycle = 5000 RPM/sec)
+  // Prevents dangerous current spikes when transitioning from high to low RPM
+  public static final double kMaxRPMChangePerCycle = 100;
+
+  // Floor motor jam detection and auto-recovery
+  // Detects jams when velocity is low (velocity-only detection)
+  public static final double kFloorJamVelocityThreshold = 200.0; // RPM - jam detected below this (when running)
+  public static final double kFloorJamReverseTime = 0.5; // Seconds - how long to reverse to clear jam
 
   // Shooter velocity lookup table: distance (meters) -> RPM
   // Reduced by ~18% to lower power output
