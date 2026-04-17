@@ -31,7 +31,7 @@ public class LEDConstants {
   public static final double kEndgameStart = 30.0;  // Hub always active after this
 
   // Warning times - flash LEDs this many seconds before hub state changes
-  public static final double kHubWarningTime = 3.0;  // Flash 3 seconds before change
+  public static final double kHubWarningTime = 5.0;  // Flash 3 seconds before change
 
   // Flash timing for animations
   public static final double kFlashPeriod = 0.5;  // Flash every 0.5 seconds (2 Hz)

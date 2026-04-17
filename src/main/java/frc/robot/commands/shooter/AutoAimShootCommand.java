@@ -5,7 +5,6 @@
 package frc.robot.commands.shooter;
 
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -20,43 +19,48 @@ import frc.robot.subsystems.shooter.ShooterSubsystem;
 import java.util.function.DoubleSupplier;
 
 /**
- * ShooterWithAutoAimCommand - Controls indexer and floor feed motors while automatically
- * rotating the robot to face the speaker target.
+ * AutoAimShootCommand - Unified shooting command for both autonomous and teleop.
  *
- * The shooter wheels are already spinning from autonomousInit().
- * This command:
- * 1. Activates the indexer and floor to feed game pieces
- * 2. Automatically rotates the robot to face the alliance's speaker
- * 3. Allows the driver to maintain translational control (forward/backward/strafe)
- *
- * Bound to right trigger - runs while button is held.
+ * Features:
+ * - Stops collector BEFORE spinning up shooter (manages high current draw)
+ * - Automatically aims at speaker using PID rotation control
+ * - Allows translation control via suppliers (joystick in teleop, zero in autonomous)
+ * - Feeds balls only when aligned and at target RPM
+ * - Works seamlessly in both autonomous routines and teleop trigger binding
  */
-public class ShooterWithAutoAimCommand extends Command {
+public class AutoAimShootCommand extends Command {
   private final ShooterSubsystem m_shooter;
-  private final DriveSubsystem m_swerveDrive;
+  private final DriveSubsystem m_drive;
   private final CollectorSubsystem m_collector;
   private final DoubleSupplier m_xSpeedSupplier;
   private final DoubleSupplier m_ySpeedSupplier;
   private final PIDController m_rotationController;
-  private final LinearFilter m_angleOffsetFilter;
   private boolean m_feedingStarted = false;
 
+  // Hopper popper state (automatic in autonomous)
+  private boolean m_hopperPopHigh = false;
+  private double m_lastPopTime = 0.0;
+  private static final double HOPPER_POP_INTERVAL = 0.25;  // seconds
+  private static final double HOPPER_DOWN_POSITION = 0.02;
+  private static final double HOPPER_UP_POSITION = 0.19;
+
   /**
-   * Creates a new ShooterWithAutoAimCommand.
+   * Creates a new AutoAimShootCommand.
    *
    * @param shooter ShooterSubsystem to control
-   * @param swerveDrive DriveSubsystem for auto-rotation
-   * @param xSpeedSupplier Supplier for forward/backward speed from joystick
-   * @param ySpeedSupplier Supplier for left/right speed from joystick
+   * @param drive DriveSubsystem for auto-rotation
+   * @param collector CollectorSubsystem to manage (stopped before shooting)
+   * @param xSpeedSupplier Forward/backward speed (joystick in teleop, () -> 0.0 in auto)
+   * @param ySpeedSupplier Left/right speed (joystick in teleop, () -> 0.0 in auto)
    */
-  public ShooterWithAutoAimCommand(
+  public AutoAimShootCommand(
       ShooterSubsystem shooter,
-      DriveSubsystem swerveDrive,
+      DriveSubsystem drive,
       CollectorSubsystem collector,
       DoubleSupplier xSpeedSupplier,
       DoubleSupplier ySpeedSupplier) {
     m_shooter = shooter;
-    m_swerveDrive = swerveDrive;
+    m_drive = drive;
     m_collector = collector;
     m_xSpeedSupplier = xSpeedSupplier;
     m_ySpeedSupplier = ySpeedSupplier;
@@ -66,38 +70,42 @@ public class ShooterWithAutoAimCommand extends Command {
         AutoConstants.kRotateToTargetI,
         AutoConstants.kRotateToTargetD
     );
-
-    // Enable continuous input for angle wrapping (-180 to 180 degrees)
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
-    // Low-pass filter for angle compensation offset (0.30s time constant at 50Hz)
-    // Smooths velocity spikes from carpet bumps so the PID setpoint changes gradually
-    m_angleOffsetFilter = LinearFilter.singlePoleIIR(0.30, 0.02);
+    addRequirements(shooter, drive, collector);
+  }
 
-    addRequirements(shooter, swerveDrive, collector);
+  /**
+   * Convenience constructor for autonomous - no translation movement.
+   */
+  public AutoAimShootCommand(
+      ShooterSubsystem shooter,
+      DriveSubsystem drive,
+      CollectorSubsystem collector) {
+    this(shooter, drive, collector, () -> 0.0, () -> 0.0);
   }
 
   @Override
   public void initialize() {
-    // Reset the rotation PID controller and angle filter
-    m_rotationController.reset();
-    m_angleOffsetFilter.reset();
+    // CRITICAL: Stop collector BEFORE enabling shooter to manage current draw
+    m_collector.stopCollector();
 
-    // Reset feeding state
     m_feedingStarted = false;
+    m_rotationController.reset();
 
-    // Disable RPM cap so shooter can ramp up to full calculated RPM
-    // This allows the shooter to go from pre-spin (2000 RPM) to full power (e.g. 4300 RPM)
+    // Initialize hopper popper state
+    m_hopperPopHigh = false;
+    m_lastPopTime = 0.0;
+    m_collector.setHopperPosition(HOPPER_DOWN_POSITION);
+
+    // Enable full RPM (remove any cap)
     m_shooter.enableFullRPM();
-
-    // Shooter wheels are already spinning from teleopInit()
-    // Don't start feeding yet - wait for alignment in execute()
   }
 
   @Override
   public void execute() {
-    // Determine target position based on alliance
+    // Determine target speaker based on alliance
     Translation2d targetPosition;
     if (DriverStation.getAlliance().isPresent() &&
         DriverStation.getAlliance().get() == Alliance.Blue) {
@@ -107,28 +115,21 @@ public class ShooterWithAutoAimCommand extends Command {
     }
 
     // Get current robot pose
-    Pose2d currentPose = m_swerveDrive.getPose();
+    Pose2d currentPose = m_drive.getPose();
 
-    // Calculate the angle to the target
+    // Calculate angle to target (back of robot facing speaker)
     double deltaX = targetPosition.getX() - currentPose.getX();
     double deltaY = targetPosition.getY() - currentPose.getY();
-    double targetAngleRadians = Math.atan2(deltaY, deltaX);
+    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
 
-    // Apply velocity compensation — filter smooths rapid velocity fluctuations
-    double rawOffset = m_shooter.getVelocityCompensatedAngleOffset();
-    targetAngleRadians += m_angleOffsetFilter.calculate(rawOffset);
-
-    // Convert to degrees
-    double targetAngleDegrees = Math.toDegrees(targetAngleRadians);
-
-    // Add 180 degrees to point the BACK of the robot at the target (shooter is at the back)
+    // Add 180 degrees to point the BACK of the robot at the target
     targetAngleDegrees = (targetAngleDegrees + 180) % 360;
     if (targetAngleDegrees > 180) {
       targetAngleDegrees -= 360;
     }
 
     // Get current heading
-    double currentHeading = m_swerveDrive.getHeading();
+    double currentHeading = m_drive.getHeading();
 
     // Calculate rotation using PID
     double rotationSpeed = m_rotationController.calculate(currentHeading, targetAngleDegrees);
@@ -137,52 +138,65 @@ public class ShooterWithAutoAimCommand extends Command {
     rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
                              Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
 
-    // Drive with translational input and rotation PID
-    // X lock removed - now only activated by driver X button
-    m_swerveDrive.drive(
+    // Drive with translation input (from suppliers) and rotation PID
+    m_drive.drive(
         m_xSpeedSupplier.getAsDouble(),
         m_ySpeedSupplier.getAsDouble(),
         rotationSpeed * DriveConstants.kMaxAngularSpeed,
         true
     );
 
-    // Check if we should feed balls: aligned (shooter is always pre-spinning, no RPM wait needed)
-    boolean shouldFeed = m_rotationController.atSetpoint();
+    // Check if we should feed balls: aligned AND at target RPM
+    boolean isAligned = m_rotationController.atSetpoint();
+    boolean isAtRPM = m_shooter.isReadyToFeed();
+    boolean shouldFeed = isAligned && isAtRPM;
 
     if (shouldFeed && !m_feedingStarted) {
-      // Start feeding
+      // Start feeding - run indexer and floor motors
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
-      m_collector.runCollector(false);
+      m_lastPopTime = now();  // Initialize hopper pop timer when feeding starts
       m_feedingStarted = true;
     }
+
+    // Automatic hopper popper during shooting (in autonomous)
+    if (m_feedingStarted) {
+      double currentTime = now();
+      if (currentTime - m_lastPopTime >= HOPPER_POP_INTERVAL) {
+        m_hopperPopHigh = !m_hopperPopHigh;
+        m_collector.setHopperPosition(m_hopperPopHigh ? HOPPER_UP_POSITION : HOPPER_DOWN_POSITION);
+        m_lastPopTime = currentTime;
+      }
+    }
+
     // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
-    // The feeding will continue until the command ends (trigger released)
+    // This prevents jitter from PID micro-corrections
+  }
+
+  private static double now() {
+    return System.currentTimeMillis() / 1000.0;
   }
 
   @Override
   public void end(boolean interrupted) {
-    // Stop only the feed motors when button is released
-    // Shooter wheels continue spinning
+    // Stop feeding motors
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
     m_collector.stopCollector();
 
     // Re-enable RPM cap to drop back to pre-spin RPM (energy saving)
-    // Rate limiting will prevent the 149A regenerative braking spike
     m_shooter.enableRPMCap();
 
-    // IMPORTANT: Reset rotation PID to prevent residual commands
+    // Reset rotation PID
     m_rotationController.reset();
-    m_angleOffsetFilter.reset();
 
-    // Stop the drive subsystem
-    m_swerveDrive.stop();
+    // Stop drive
+    m_drive.stop();
   }
 
   @Override
   public boolean isFinished() {
-    // Command runs while button is held
+    // Command runs until canceled (trigger released in teleop, or timeout in auto)
     return false;
   }
 }

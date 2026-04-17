@@ -19,9 +19,12 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
 import frc.robot.commands.auton.BlueCenterShootCommand;
 import frc.robot.commands.auton.BlueLeftCollectAndShootCommand;
+import frc.robot.commands.auton.BlueLeftOverHumpCommand;
 import frc.robot.commands.auton.BlueRightCollectAndShootCommand;
+import frc.robot.commands.auton.BlueRightOverHumpCommand;
 import frc.robot.commands.auton.RedCenterShootCommand;
 import frc.robot.commands.auton.RedLeftCollectAndShootCommand;
+import frc.robot.commands.auton.RedLeftOverHumpCommand;
 import frc.robot.commands.auton.RedRightCollectAndShootCommand;
 import frc.robot.commands.auton.RedRightOverHumpCommand;
 import frc.robot.commands.auton.WaypointPIDTestCommand;
@@ -31,6 +34,7 @@ import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.HopperPopCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
+import frc.robot.commands.shooter.AutoAimShootCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
@@ -136,11 +140,10 @@ public class RobotContainer {
     );
 
 
-    m_driverController.x()
-      .and(() -> m_swerveDrive.isAlignedToSpeaker())
-      .whileTrue(
-        m_swerveDrive.runOnce(() -> m_swerveDrive.setX()).andThen(Commands.idle(m_swerveDrive))
-      );
+    // X Button: Lock wheels in X formation while held (for defense/stability)
+    m_driverController.x().whileTrue(
+      m_swerveDrive.runOnce(() -> m_swerveDrive.setX()).andThen(Commands.idle(m_swerveDrive))
+    );
 
     m_driverController.y().onTrue(
       Commands.either(
@@ -181,12 +184,13 @@ public class RobotContainer {
 
   private void configureMechanismBindings() {
     // A Button: Run collector in collection mode (forward) - stays on until X or B pressed
+    // Runs floor motor forward and indexers backward to help feed game pieces into collector
     m_mechanismController.a().onTrue(
       Commands.runOnce(() -> {
         m_collector.setHopperPosition(0.18);
         m_collector.runCollector(false);
-        m_shooterSubsystem.runFloorRPM(1500);  // Run floor forward at 1500 RPM during collection
-        m_shooterSubsystem.runIndexerWithRPM(1000, true);  // Run indexer backwards at 1000 RPM during collection
+        m_shooterSubsystem.runFloor(false);      // Run floor motor forward during collection
+        m_shooterSubsystem.runIndexer(true);     // Run indexers backward during collection
       }, m_collector, m_shooterSubsystem)
     );
 
@@ -260,7 +264,7 @@ public class RobotContainer {
     );
 
     m_mechanismController.rightTrigger().whileTrue(
-      new ShooterWithAutoAimCommand(
+      new AutoAimShootCommand(
         m_shooterSubsystem,
         m_swerveDrive,
         m_collector,
@@ -393,8 +397,6 @@ public class RobotContainer {
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
     m_autoChooser.setDefaultOption("Auto (Pose-Based)", null);
-    m_autoChooser.addOption("Red Right Over Hump", new RedRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem));
-    m_autoChooser.addOption("Waypoint PID Test", new WaypointPIDTestCommand(m_swerveDrive, m_shooterSubsystem));
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
     SmartDashboard.putString("Auto/Selected", "Not yet determined");
   }
@@ -422,10 +424,10 @@ public class RobotContainer {
     String routineName;
 
     if (isRed) {
-      if (y < 3.0) {
+      if (y < 2.2) {
         position = "Left";
         routineName = "Red Left Collect and Shoot";
-      } else if (y > 5.0) {
+      } else if (y > 5.8) {
         position = "Right";
         routineName = "Red Right Collect and Shoot";
       } else {
@@ -433,10 +435,10 @@ public class RobotContainer {
         routineName = "Red Center Shoot";
       }
     } else {
-      if (y > 5.0) {
+      if (y > 5.8) {
         position = "Left";
         routineName = "Blue Left Collect and Shoot";
-      } else if (y < 3.0) {
+      } else if (y < 2.2) {
         position = "Right";
         routineName = "Blue Right Collect and Shoot";
       } else {
@@ -454,7 +456,7 @@ public class RobotContainer {
   /**
    * Selects the autonomous command based on robot starting pose and vision availability.
    * Alliance: x > 8.27 = Red, x <= 8.27 = Blue.
-   * Position: y < 3.0 = Left(Red)/Right(Blue), y > 5.0 = Right(Red)/Left(Blue), else Center.
+   * Position: y < 2.2 = Left(Red)/Right(Blue), y > 5.8 = Right(Red)/Left(Blue), else Center.
    * If vision is unavailable, drives forward 1 meter and shoots.
    */
   public Command getAutonomousCommand() {
@@ -474,27 +476,30 @@ public class RobotContainer {
     boolean isRed = x > 8.27;
     String alliance = isRed ? "Red" : "Blue";
 
+    // Update LED to show selected auto position
+    m_ledSubsystem.setAutoPositionFromPose(x, y);
+
     String name;
     Command command;
 
     if (isRed) {
-      if (y < 3.0) {
-        name = "Red Left Collect and Shoot";
-        command = new RedLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
-      } else if (y > 5.0) {
-        name = "Red Right Collect and Shoot";
-        command = new RedRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      if (y < 2.2) {
+        name = "Red Left Over Hump";
+        command = new RedLeftOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
+      } else if (y > 5.8) {
+        name = "Red Right Over Hump";
+        command = new RedRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
       } else {
         name = "Red Center Shoot";
         command = new RedCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
       }
     } else {
-      if (y > 5.0) {
-        name = "Blue Left Collect and Shoot";
-        command = new BlueLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
-      } else if (y < 3.0) {
-        name = "Blue Right Collect and Shoot";
-        command = new BlueRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      if (y > 5.8) {
+        name = "Blue Left Over Hump";
+        command = new BlueLeftOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
+      } else if (y < 2.2) {
+        name = "Blue Right Over Hump";
+        command = new BlueRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
       } else {
         name = "Blue Center Shoot";
         command = new BlueCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);

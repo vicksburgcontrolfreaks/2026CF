@@ -195,9 +195,25 @@ public class LEDSubsystem extends SubsystemBase {
       int[] color = m_flashState ? getAllianceColor() : LEDConstants.kOffColor;
       setAllLEDs(color);
     } else {
-      // Show hub status (active = alliance color, inactive = off)
-      boolean hubActive = isHubActive(matchTime);
-      int[] color = hubActive ? getAllianceColor() : LEDConstants.kOffColor;
+      // Show hub status:
+      // - Our hub active = our alliance color
+      // - Our hub inactive + opponent hub active = opponent alliance color
+      // - Both hubs inactive = off
+      boolean ourHubActive = isHubActive(matchTime);
+      boolean opponentHubActive = isOpponentHubActive(matchTime);
+
+      int[] color;
+      if (ourHubActive) {
+        // Our hub is active - show our alliance color
+        color = getAllianceColor();
+      } else if (opponentHubActive) {
+        // Our hub inactive, opponent hub active - show opponent alliance color
+        color = getOpponentAllianceColor();
+      } else {
+        // Both hubs inactive - turn off
+        color = LEDConstants.kOffColor;
+      }
+
       setAllLEDs(color);
     }
   }
@@ -258,6 +274,54 @@ public class LEDSubsystem extends SubsystemBase {
   }
 
   /**
+   * Determines if the opponent's hub is currently active based on match time and game data
+   * Inverse of our hub status during normal shifts
+   */
+  private boolean isOpponentHubActive(double matchTime) {
+    // Always active during endgame (< 30 seconds remaining)
+    if (matchTime <= LEDConstants.kEndgameStart) {
+      return true;
+    }
+
+    // Always active during transition shift (> 130 seconds remaining)
+    if (matchTime > LEDConstants.kTransitionShiftEnd) {
+      return true;
+    }
+
+    // Determine which alliance goes inactive first (scored more fuel in auto)
+    boolean weGoInactiveFirst = false;
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isPresent()) {
+      if (alliance.get() == Alliance.Red && m_hubGameData == 'R') {
+        weGoInactiveFirst = true;
+      } else if (alliance.get() == Alliance.Blue && m_hubGameData == 'B') {
+        weGoInactiveFirst = true;
+      }
+    }
+
+    // Determine current shift and opponent hub status
+    // Opponent is inverse of our status during shifts
+    // Alliance that goes inactive first: Active in Shifts 2 and 4
+    // Other alliance: Active in Shifts 1 and 3
+    if (matchTime > LEDConstants.kShift1End) {
+      // Shift 1 (105-130 seconds)
+      return weGoInactiveFirst;  // Opposite of our hub
+    } else if (matchTime > LEDConstants.kShift2End) {
+      // Shift 2 (80-105 seconds)
+      return !weGoInactiveFirst;  // Opposite of our hub
+    } else if (matchTime > LEDConstants.kShift3End) {
+      // Shift 3 (55-80 seconds)
+      return weGoInactiveFirst;  // Opposite of our hub
+    } else if (matchTime > LEDConstants.kShift4End) {
+      // Shift 4 (30-55 seconds)
+      return !weGoInactiveFirst;  // Opposite of our hub
+    }
+
+    // Default to active if time is unknown
+    return true;
+  }
+
+  /**
    * Checks if we're approaching a hub state change (within warning time)
    */
   private boolean isApproachingHubChange(double matchTime) {
@@ -290,6 +354,20 @@ public class LEDSubsystem extends SubsystemBase {
       return LEDConstants.kRedColor;
     } else {
       return LEDConstants.kBlueColor;
+    }
+  }
+
+  /**
+   * Gets the opponent alliance color (opposite of ours)
+   */
+  private int[] getOpponentAllianceColor() {
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+      // We're red, opponent is blue
+      return LEDConstants.kBlueColor;
+    } else {
+      // We're blue, opponent is red
+      return LEDConstants.kRedColor;
     }
   }
 

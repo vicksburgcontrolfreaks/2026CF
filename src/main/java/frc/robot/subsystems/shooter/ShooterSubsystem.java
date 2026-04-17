@@ -250,6 +250,15 @@ public class ShooterSubsystem extends SubsystemBase {
     m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
   }
 
+  /**
+   * Run floor motor at a specific duty cycle percentage
+   * @param percent Duty cycle percentage (0.0 to 1.0, positive = forward, negative = reverse)
+   */
+  public void runFloorDutyCycle(double percent) {
+    m_floorMotor.set(percent);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
+  }
+
   public void StopFloor() {
     m_floorMotor.set(0);
     m_floorMotorCommandedToRun = false;  // Track that we stopped the motor

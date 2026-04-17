@@ -5,7 +5,7 @@ public class CollectorConstants {
   // Lower collector motor removed - CAN ID 11 no longer in use
   public static final int kHopperMotorId = 12;
 
-  public static final int kMotorCurrentLimit = 60;
+  public static final int kMotorCurrentLimit = 80;
 
   public static final double kCollectorTargetRPM = 2250.0;  // Target velocity in RPM (tuned for reliable collection)
 

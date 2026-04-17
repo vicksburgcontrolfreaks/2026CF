@@ -13,7 +13,7 @@ public class ShooterConstants {
 
   // BEST PRACTICE: Separate current limits allow independent tuning per motor type
   public static final int kMotorCurrentLimit = 60;  // Shooter wheels and indexers
-  public static final int kFloorMotorCurrentLimit = 45;  // Higher limit for floor motor under load
+  public static final int kFloorMotorCurrentLimit = 60;  // Higher limit for floor motor under load
 
   public static final double kShooterP = 0.00045; //0.00045 
   public static final double kShooterI = 0.00000025; //0.00000025
@@ -58,12 +58,12 @@ public class ShooterConstants {
     // {2.69, 3450},
     // {3.3, 4000},
     // {4.8, 4500},
-    {1.82, 2900}, // 6 ft 2900 RPM
-    {2.44, 3100}, // 8 ft 3100 RPM
-    {2.86, 3150}, // 9.38 ft 3150 RMP
-    {3.05, 3575}, // 10 ft 3575 RPM
-    {3.66, 4100}, // 12 ft 4100 RPM
-    {4.58, 4700}, // 15.03 ft 4700 RPM
+    {1.82, 3200}, // 6 ft 2900 RPM
+    {2.44, 3400}, // 8 ft 3100 RPM
+    {2.86, 3450}, // 9.38 ft 3150 RMP
+    {3.05, 3875}, // 10 ft 3575 RPM
+    {3.66, 4400}, // 12 ft 4100 RPM
+    {4.58, 5000}, // 15.03 ft 4700 RPM
   };
 
   // Velocity compensation for shooting while moving
