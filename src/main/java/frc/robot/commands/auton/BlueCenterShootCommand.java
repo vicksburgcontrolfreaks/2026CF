@@ -10,7 +10,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.commands.shooter.AutoAimShootCommand;
+import frc.robot.commands.shooter.ShootWithStartupCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
@@ -43,8 +43,8 @@ public class BlueCenterShootCommand extends Command {
   private Command m_shootCommand;
 
   private static final Translation2d SHOOT_POS       = new Translation2d(2.55, 4.00);  // 16.46 - 13.91
-  private static final Translation2d COLLECT_POS_1   = new Translation2d(1.04, 7.06);  // 16.46 - 15.42
-  private static final Translation2d COLLECT_POS_2   = new Translation2d(0.38, 7.4);   // 16.46 - 16.08
+  private static final Translation2d COLLECT_POS_1   = new Translation2d(1.04, 1.06);  // 16.46 - 15.42
+  private static final Translation2d COLLECT_POS_2   = new Translation2d(0.38, 0.67);   // 16.46 - 16.08
   private static final double DRIVE_TOLERANCE        = 0.15;
   private static final double SHOOT_DURATION         = 3.0;
   private static final double COLLECTION_SPEED       = 0.3;  // Slower speed for collection waypoints
@@ -87,7 +87,7 @@ public class BlueCenterShootCommand extends Command {
 
       case SHOOT:
         if (m_shootCommand == null) {
-          m_shootCommand = new AutoAimShootCommand(m_shooter, m_drive, m_collector)
+          m_shootCommand = new ShootWithStartupCommand(m_shooter, m_drive, m_collector)
             .withTimeout(SHOOT_DURATION);
           m_shootCommand.schedule();
         }
@@ -117,7 +117,7 @@ public class BlueCenterShootCommand extends Command {
 
       case SHOOT_AGAIN:
         if (m_shootCommand == null) {
-          m_shootCommand = new AutoAimShootCommand(m_shooter, m_drive, m_collector)
+          m_shootCommand = new ShootWithStartupCommand(m_shooter, m_drive, m_collector)
             .withTimeout(SHOOT_DURATION);
           m_shootCommand.schedule();
         }

@@ -35,7 +35,10 @@ import frc.robot.commands.collector.RetractHopperCommand;
 import frc.robot.commands.collector.HopperPopCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
 import frc.robot.commands.shooter.AutoAimShootCommand;
+import frc.robot.commands.shooter.ManualShootWithStartupCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
+import frc.robot.commands.shooter.ShootWithStartupCommand;
+import frc.robot.commands.shooter.StaggeredShooterStartupCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.OIConstants;
@@ -236,35 +239,13 @@ public class RobotContainer {
       new HopperPopCommand(m_collector)
     );
 
-    // Manual shoot — shooter already spinning at 3500, just feed immediately, no alignment/vision needed
-    Timer manualShootHopperTimer = new Timer();
-    boolean[] manualHopperPopHigh = {false};
+    // Manual shoot — no auto-aim, no hopper popper, includes staggered startup/shutdown
     m_mechanismController.leftTrigger().whileTrue(
-      Commands.runOnce(() -> {
-        manualHopperPopHigh[0] = true;
-        m_collector.setHopperPosition(0.19);
-        manualShootHopperTimer.reset();
-        manualShootHopperTimer.start();
-      })
-      .andThen(Commands.run(() -> {
-        m_shooterSubsystem.runIndexer(false);
-        m_shooterSubsystem.runFloor(false);
-        m_collector.runCollector(false);
-        if (manualShootHopperTimer.advanceIfElapsed(0.25)) {
-          manualHopperPopHigh[0] = !manualHopperPopHigh[0];
-          m_collector.setHopperPosition(manualHopperPopHigh[0] ? 0.19 : 0.02);
-        }
-      }, m_shooterSubsystem, m_collector))
-      .finallyDo(() -> {
-        m_shooterSubsystem.StopIndexer();
-        m_shooterSubsystem.StopFloor();
-        m_collector.stopCollector();
-        manualShootHopperTimer.stop();
-      })
+      new ManualShootWithStartupCommand(m_shooterSubsystem, m_collector)
     );
 
     m_mechanismController.rightTrigger().whileTrue(
-      new AutoAimShootCommand(
+      new ShootWithStartupCommand(
         m_shooterSubsystem,
         m_swerveDrive,
         m_collector,
@@ -512,11 +493,11 @@ public class RobotContainer {
   }
 
   /**
-   * Spin up shooter on teleop enable (before driving starts)
-   * This uses the high startup current before the drivetrain demands power
+   * Spin up shooter with staggered startup on teleop enable
+   * Uses staggered sequence to reduce current draw
    */
   public void spinUpShooter() {
-    m_shooterSubsystem.activateShooter();
+    new StaggeredShooterStartupCommand(m_shooterSubsystem).schedule();
   }
 
   public DriveSubsystem getSwerveDrive() {

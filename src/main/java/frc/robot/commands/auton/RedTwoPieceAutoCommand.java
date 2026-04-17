@@ -7,9 +7,8 @@ package frc.robot.commands.auton;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.commands.shooter.ShootWithStartupCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
@@ -42,6 +41,7 @@ public class RedTwoPieceAutoCommand extends Command {
   private final ShooterSubsystem m_shooter;
   private final CollectorSubsystem m_collector;
   private final PIDController m_rotationController;
+  private Command m_shootCommand;
 
   private static final Translation2d PICKUP_POSITION = new Translation2d(16.064, 7.432);
   private static final Translation2d SHOOT_POSITION  = new Translation2d(14.10,  5.79);
@@ -52,10 +52,6 @@ public class RedTwoPieceAutoCommand extends Command {
 
   private Phase m_phase;
   private double m_phaseStartTime;
-  private boolean m_shootingStarted;
-  private double m_shootingStartTime;
-  private boolean m_hopperPopHigh;
-  private double m_lastPopTime;
 
   public RedTwoPieceAutoCommand(DriveSubsystem drive, ShooterSubsystem shooter,
                                 CollectorSubsystem collector) {
@@ -78,10 +74,7 @@ public class RedTwoPieceAutoCommand extends Command {
   public void initialize() {
     m_phase = Phase.SHOOT_FIRST;
     m_phaseStartTime = now();
-    m_shootingStarted = false;
-    m_shootingStartTime = 0;
-    m_hopperPopHigh = false;
-    m_lastPopTime = 0;
+    m_shootCommand = null;
     m_rotationController.reset();
 
     // Shooter already spinning from autonomousInit() at capped RPM (3500)
@@ -96,14 +89,13 @@ public class RedTwoPieceAutoCommand extends Command {
     switch (m_phase) {
 
       case SHOOT_FIRST:
-        aimAndShoot(pose);
-        if (m_shootingStarted && (t - m_shootingStartTime) >= FIRST_SHOOT_DURATION) {
-          m_shooter.StopFloor();
-          m_shooter.StopIndexer();
-          m_shooter.enableRPMCap(); // Hold at 3500 during transit
-          m_collector.stopCollector();
-          m_shootingStarted = false;
-          m_rotationController.reset();
+        if (m_shootCommand == null) {
+          m_shootCommand = new ShootWithStartupCommand(m_shooter, m_drive, m_collector)
+            .withTimeout(FIRST_SHOOT_DURATION);
+          m_shootCommand.schedule();
+        }
+        if (m_shootCommand.isFinished()) {
+          m_shootCommand = null;
           // Deploy hopper and start collector for pickup
           m_collector.extendHopper();
           m_collector.runCollector(false);
@@ -120,11 +112,7 @@ public class RedTwoPieceAutoCommand extends Command {
         m_drive.drive(0, 0, 0, true);
         if ((t - m_phaseStartTime) >= PICKUP_WAIT_DURATION) {
           m_collector.stopCollector();
-          m_shootingStarted = false;
-          m_hopperPopHigh = false;
-          m_lastPopTime = 0;
-          m_rotationController.reset();
-          // Shooter already running at cap — enableFullRPM() called in aimAndShoot()
+          // Shooter already running at cap — enableFullRPM() called in ShootWithStartupCommand
           m_phase = Phase.DRIVE_TO_SHOOT;
           m_phaseStartTime = t;
         }
@@ -135,8 +123,13 @@ public class RedTwoPieceAutoCommand extends Command {
         break;
 
       case SHOOT_SECOND:
-        aimAndShoot(pose);
-        if (m_shootingStarted && (t - m_shootingStartTime) >= SECOND_SHOOT_DURATION) {
+        if (m_shootCommand == null) {
+          m_shootCommand = new ShootWithStartupCommand(m_shooter, m_drive, m_collector)
+            .withTimeout(SECOND_SHOOT_DURATION);
+          m_shootCommand.schedule();
+        }
+        if (m_shootCommand.isFinished()) {
+          m_shootCommand = null;
           m_phase = Phase.DONE;
         }
         break;
@@ -144,47 +137,6 @@ public class RedTwoPieceAutoCommand extends Command {
       case DONE:
         m_drive.drive(0, 0, 0, true);
         break;
-    }
-  }
-
-  /** Rotate to point back of robot at speaker, feed when aligned and at RPM. */
-  private void aimAndShoot(Pose2d pose) {
-    boolean isRed = DriverStation.getAlliance().isPresent() &&
-                    DriverStation.getAlliance().get() == Alliance.Red;
-    Translation2d target = isRed ? AutoConstants.redTarget : AutoConstants.blueTarget;
-
-    double dx = target.getX() - pose.getX();
-    double dy = target.getY() - pose.getY();
-    double targetAngle = Math.toDegrees(Math.atan2(dy, dx)) + 180;
-    if (targetAngle > 180) targetAngle -= 360;
-
-    double rot = m_rotationController.calculate(m_drive.getHeading(), targetAngle);
-    rot = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
-          Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
-
-    m_shooter.enableFullRPM(); // Remove cap — let distance-based RPM take over
-
-    m_drive.drive(0, 0, rot * DriveConstants.kMaxAngularSpeed, true);
-
-    if (!m_shootingStarted && m_rotationController.atSetpoint() && m_shooter.isReadyToFeed()) {
-      m_shooter.runIndexer(false);
-      m_shooter.runFloor(false);
-      m_collector.runCollector(false);
-      m_collector.setHopperPosition(0.02);
-      m_hopperPopHigh = false;
-      m_lastPopTime = now();
-      m_shootingStarted = true;
-      m_shootingStartTime = now();
-    }
-
-    // Pop hopper while shooting
-    if (m_shootingStarted) {
-      double t = now();
-      if (t - m_lastPopTime >= 0.25) {
-        m_hopperPopHigh = !m_hopperPopHigh;
-        m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
-        m_lastPopTime = t;
-      }
     }
   }
 
@@ -217,6 +169,10 @@ public class RedTwoPieceAutoCommand extends Command {
     m_shooter.StopIndexer();
     m_shooter.stopShooter();
     m_collector.stopCollector();
+    if (m_shootCommand != null) {
+      m_shootCommand.cancel();
+      m_shootCommand = null;
+    }
   }
 
   @Override

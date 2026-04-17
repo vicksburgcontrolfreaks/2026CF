@@ -7,9 +7,8 @@ package frc.robot.commands.auton;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.commands.shooter.ShootWithStartupCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
 import frc.robot.subsystems.collector.CollectorSubsystem;
@@ -53,6 +52,7 @@ public class BlueRightCollectAndShootCommand extends Command {
   private final ShooterSubsystem m_shooter;
   private final CollectorSubsystem m_collector;
   private final PIDController m_rotationController;
+  private Command m_shootCommand;
 
   private static final Translation2d COLLECTOR_DEPLOY_POS = new Translation2d(5.85, 0.59);
   private static final Translation2d COLLECT_ALIGN_POS    = new Translation2d(7.76, 1.67);
@@ -66,11 +66,7 @@ public class BlueRightCollectAndShootCommand extends Command {
   private static final double OUTPOST_WAIT_DURATION       = 2.0;
 
   private Phase m_phase;
-  private boolean m_shootingStarted;
-  private double m_shootingStartTime;
   private double m_waitStartTime;
-  private boolean m_hopperPopHigh;
-  private double m_lastPopTime;
 
   public BlueRightCollectAndShootCommand(DriveSubsystem drive, ShooterSubsystem shooter,
                                          CollectorSubsystem collector) {
@@ -92,10 +88,7 @@ public class BlueRightCollectAndShootCommand extends Command {
   @Override
   public void initialize() {
     m_phase = Phase.DRIVE_TO_COLLECTOR_DEPLOY;
-    m_shootingStarted = false;
-    m_shootingStartTime = 0;
-    m_hopperPopHigh = false;
-    m_lastPopTime = 0;
+    m_shootCommand = null;
     m_rotationController.reset();
   }
 
@@ -138,13 +131,13 @@ public class BlueRightCollectAndShootCommand extends Command {
         break;
 
       case SHOOT:
-        aimAndShoot(pose);
-        if (m_shootingStarted && (t - m_shootingStartTime) >= SHOOT_DURATION) {
-          m_shooter.StopFloor();
-          m_shooter.StopIndexer();
-          m_shooter.enableRPMCap();
-          m_collector.stopCollector();
-          m_rotationController.reset();
+        if (m_shootCommand == null) {
+          m_shootCommand = new ShootWithStartupCommand(m_shooter, m_drive, m_collector)
+            .withTimeout(SHOOT_DURATION);
+          m_shootCommand.schedule();
+        }
+        if (m_shootCommand.isFinished()) {
+          m_shootCommand = null;
           m_phase = Phase.DRIVE_TO_OUTPOST;
         }
         break;
@@ -159,10 +152,6 @@ public class BlueRightCollectAndShootCommand extends Command {
       case WAIT_AT_OUTPOST:
         m_drive.drive(0, 0, 0, true);
         if ((t - m_waitStartTime) >= OUTPOST_WAIT_DURATION) {
-          m_shootingStarted = false;
-          m_hopperPopHigh = false;
-          m_lastPopTime = 0;
-          m_rotationController.reset();
           m_phase = Phase.DRIVE_TO_SHOOT_AGAIN;
         }
         break;
@@ -172,8 +161,13 @@ public class BlueRightCollectAndShootCommand extends Command {
         break;
 
       case SHOOT_AGAIN:
-        aimAndShoot(pose);
-        if (m_shootingStarted && (t - m_shootingStartTime) >= SHOOT_DURATION) {
+        if (m_shootCommand == null) {
+          m_shootCommand = new ShootWithStartupCommand(m_shooter, m_drive, m_collector)
+            .withTimeout(SHOOT_DURATION);
+          m_shootCommand.schedule();
+        }
+        if (m_shootCommand.isFinished()) {
+          m_shootCommand = null;
           m_phase = Phase.DONE;
         }
         break;
@@ -209,44 +203,6 @@ public class BlueRightCollectAndShootCommand extends Command {
     }
   }
 
-  private void aimAndShoot(Pose2d pose) {
-    boolean isRed = DriverStation.getAlliance().isPresent() &&
-                    DriverStation.getAlliance().get() == Alliance.Red;
-    Translation2d target = isRed ? AutoConstants.redTarget : AutoConstants.blueTarget;
-
-    double dx = target.getX() - pose.getX();
-    double dy = target.getY() - pose.getY();
-    double targetAngle = Math.toDegrees(Math.atan2(dy, dx)) + 180;
-    if (targetAngle > 180) targetAngle -= 360;
-
-    double rot = m_rotationController.calculate(m_drive.getHeading(), targetAngle);
-    rot = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
-          Math.min( AutoConstants.kRotateToTargetMaxVelocity, rot));
-
-    m_shooter.enableFullRPM();
-    m_drive.drive(0, 0, rot * DriveConstants.kMaxAngularSpeed, true);
-
-    if (!m_shootingStarted && m_rotationController.atSetpoint()) {
-      m_shooter.runIndexer(false);
-      m_shooter.runFloor(false);
-      m_collector.runCollector(false);
-      m_collector.setHopperPosition(0.02);
-      m_hopperPopHigh = false;
-      m_lastPopTime = now();
-      m_shootingStarted = true;
-      m_shootingStartTime = now();
-    }
-
-    if (m_shootingStarted) {
-      double t = now();
-      if (t - m_lastPopTime >= 0.25) {
-        m_hopperPopHigh = !m_hopperPopHigh;
-        m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
-        m_lastPopTime = t;
-      }
-    }
-  }
-
   @Override
   public void end(boolean interrupted) {
     m_drive.drive(0, 0, 0, false);
@@ -254,6 +210,10 @@ public class BlueRightCollectAndShootCommand extends Command {
     m_shooter.StopIndexer();
     m_shooter.stopShooter();
     m_collector.stopCollector();
+    if (m_shootCommand != null) {
+      m_shootCommand.cancel();
+      m_shootCommand = null;
+    }
   }
 
   @Override

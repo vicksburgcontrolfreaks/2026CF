@@ -12,8 +12,13 @@ public class ShooterConstants {
   public static final int kMiddleShooterId = 19;
 
   // BEST PRACTICE: Separate current limits allow independent tuning per motor type
-  public static final int kMotorCurrentLimit = 60;  // Shooter wheels and indexers
+  public static final int kMotorCurrentLimit = 30;  // Shooter wheels and indexers
   public static final int kFloorMotorCurrentLimit = 60;  // Higher limit for floor motor under load
+
+  // Dynamic current limits for staggered startup and shooting
+  public static final int kMotorStartupCurrentLimit = 40;  // Higher limit during staggered startup
+  public static final int kMotorShootingCurrentLimit = 60;  // Maximum during ball feeding
+  public static final int kMotorIdleCurrentLimit = 30;     // Normal operation
 
   public static final double kShooterP = 0.00045; //0.00045 
   public static final double kShooterI = 0.00000025; //0.00000025
@@ -44,7 +49,7 @@ public class ShooterConstants {
   // RPM rate limiting to prevent regenerative braking current spikes
   // Maximum RPM change per 20ms cycle (100 RPM/cycle = 5000 RPM/sec)
   // Prevents dangerous current spikes when transitioning from high to low RPM
-  public static final double kMaxRPMChangePerCycle = 100;
+  public static final double kMaxRPMChangePerCycle = 10000; // TEMPORARILY DISABLED FOR TESTING
 
   // Floor motor jam detection and auto-recovery
   // Detects jams when velocity is low (velocity-only detection)

@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.DriveConstants;
@@ -36,6 +37,7 @@ public class AutoAimShootCommand extends Command {
   private final DoubleSupplier m_ySpeedSupplier;
   private final PIDController m_rotationController;
   private boolean m_feedingStarted = false;
+  private final Timer m_timer = new Timer();
 
   // Hopper popper state (automatic in autonomous)
   private boolean m_hopperPopHigh = false;
@@ -43,6 +45,15 @@ public class AutoAimShootCommand extends Command {
   private static final double HOPPER_POP_INTERVAL = 0.25;  // seconds
   private static final double HOPPER_DOWN_POSITION = 0.02;
   private static final double HOPPER_UP_POSITION = 0.19;
+
+  private static final double LEFT_START_TIME = 0.0;
+  private static final double RIGHT_START_TIME = 0.3;
+  private static final double MIDDLE_START_TIME = 0.6;
+  private static final double COMPLETE_TIME = 0.9;
+
+  private boolean m_leftStarted = false;
+  private boolean m_rightStarted = false;
+  private boolean m_middleStarted = false;
 
   /**
    * Creates a new AutoAimShootCommand.
@@ -146,9 +157,14 @@ public class AutoAimShootCommand extends Command {
         true
     );
 
-    // Check if we should feed balls: aligned AND at target RPM
-    boolean isAligned = m_rotationController.atSetpoint();
+    // Switch to 60A immediately when RPM is reached (even if not aligned yet)
     boolean isAtRPM = m_shooter.isReadyToFeed();
+    if (isAtRPM && !m_feedingStarted) {
+      m_shooter.enterShootingState();  // Switch to 60A current limit
+    }
+
+    // Start feeding balls only when: at RPM AND aligned
+    boolean isAligned = m_rotationController.atSetpoint();
     boolean shouldFeed = isAligned && isAtRPM;
 
     if (shouldFeed && !m_feedingStarted) {
@@ -186,6 +202,9 @@ public class AutoAimShootCommand extends Command {
 
     // Re-enable RPM cap to drop back to pre-spin RPM (energy saving)
     m_shooter.enableRPMCap();
+
+    // Transition back to ready state (30A current limit)
+    m_shooter.enterReadyState();
 
     // Reset rotation PID
     m_rotationController.reset();

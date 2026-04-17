@@ -62,8 +62,8 @@ public class Robot extends TimedRobot {
     // Switch to sensor fusion mode (vision + odometry)
     m_robotContainer.getVisionSubsystem().disableVisionPoseReset();
 
-    // Start shooter spinning at the beginning of autonomous
-    m_robotContainer.getShooterSubsystem().activateShooter();
+    // REMOVED: Shooter now starts on-demand when trigger pressed (staggered startup in auto commands)
+    // m_robotContainer.getShooterSubsystem().activateShooter();
 
     // Set LED mode to AUTONOMOUS (flash alliance color)
     m_robotContainer.getLEDSubsystem().setMode(LEDMode.AUTONOMOUS);
@@ -107,8 +107,8 @@ public class Robot extends TimedRobot {
       m_autonomousCommand.cancel();
     }
 
-    // Spin up shooter on teleop enable (uses current before driving starts)
-    m_robotContainer.spinUpShooter();
+    // REMOVED: Shooter now starts on-demand when trigger pressed
+    // m_robotContainer.spinUpShooter();
 
     // Deploy hopper to down position on teleop enable
     m_robotContainer.getCollector().extendHopper();

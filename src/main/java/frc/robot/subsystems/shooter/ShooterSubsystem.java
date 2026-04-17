@@ -42,6 +42,19 @@ public class ShooterSubsystem extends SubsystemBase {
   private final SparkFlex m_leftShooterMotor;
   private final SparkFlex m_middleShooterMotor;
 
+  // State machine for staggered startup and current limit management
+  public enum ShooterStartupState {
+    STOPPED,           // Motors not running
+    STARTUP_LEFT,      // Left motor spinning up
+    STARTUP_RIGHT,     // Right motor spinning up
+    STARTUP_MIDDLE,    // Middle motor spinning up
+    READY,            // All motors at speed, idling
+    SHOOTING          // Actively feeding balls
+  }
+
+  private ShooterStartupState m_startupState = ShooterStartupState.STOPPED;
+  private int m_lastShooterCurrentLimit = ShooterConstants.kMotorIdleCurrentLimit;
+
   private int m_telemetryCounter = 0;
 
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
@@ -465,10 +478,118 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public void stopShooter() {
     m_isShooterActive = false;
+    m_startupState = ShooterStartupState.STOPPED;
 
     m_leftShooterMotor.set(0);
     m_rightShooterMotor.set(0);
     m_middleShooterMotor.set(0);
+
+    setShooterCurrentLimit(ShooterConstants.kMotorIdleCurrentLimit);
+  }
+
+  /**
+   * Set current limit for all three shooter motors dynamically
+   * @param amps Current limit in amps
+   */
+  private void setShooterCurrentLimit(int amps) {
+    if (amps == m_lastShooterCurrentLimit) {
+      return; // No change needed
+    }
+
+    SparkFlexConfig config = new SparkFlexConfig();
+    config.smartCurrentLimit(amps);
+
+    m_leftShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_middleShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+    m_lastShooterCurrentLimit = amps;
+    System.out.println("Updated shooter current limit to " + amps + "A");
+  }
+
+  /**
+   * Get current startup state
+   */
+  public ShooterStartupState getStartupState() {
+    return m_startupState;
+  }
+
+  /**
+   * Check if startup sequence is complete and shooter is ready
+   */
+  public boolean isStartupComplete() {
+    return m_startupState == ShooterStartupState.READY ||
+           m_startupState == ShooterStartupState.SHOOTING;
+  }
+
+  /**
+   * Transition to shooting state (increases current limit)
+   */
+  public void enterShootingState() {
+    m_startupState = ShooterStartupState.SHOOTING;
+    setShooterCurrentLimit(ShooterConstants.kMotorShootingCurrentLimit);
+  }
+
+  /**
+   * Transition to ready/idle state (reduces current limit)
+   */
+  public void enterReadyState() {
+    if (m_startupState == ShooterStartupState.SHOOTING) {
+      m_startupState = ShooterStartupState.READY;
+      setShooterCurrentLimit(ShooterConstants.kMotorIdleCurrentLimit);
+    }
+  }
+
+  /**
+   * Begin staggered shooter startup sequence
+   * Called by StaggeredShooterStartupCommand to initiate sequence
+   */
+  public void beginStaggeredStartup() {
+    m_isShooterActive = true;
+    m_startupState = ShooterStartupState.STARTUP_LEFT;
+    setShooterCurrentLimit(ShooterConstants.kMotorStartupCurrentLimit);
+  }
+
+  /**
+   * Start left shooter motor (first in sequence)
+   */
+  public void startLeftShooter() {
+    m_currentTargetRPM = m_calculatedTargetRPM;
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+    m_startupState = ShooterStartupState.STARTUP_LEFT;
+  }
+
+  /**
+   * Start right shooter motor (second in sequence)
+   */
+  public void startRightShooter() {
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+    m_startupState = ShooterStartupState.STARTUP_RIGHT;
+  }
+
+  /**
+   * Start middle shooter motor (third in sequence)
+   */
+  public void startMiddleShooter() {
+    m_middleShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+    m_startupState = ShooterStartupState.STARTUP_MIDDLE;
+  }
+
+  /**
+   * Complete startup sequence - transition to ready state with idle current
+   */
+  public void completeStartup() {
+    m_startupState = ShooterStartupState.READY;
+    setShooterCurrentLimit(ShooterConstants.kMotorIdleCurrentLimit);
   }
 
   /**
@@ -900,7 +1021,7 @@ public class ShooterSubsystem extends SubsystemBase {
    * @return True if shooter velocity is within tolerance
    */
   public boolean isReadyToFeed() {
-    return isShooterActive() && isAtTargetVelocity(100.0);
+    return isStartupComplete() && isShooterActive() && isAtTargetVelocity(100.0);
   }
 
   /**
