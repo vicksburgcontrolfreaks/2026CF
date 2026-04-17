@@ -19,17 +19,26 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.auto.DriveAndShootNoCameraCommand;
 import frc.robot.commands.auton.BlueCenterShootCommand;
 import frc.robot.commands.auton.BlueLeftCollectAndShootCommand;
+import frc.robot.commands.auton.BlueLeftOverHumpCommand;
 import frc.robot.commands.auton.BlueRightCollectAndShootCommand;
+import frc.robot.commands.auton.BlueRightOverHumpCommand;
 import frc.robot.commands.auton.RedCenterShootCommand;
 import frc.robot.commands.auton.RedLeftCollectAndShootCommand;
+import frc.robot.commands.auton.RedLeftOverHumpCommand;
 import frc.robot.commands.auton.RedRightCollectAndShootCommand;
+import frc.robot.commands.auton.RedRightOverHumpCommand;
+import frc.robot.commands.auton.WaypointPIDTestCommand;
 import frc.robot.commands.collector.RunCollectorCommand;
 import frc.robot.commands.collector.StopCollectorCommand;
 import frc.robot.commands.collector.ExtendHopperCommand;
 import frc.robot.commands.collector.RetractHopperCommand;
+import frc.robot.commands.collector.HopperPopCommand;
 import frc.robot.commands.drive.RotateToTargetCommand;
-import frc.robot.commands.led.AprilTagLEDCommand;
+import frc.robot.commands.shooter.AutoAimShootCommand;
+import frc.robot.commands.shooter.ManualShootWithStartupCommand;
 import frc.robot.commands.shooter.ShooterWithAutoAimCommand;
+import frc.robot.commands.shooter.ShootWithStartupCommand;
+import frc.robot.commands.shooter.StaggeredShooterStartupCommand;
 import frc.robot.commands.test.ShooterTestCommand;
 import frc.robot.constants.AutoConstants;
 import frc.robot.constants.OIConstants;
@@ -48,8 +57,8 @@ import edu.wpi.first.networktables.DoubleEntry;
 public class RobotContainer {
   private final DriveSubsystem m_swerveDrive = new DriveSubsystem();
   private final PhotonVisionSubsystem m_visionSubsystem = new PhotonVisionSubsystem(m_swerveDrive);
-  private final LEDSubsystem m_ledSubsystem = null;
-  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem);
+  private final LEDSubsystem m_ledSubsystem = new LEDSubsystem();
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem(m_visionSubsystem, m_swerveDrive);
   private final CollectorSubsystem m_collector = new CollectorSubsystem();
 
   private final CommandXboxController m_driverController;
@@ -73,29 +82,23 @@ public class RobotContainer {
   public DoubleEntry m_alignmentDEntry;
   public DoubleEntry m_alignmentToleranceEntry;
 
-  // Shooter motor PID tuning (public for ShooterSubsystem access)
-  public DoubleEntry m_shooterPEntry;
-  public DoubleEntry m_shooterIEntry;
-  public DoubleEntry m_shooterDEntry;
-  public DoubleEntry m_shooterFFEntry;
-
-  // Indexer motor PID tuning (public for ShooterSubsystem access)
-  public DoubleEntry m_indexerPEntry;
-  public DoubleEntry m_indexerIEntry;
-  public DoubleEntry m_indexerDEntry;
-  public DoubleEntry m_indexerFFEntry;
+  // NOTE: Shooter/Indexer PID tuning moved to ShooterDashboard for better organization
 
   public RobotContainer() {
       m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
       m_mechanismController = new CommandXboxController(OIConstants.kMechanismControllerPort);
 
+      // BEST PRACTICE: Initialize dashboard manager early so Shuffleboard tabs are created
+      // before subsystem initialization completes
+      frc.robot.dashboard.DashboardManager.getInstance().initialize();
+
       configureShooterTestSystem();
       configureAlignmentPIDTuning();
-      configureMotorPIDTuning();
+      // configureMotorPIDTuning();  // REMOVED - now handled by ShooterDashboard
       configureAutos();
 
       // Connect shooter subsystem to this container for PID tuning access
-      m_shooterSubsystem.setContainer(this);
+      // m_shooterSubsystem.setContainer(this);  // REMOVED - no longer needed with dashboard
 
       configureDefaultCommands();
       configureDriverBindings();
@@ -125,17 +128,13 @@ public class RobotContainer {
           m_swerveDrive.drive(
             -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
             -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxSpeedMetersPerSecond() * speedMultiplier * allianceFlip,
-            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
+            -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kRotationDeadband) * m_swerveDrive.getMaxAngularSpeed() * speedMultiplier,
             true);
         },
         m_swerveDrive)
     );
 
-    if (m_visionSubsystem != null && m_ledSubsystem != null) {
-      m_ledSubsystem.setDefaultCommand(
-        new AprilTagLEDCommand(m_ledSubsystem, m_visionSubsystem)
-      );
-    }
+    // LED subsystem manages its own modes in periodic() - no default command needed
   }
 
   private void configureDriverBindings() {
@@ -144,11 +143,10 @@ public class RobotContainer {
     );
 
 
-    m_driverController.x()
-      .and(() -> m_swerveDrive.isAlignedToSpeaker())
-      .whileTrue(
-        m_swerveDrive.runOnce(() -> m_swerveDrive.setX()).andThen(Commands.idle(m_swerveDrive))
-      );
+    // X Button: Lock wheels in X formation while held (for defense/stability)
+    m_driverController.x().whileTrue(
+      m_swerveDrive.runOnce(() -> m_swerveDrive.setX()).andThen(Commands.idle(m_swerveDrive))
+    );
 
     m_driverController.y().onTrue(
       Commands.either(
@@ -189,11 +187,13 @@ public class RobotContainer {
 
   private void configureMechanismBindings() {
     // A Button: Run collector in collection mode (forward) - stays on until X or B pressed
+    // Runs floor motor forward and indexers backward to help feed game pieces into collector
     m_mechanismController.a().onTrue(
       Commands.runOnce(() -> {
+        m_collector.setHopperPosition(0.18);
         m_collector.runCollector(false);
-        m_shooterSubsystem.runFloor(false);
-        m_shooterSubsystem.runIndexer(true);
+        m_shooterSubsystem.runFloor(false);      // Run floor motor forward during collection
+        m_shooterSubsystem.runIndexer(true);     // Run indexers backward during collection
       }, m_collector, m_shooterSubsystem)
     );
 
@@ -216,6 +216,16 @@ public class RobotContainer {
       )
     );
 
+    // Y Button: Run floor motor only (for testing/manual feeding)
+    m_mechanismController.y().whileTrue(
+      Commands.run(() -> {
+        m_shooterSubsystem.runFloor(false);  // Run floor motor forward
+      }, m_shooterSubsystem)
+      .finallyDo(() -> {
+        m_shooterSubsystem.StopFloor();
+      })
+    );
+
     m_mechanismController.povUp().onTrue(
       new RetractHopperCommand(m_collector)
     );
@@ -224,35 +234,18 @@ public class RobotContainer {
       new ExtendHopperCommand(m_collector)
     );
 
-    // Manual shoot — shooter already spinning at 3500, just feed immediately, no alignment/vision needed
-    Timer manualShootHopperTimer = new Timer();
-    boolean[] manualHopperPopHigh = {false};
+    // Left Bumper: Hopper pop command - alternates hopper up/down every 0.25s while held
+    m_mechanismController.leftBumper().whileTrue(
+      new HopperPopCommand(m_collector)
+    );
+
+    // Manual shoot — no auto-aim, no hopper popper, includes staggered startup/shutdown
     m_mechanismController.leftTrigger().whileTrue(
-      Commands.runOnce(() -> {
-        manualHopperPopHigh[0] = true;
-        m_collector.setHopperPosition(0.19);
-        manualShootHopperTimer.reset();
-        manualShootHopperTimer.start();
-      })
-      .andThen(Commands.run(() -> {
-        m_shooterSubsystem.runIndexer(false);
-        m_shooterSubsystem.runFloor(false);
-        m_collector.runCollector(false);
-        if (manualShootHopperTimer.advanceIfElapsed(0.25)) {
-          manualHopperPopHigh[0] = !manualHopperPopHigh[0];
-          m_collector.setHopperPosition(manualHopperPopHigh[0] ? 0.19 : 0.02);
-        }
-      }, m_shooterSubsystem, m_collector))
-      .finallyDo(() -> {
-        m_shooterSubsystem.StopIndexer();
-        m_shooterSubsystem.StopFloor();
-        m_collector.stopCollector();
-        manualShootHopperTimer.stop();
-      })
+      new ManualShootWithStartupCommand(m_shooterSubsystem, m_collector)
     );
 
     m_mechanismController.rightTrigger().whileTrue(
-      new ShooterWithAutoAimCommand(
+      new ShootWithStartupCommand(
         m_shooterSubsystem,
         m_swerveDrive,
         m_collector,
@@ -272,6 +265,11 @@ public class RobotContainer {
         }
       )
     );
+
+    // TRAJECTORY TESTING:
+    // Left trigger (manual shoot) automatically uses Test RPM when "Test Mode Enabled" is true
+    // To test: Enable in Shuffleboard (Shooter/TrajectoryTest/Test Mode Enabled = true)
+    //          Set Test RPM and Trajectory Angle, hold left trigger to shoot
 
   /*
     m_mechanismController.povUp().whileTrue(
@@ -308,16 +306,10 @@ public class RobotContainer {
     m_testIndexerRPMEntry.setDefault(1500);
     m_testMeasuredDistanceEntry.setDefault(0.0);
 
-    // Add controller bindings for scored ball input during test mode
-    // Left bumper: Increment scored count
-    m_mechanismController.leftBumper().onTrue(
-      Commands.runOnce(() -> {
-        int current = (int) m_testBallsScoredEntry.get();
-        m_testBallsScoredEntry.set(current + 1);
-      })
-    );
+    // NOTE: Left and right bumper bindings for test mode ball scoring have been removed
+    // Left bumper is now bound to HopperPopCommand in configureMechanismBindings()
 
-    // Right bumper: Decrement scored count
+    // Right bumper: Decrement scored count (test mode only)
     m_mechanismController.rightBumper().onTrue(
       Commands.runOnce(() -> {
         int current = (int) m_testBallsScoredEntry.get();
@@ -362,35 +354,14 @@ public class RobotContainer {
   }
 
   /**
-   * Configure shooter and indexer motor PID tuning parameters via NetworkTables
-   * Allows real-time tuning of motor velocity control without redeploying code
+   * NOTE: Motor PID tuning has been moved to ShooterDashboard for better organization.
+   * This provides all shooter-related configuration in one organized Shuffleboard tab.
+   * Access PID tuning via the "Shooter" tab in Shuffleboard under "PID Tuning" layout.
+   *
+   * BEST PRACTICE: Centralize dashboard configuration in dedicated dashboard classes
+   * rather than scattering NetworkTables setup across multiple files. This makes it
+   * easier to find values during competition and maintain the codebase.
    */
-  private void configureMotorPIDTuning() {
-    var shooterTable = NetworkTableInstance.getDefault().getTable("ShooterMotorPID");
-    var indexerTable = NetworkTableInstance.getDefault().getTable("IndexerMotorPID");
-
-    // Shooter motor PID
-    m_shooterPEntry = shooterTable.getDoubleTopic("P").getEntry(ShooterConstants.kShooterP);
-    m_shooterIEntry = shooterTable.getDoubleTopic("I").getEntry(ShooterConstants.kShooterI);
-    m_shooterDEntry = shooterTable.getDoubleTopic("D").getEntry(ShooterConstants.kShooterD);
-    m_shooterFFEntry = shooterTable.getDoubleTopic("FF").getEntry(ShooterConstants.kShooterFF);
-
-    m_shooterPEntry.setDefault(ShooterConstants.kShooterP);
-    m_shooterIEntry.setDefault(ShooterConstants.kShooterI);
-    m_shooterDEntry.setDefault(ShooterConstants.kShooterD);
-    m_shooterFFEntry.setDefault(ShooterConstants.kShooterFF);
-
-    // Indexer motor PID
-    m_indexerPEntry = indexerTable.getDoubleTopic("P").getEntry(ShooterConstants.kIndexerP);
-    m_indexerIEntry = indexerTable.getDoubleTopic("I").getEntry(ShooterConstants.kIndexerI);
-    m_indexerDEntry = indexerTable.getDoubleTopic("D").getEntry(ShooterConstants.kIndexerD);
-    m_indexerFFEntry = indexerTable.getDoubleTopic("FF").getEntry(ShooterConstants.kIndexerFF);
-
-    m_indexerPEntry.setDefault(ShooterConstants.kIndexerP);
-    m_indexerIEntry.setDefault(ShooterConstants.kIndexerI);
-    m_indexerDEntry.setDefault(ShooterConstants.kIndexerD);
-    m_indexerFFEntry.setDefault(ShooterConstants.kIndexerFF);
-  }
 
   /*
    * Configures autonomous commands using Choreo trajectories.
@@ -406,18 +377,75 @@ public class RobotContainer {
    */
   private void configureAutos() {
     m_autoChooser = new SendableChooser<>();
-    m_autoChooser.setDefaultOption("Auto", Commands.none()); // placeholder; real command built at init
+    m_autoChooser.setDefaultOption("Auto (Pose-Based)", null);
     SmartDashboard.putData("Auto/Chooser", m_autoChooser);
     SmartDashboard.putString("Auto/Selected", "Not yet determined");
   }
 
   /**
+   * Updates SmartDashboard with the autonomous routine that would be selected
+   * based on current robot position. Call this during disabled periodic for
+   * continuous updates.
+   */
+  public void updateAutoDisplay() {
+    if (m_visionSubsystem.getActiveCameraCount() == 0) {
+      SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
+      SmartDashboard.putString("Auto/Alliance", "Unknown");
+      SmartDashboard.putString("Auto/Position", "N/A");
+      SmartDashboard.putString("Auto/Pose", "No Vision");
+      return;
+    }
+
+    edu.wpi.first.math.geometry.Pose2d startPose = m_swerveDrive.getPose();
+    double x = startPose.getX();
+    double y = startPose.getY();
+    boolean isRed = x > 8.27;
+    String alliance = isRed ? "Red" : "Blue";
+    String position;
+    String routineName;
+
+    if (isRed) {
+      if (y < 2.2) {
+        position = "Left";
+        routineName = "Red Left Collect and Shoot";
+      } else if (y > 5.8) {
+        position = "Right";
+        routineName = "Red Right Collect and Shoot";
+      } else {
+        position = "Center";
+        routineName = "Red Center Shoot";
+      }
+    } else {
+      if (y > 5.8) {
+        position = "Left";
+        routineName = "Blue Left Collect and Shoot";
+      } else if (y < 2.2) {
+        position = "Right";
+        routineName = "Blue Right Collect and Shoot";
+      } else {
+        position = "Center";
+        routineName = "Blue Center Shoot";
+      }
+    }
+
+    SmartDashboard.putString("Auto/Selected", routineName);
+    SmartDashboard.putString("Auto/Alliance", alliance);
+    SmartDashboard.putString("Auto/Position", position);
+    SmartDashboard.putString("Auto/Pose", String.format("(%.2f, %.2f)", x, y));
+  }
+
+  /**
    * Selects the autonomous command based on robot starting pose and vision availability.
    * Alliance: x > 8.27 = Red, x <= 8.27 = Blue.
-   * Position: y < 3.0 = Left(Red)/Right(Blue), y > 5.0 = Right(Red)/Left(Blue), else Center.
+   * Position: y < 2.2 = Left(Red)/Right(Blue), y > 5.8 = Right(Red)/Left(Blue), else Center.
    * If vision is unavailable, drives forward 1 meter and shoots.
    */
   public Command getAutonomousCommand() {
+    Command selected = m_autoChooser.getSelected();
+    if (selected != null && selected.getName() != null && !selected.getName().equals("none")) {
+      return selected;
+    }
+
     if (m_visionSubsystem.getActiveCameraCount() == 0) {
       SmartDashboard.putString("Auto/Selected", "No Vision — Drive and Shoot (No Camera)");
       return new DriveAndShootNoCameraCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
@@ -429,27 +457,30 @@ public class RobotContainer {
     boolean isRed = x > 8.27;
     String alliance = isRed ? "Red" : "Blue";
 
+    // Update LED to show selected auto position
+    m_ledSubsystem.setAutoPositionFromPose(x, y);
+
     String name;
     Command command;
 
     if (isRed) {
-      if (y < 3.0) {
-        name = "Red Left Collect and Shoot";
-        command = new RedLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
-      } else if (y > 5.0) {
-        name = "Red Right Collect and Shoot";
-        command = new RedRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      if (y < 2.2) {
+        name = "Red Left Over Hump";
+        command = new RedLeftOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
+      } else if (y > 5.8) {
+        name = "Red Right Over Hump";
+        command = new RedRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
       } else {
         name = "Red Center Shoot";
         command = new RedCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
       }
     } else {
-      if (y > 5.0) {
-        name = "Blue Left Collect and Shoot";
-        command = new BlueLeftCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
-      } else if (y < 3.0) {
-        name = "Blue Right Collect and Shoot";
-        command = new BlueRightCollectAndShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
+      if (y > 5.8) {
+        name = "Blue Left Over Hump";
+        command = new BlueLeftOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
+      } else if (y < 2.2) {
+        name = "Blue Right Over Hump";
+        command = new BlueRightOverHumpCommand(m_swerveDrive, m_shooterSubsystem, m_collector, m_visionSubsystem);
       } else {
         name = "Blue Center Shoot";
         command = new BlueCenterShootCommand(m_swerveDrive, m_shooterSubsystem, m_collector);
@@ -462,11 +493,11 @@ public class RobotContainer {
   }
 
   /**
-   * Spin up shooter on teleop enable (before driving starts)
-   * This uses the high startup current before the drivetrain demands power
+   * Spin up shooter with staggered startup on teleop enable
+   * Uses staggered sequence to reduce current draw
    */
   public void spinUpShooter() {
-    m_shooterSubsystem.activateShooter();
+    new StaggeredShooterStartupCommand(m_shooterSubsystem).schedule();
   }
 
   public DriveSubsystem getSwerveDrive() {

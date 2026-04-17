@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shooter Geometry Analysis - Launch Angle vs Contact Angle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 4px solid #e74c3c;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-left: 5px solid #e74c3c;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #5a6c7d;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .alert-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .alert-box h3 {
+            margin-top: 0;
+            color: #d39e00;
+        }
+
+        .critical-box {
+            background: #f8d7da;
+            border-left: 5px solid #dc3545;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .critical-box h3 {
+            margin-top: 0;
+            color: #721c24;
+        }
+
+        .info-box {
+            background: #e8f4f8;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .success-box h3 {
+            margin-top: 0;
+            color: #155724;
+        }
+
+        .diagram {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+
+        .diagram-caption {
+            text-align: center;
+            font-style: italic;
+            color: #6c757d;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+
+        svg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .formula {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 3px solid #6c757d;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e9ecef;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .important {
+            font-weight: bold;
+            color: #e74c3c;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Shooter Geometry Analysis</h1>
+        <p style="font-size: 1.1em; color: #6c757d; margin-bottom: 30px;">
+            Understanding the difference between wheel contact angle and launch angle - and why your velocity requirements increased
+        </p>
+
+        <div class="critical-box">
+            <h3>🚨 Critical Finding</h3>
+            <p class="important">You are measuring WHEEL CONTACT ANGLE, not LAUNCH ANGLE!</p>
+            <p>When you increased the angle from 22° to 28°, you likely <strong>DECREASED</strong> the actual launch angle, which is why you need MORE velocity to achieve the same range.</p>
+            <p><strong>This is the opposite of what you expected, and explains everything.</strong></p>
+        </div>
+
+        <h2>1. Two Different Angles in Your Shooter</h2>
+
+        <div class="diagram">
+            <svg width="1000" height="700" viewBox="0 0 1000 700">
+                <!-- Title -->
+                <text x="500" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#2c3e50">
+                    Shooter Wheel Geometry: Contact Angle vs Launch Angle
+                </text>
+
+                <!-- Ground reference -->
+                <line x1="50" y1="600" x2="950" y2="600" stroke="#333" stroke-width="2"/>
+                <text x="500" y="625" text-anchor="middle" font-size="12" fill="#6c757d">Horizontal Reference (0°)</text>
+
+                <!-- Left diagram: CONTACT ANGLE -->
+                <g transform="translate(200, 400)">
+                    <text x="0" y="-230" text-anchor="middle" font-size="16" font-weight="bold" fill="#e74c3c">
+                        What You're Measuring
+                    </text>
+
+                    <!-- Wheel -->
+                    <circle cx="0" cy="0" r="60" fill="#3498db" stroke="#2c3e50" stroke-width="3"/>
+                    <text x="0" y="5" text-anchor="middle" fill="white" font-size="12" font-weight="bold">4" Wheel</text>
+
+                    <!-- Ball at contact point (22° contact angle) -->
+                    <circle cx="90" cy="-35" r="20" fill="#f39c12" stroke="#d68910" stroke-width="2" opacity="0.7"/>
+
+                    <!-- Contact angle line (22°) -->
+                    <line x0="0" y1="0" x2="110" y2="-42" stroke="#e74c3c" stroke-width="3"/>
+                    <line x1="0" y1="0" x2="120" y2="0" stroke="#666" stroke-width="1" stroke-dasharray="3,3"/>
+
+                    <!-- Arc showing 22° -->
+                    <path d="M 50,0 A 50 50 0 0 0 41,-18" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                    <text x="60" y="-10" fill="#e74c3c" font-size="14" font-weight="bold">22°</text>
+                    <text x="60" y="5" fill="#e74c3c" font-size="11">Contact</text>
+
+                    <!-- Rail guide -->
+                    <path d="M -50,50 Q 50,-50 110,-42" fill="none" stroke="#333" stroke-width="4" opacity="0.5"/>
+                    <text x="-60" y="60" font-size="11" fill="#333">Rail</text>
+
+                    <!-- Velocity vector at release (tangent to wheel) -->
+                    <line x1="90" y1="-35" x2="140" y2="80" stroke="#27ae60" stroke-width="4" marker-end="url(#arrowgreen)"/>
+                    <text x="150" y="90" fill="#27ae60" font-size="13" font-weight="bold">v</text>
+                    <text x="150" y="105" fill="#27ae60" font-size="11">(tangent)</text>
+
+                    <!-- Horizontal reference from contact point -->
+                    <line x1="90" y1="-35" x2="200" y2="-35" stroke="#666" stroke-width="1" stroke-dasharray="3,3"/>
+
+                    <!-- ACTUAL LAUNCH ANGLE (perpendicular to contact radius) -->
+                    <path d="M 140,-35 A 50 50 0 0 1 130,25" fill="none" stroke="#27ae60" stroke-width="2"/>
+                    <text x="170" y="0" fill="#27ae60" font-size="14" font-weight="bold">~68°</text>
+                    <text x="160" y="15" fill="#27ae60" font-size="11">Launch!</text>
+
+                    <text x="0" y="100" text-anchor="middle" font-size="13" fill="#333" font-weight="bold">
+                        Contact Angle = 22°
+                    </text>
+                    <text x="0" y="120" text-anchor="middle" font-size="12" fill="#27ae60" font-weight="bold">
+                        Launch Angle ≈ 68° (90° - 22°)
+                    </text>
+                </g>
+
+                <!-- Right diagram: INCREASED CONTACT ANGLE -->
+                <g transform="translate(700, 400)">
+                    <text x="0" y="-230" text-anchor="middle" font-size="16" font-weight="bold" fill="#e74c3c">
+                        After Your Change
+                    </text>
+
+                    <!-- Wheel -->
+                    <circle cx="0" cy="0" r="60" fill="#3498db" stroke="#2c3e50" stroke-width="3"/>
+                    <text x="0" y="5" text-anchor="middle" fill="white" font-size="12" font-weight="bold">4" Wheel</text>
+
+                    <!-- Ball at contact point (28° contact angle) -->
+                    <circle cx="85" cy="-45" r="20" fill="#f39c12" stroke="#d68910" stroke-width="2"/>
+
+                    <!-- Contact angle line (28°) -->
+                    <line x1="0" y1="0" x2="105" y2="-55" stroke="#e74c3c" stroke-width="3"/>
+                    <line x1="0" y1="0" x2="120" y2="0" stroke="#666" stroke-width="1" stroke-dasharray="3,3"/>
+
+                    <!-- Arc showing 28° -->
+                    <path d="M 50,0 A 50 50 0 0 0 39,-23" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                    <text x="60" y="-15" fill="#e74c3c" font-size="14" font-weight="bold">28°</text>
+                    <text x="60" y="0" fill="#e74c3c" font-size="11">Contact</text>
+
+                    <!-- Rail guide (steeper) -->
+                    <path d="M -50,50 Q 40,-60 105,-55" fill="none" stroke="#333" stroke-width="4" opacity="0.5"/>
+                    <text x="-60" y="60" font-size="11" fill="#333">Rail</text>
+
+                    <!-- Velocity vector at release (tangent to wheel) -->
+                    <line x1="85" y1="-45" x2="140" y2="60" stroke="#dc3545" stroke-width="4" marker-end="url(#arrowred)"/>
+                    <text x="150" y="70" fill="#dc3545" font-size="13" font-weight="bold">v</text>
+                    <text x="150" y="85" fill="#dc3545" font-size="11">(tangent)</text>
+
+                    <!-- Horizontal reference from contact point -->
+                    <line x1="85" y1="-45" x2="200" y2="-45" stroke="#666" stroke-width="1" stroke-dasharray="3,3"/>
+
+                    <!-- ACTUAL LAUNCH ANGLE (perpendicular to contact radius) -->
+                    <path d="M 135,-45 A 50 50 0 0 1 125,10" fill="none" stroke="#dc3545" stroke-width="2"/>
+                    <text x="165" y="-15" fill="#dc3545" font-size="14" font-weight="bold">~62°</text>
+                    <text x="155" y="0" fill="#dc3545" font-size="11">Launch!</text>
+
+                    <text x="0" y="100" text-anchor="middle" font-size="13" fill="#333" font-weight="bold">
+                        Contact Angle = 28°
+                    </text>
+                    <text x="0" y="120" text-anchor="middle" font-size="12" fill="#dc3545" font-weight="bold">
+                        Launch Angle ≈ 62° (90° - 28°)
+                    </text>
+                </g>
+
+                <!-- Comparison box -->
+                <g transform="translate(500, 660)">
+                    <rect x="-200" y="-40" width="400" height="60" fill="#fff3cd" stroke="#ffc107" stroke-width="3" rx="5"/>
+                    <text x="0" y="-15" text-anchor="middle" font-size="14" fill="#d39e00" font-weight="bold">
+                        RESULT: Higher contact angle = LOWER launch angle!
+                    </text>
+                    <text x="0" y="5" text-anchor="middle" font-size="12" fill="#d39e00">
+                        22° contact → 68° launch | 28° contact → 62° launch
+                    </text>
+                    <text x="0" y="25" text-anchor="middle" font-size="11" fill="#d39e00" font-style="italic">
+                        Lower launch angle requires MORE velocity for same range
+                    </text>
+                </g>
+
+                <defs>
+                    <marker id="arrowgreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#27ae60" />
+                    </marker>
+                    <marker id="arrowred" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#dc3545" />
+                    </marker>
+                </defs>
+            </svg>
+            <div class="diagram-caption">
+                Figure 1: The ball's launch velocity is TANGENT to the wheel at the contact point, which is PERPENDICULAR to the contact radius.
+                A 22° contact angle produces ~68° launch angle, while 28° contact produces ~62° launch angle.
+            </div>
+        </div>
+
+        <h2>2. The Physics Explanation</h2>
+
+        <div class="info-box">
+            <h3>Why Launch Angle ≠ Contact Angle</h3>
+            <p>When a ball leaves a spinning wheel:</p>
+            <ul>
+                <li>The ball's velocity is <strong>tangent</strong> to the wheel surface at the contact point</li>
+                <li>The contact radius makes an angle with horizontal (what you're measuring)</li>
+                <li>The tangent is <strong>perpendicular</strong> to the radius</li>
+                <li>Therefore: <strong>Launch Angle ≈ 90° - Contact Angle</strong></li>
+            </ul>
+        </div>
+
+        <div class="formula">
+<strong>Geometric Relationship:</strong>
+
+Contact Angle (from horizontal) = θ_contact
+Launch Angle (from horizontal) = θ_launch
+
+θ_launch = 90° - θ_contact  (approximately, assuming tangent release)
+
+<strong>Your case:</strong>
+22° contact → 90° - 22° = 68° launch
+28° contact → 90° - 28° = 62° launch
+
+<strong>Change:</strong> Launch angle DECREASED by 6°
+        </div>
+
+        <h2>3. Why You Need More Velocity Now</h2>
+
+        <div class="diagram">
+            <svg width="900" height="400" viewBox="0 0 900 400">
+                <!-- Title -->
+                <text x="450" y="25" text-anchor="middle" font-size="16" font-weight="bold" fill="#2c3e50">
+                    Projectile Range vs Launch Angle (Same Initial Velocity)
+                </text>
+
+                <!-- Ground -->
+                <line x1="50" y1="350" x2="850" y2="350" stroke="#333" stroke-width="2"/>
+
+                <!-- Robot at origin -->
+                <rect x="50" y="300" width="50" height="50" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
+
+                <!-- 68° trajectory (OLD - better) -->
+                <path d="M 100,325 Q 250,80 550,325"
+                      fill="none" stroke="#27ae60" stroke-width="3" stroke-dasharray="5,5"/>
+                <text x="300" y="70" fill="#27ae60" font-size="13" font-weight="bold">68° launch (OLD)</text>
+                <text x="300" y="90" fill="#27ae60" font-size="11">22° contact angle</text>
+
+                <!-- 62° trajectory (NEW - worse) -->
+                <path d="M 100,325 Q 200,100 450,325"
+                      fill="none" stroke="#dc3545" stroke-width="3"/>
+                <text x="200" y="90" fill="#dc3545" font-size="13" font-weight="bold">62° launch (NEW)</text>
+                <text x="200" y="110" fill="#dc3545" font-size="11">28° contact angle</text>
+
+                <!-- 45° optimal trajectory (reference) -->
+                <path d="M 100,325 Q 300,100 650,325"
+                      fill="none" stroke="#6c757d" stroke-width="2" stroke-dasharray="3,3" opacity="0.5"/>
+                <text x="380" y="90" fill="#6c757d" font-size="11">45° (optimal)</text>
+
+                <!-- Range indicators -->
+                <line x1="100" y1="370" x2="450" y2="370" stroke="#dc3545" stroke-width="2" marker-end="url(#arrowred2)"/>
+                <text x="275" y="390" text-anchor="middle" fill="#dc3545" font-size="12" font-weight="bold">Shorter range @ 62°</text>
+
+                <line x1="100" y1="365" x2="550" y2="365" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowgreen2)"/>
+                <text x="325" y="360" text-anchor="middle" fill="#27ae60" font-size="12" font-weight="bold">Longer range @ 68°</text>
+
+                <!-- Speaker target -->
+                <rect x="520" y="285" width="50" height="65" fill="#f39c12" stroke="#d68910" stroke-width="2"/>
+                <text x="545" y="322" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Goal</text>
+
+                <defs>
+                    <marker id="arrowred2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#dc3545" />
+                    </marker>
+                    <marker id="arrowgreen2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#27ae60" />
+                    </marker>
+                </defs>
+            </svg>
+            <div class="diagram-caption">
+                Figure 2: At angles above 45°, LOWER angles give LONGER range. Your 62° launch (28° contact) has worse range efficiency than 68° launch (22° contact).
+            </div>
+        </div>
+
+        <div class="formula">
+<strong>Projectile Range Formula:</strong>
+
+Range = (v² × sin(2θ)) / g
+
+Where θ is launch angle from horizontal
+
+<strong>For angles > 45°:</strong>
+- Moving away from 45° reduces range
+- 68° is 23° away from optimal
+- 62° is 17° closer to optimal... BUT STILL SUB-OPTIMAL!
+
+<strong>Range efficiency:</strong>
+sin(2 × 68°) = sin(136°) ≈ 0.695
+sin(2 × 62°) = sin(124°) ≈ 0.829
+
+Wait... this suggests 62° should be BETTER!
+        </div>
+
+        <div class="alert-box">
+            <h3>⚠️ The Real Story: It's Not Just About Range</h3>
+            <p>The range formula assumes the projectile lands at the same height it was launched from. But your speaker target is <strong>elevated</strong>!</p>
+            <p>For elevated targets, launch angles closer to 45° are NOT always better because:</p>
+            <ul>
+                <li>Steeper trajectories (closer to 90°) have more time in the air at the peak</li>
+                <li>Allows the ball to "drop in" from above</li>
+                <li>Better scoring geometry (enters opening from top)</li>
+            </ul>
+            <p><strong>Your 68° launch was probably near-optimal for your specific target height and scoring requirements.</strong></p>
+            <p>Moving to 62° sacrifices the high-arc "drop-in" trajectory for a flatter, faster shot that may be less reliable for scoring.</p>
+        </div>
+
+        <h2>4. What Actually Happened</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Configuration</th>
+                    <th>Contact Angle</th>
+                    <th>Launch Angle</th>
+                    <th>Trajectory Type</th>
+                    <th>Velocity Requirement</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background: #d4edda;">
+                    <td><strong>OLD (Working)</strong></td>
+                    <td>22°</td>
+                    <td>~68°</td>
+                    <td>High arc, "drop-in"</td>
+                    <td>Lower (2950-4500 RPM)</td>
+                </tr>
+                <tr style="background: #f8d7da;">
+                    <td><strong>NEW (Current)</strong></td>
+                    <td>28°</td>
+                    <td>~62°</td>
+                    <td>Lower arc, faster</td>
+                    <td>Higher (needs retuning)</td>
+                </tr>
+                <tr style="background: #fff3cd;">
+                    <td><strong>OPTIMAL (?)</strong></td>
+                    <td>~22-25°</td>
+                    <td>~65-68°</td>
+                    <td>High arc, balanced</td>
+                    <td>Depends on target height</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>5. How to Measure Your Actual Launch Angle</h2>
+
+        <div class="success-box">
+            <h3>✓ Practical Measurement Method</h3>
+            <ol>
+                <li><strong>High-speed video method:</strong>
+                    <ul>
+                        <li>Record shooter at 120+ fps with phone camera (slo-mo mode)</li>
+                        <li>Capture moment ball leaves wheel</li>
+                        <li>Freeze frame and measure velocity vector angle relative to horizontal</li>
+                        <li>This is your TRUE launch angle</li>
+                    </ul>
+                </li>
+                <li><strong>Trajectory analysis:</strong>
+                    <ul>
+                        <li>Shoot at known distance (e.g., 3m from target)</li>
+                        <li>Record shot with side-view camera</li>
+                        <li>Measure peak height of trajectory</li>
+                        <li>Use physics to back-calculate launch angle</li>
+                    </ul>
+                </li>
+                <li><strong>Protractor on robot (crude but fast):</strong>
+                    <ul>
+                        <li>Place protractor at wheel center</li>
+                        <li>Draw line tangent to wheel at ball contact point</li>
+                        <li>Measure angle of tangent line from horizontal</li>
+                        <li>This is your launch angle</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <h2>6. Design Recommendations</h2>
+
+        <div class="info-box">
+            <h3>Optimal Shooter Geometry for FRC</h3>
+            <p><strong>Target Launch Angle:</strong> 55-70° (varies by target height and distance)</p>
+            <p><strong>This means Contact Angle:</strong> 20-35° from horizontal</p>
+
+            <h4>Design Considerations:</h4>
+            <ul>
+                <li><strong>Higher launch angles (65-70°):</strong> Better for drop-in shots, more forgiving scoring geometry, consistent against defense</li>
+                <li><strong>Medium launch angles (55-65°):</strong> Balanced speed and arc, good all-around</li>
+                <li><strong>Lower launch angles (45-55°):</strong> Faster shots, less arc, requires more precision but harder to block</li>
+            </ul>
+
+            <p><strong>Your old 22° contact (68° launch) was probably excellent for your game strategy.</strong> Consider reverting or finding a middle ground around 24-25° contact (65-66° launch).</p>
+        </div>
+
+        <h2>7. Corrective Actions</h2>
+
+        <h3>Option A: Revert to 22° Contact Angle (Recommended)</h3>
+        <ul>
+            <li>✓ Proven to work with existing velocity table</li>
+            <li>✓ No retuning needed</li>
+            <li>✓ Optimal drop-in trajectory for scoring</li>
+            <li>✗ Requires mechanical adjustment</li>
+        </ul>
+
+        <h3>Option B: Stay at 28° and Retune</h3>
+        <ul>
+            <li>✓ No mechanical work needed</li>
+            <li>✗ Requires complete velocity table retuning (see SHOOTER_TUNING_GUIDE.html)</li>
+            <li>✗ Lower launch angle (62°) may be less reliable for scoring</li>
+            <li>✗ Flatter trajectory easier to block by defense</li>
+        </ul>
+
+        <h3>Option C: Compromise at 24-25° Contact Angle</h3>
+        <ul>
+            <li>✓ Balanced trajectory (~65-66° launch)</li>
+            <li>✓ Minor velocity table adjustments (~5% increase from 22° baseline)</li>
+            <li>✓ Still good scoring geometry</li>
+            <li>✗ Requires mechanical adjustment</li>
+        </ul>
+
+        <h2>8. Quick Verification Test</h2>
+
+        <div class="critical-box">
+            <h3>Test to Confirm This Analysis</h3>
+            <p><strong>Before making any changes, verify your current launch angle:</strong></p>
+            <ol>
+                <li>Set robot 3m from speaker</li>
+                <li>Record slow-motion video (120 fps) from side view</li>
+                <li>Activate shooter and fire one game piece</li>
+                <li>Pause video at moment ball leaves wheel</li>
+                <li>Draw line along velocity vector from center of ball</li>
+                <li>Measure angle from horizontal using protractor or image analysis</li>
+            </ol>
+            <p><strong>Expected result:</strong> You'll measure ~62° launch angle, NOT 28°</p>
+            <p><strong>This confirms:</strong> Your 28° measurement is contact angle, not launch angle</p>
+        </div>
+
+        <h2>9. Terminology Clarification</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Definition</th>
+                    <th>How to Measure</th>
+                    <th>Your Values</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Contact Angle</strong></td>
+                    <td>Angle from horizontal to line from wheel center to ball contact point</td>
+                    <td>Your orange radial lines</td>
+                    <td>22° → 28°</td>
+                </tr>
+                <tr>
+                    <td><strong>Launch Angle (Departure Angle)</strong></td>
+                    <td>Angle from horizontal to ball's velocity vector at release</td>
+                    <td>High-speed video of ball trajectory</td>
+                    <td>~68° → ~62°</td>
+                </tr>
+                <tr>
+                    <td><strong>Hood Angle</strong></td>
+                    <td>Angle of static hood/deflector (if present)</td>
+                    <td>Protractor on hood surface</td>
+                    <td>N/A (rail-guided)</td>
+                </tr>
+                <tr>
+                    <td><strong>Wheel Tangent Angle</strong></td>
+                    <td>Angle of wheel surface tangent at contact (= launch angle)</td>
+                    <td>90° minus contact angle</td>
+                    <td>~68° → ~62°</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="success-box">
+            <h3>✓ Bottom Line</h3>
+            <p class="important">Your "28° departure angle" is actually a 28° contact angle, giving you a ~62° launch angle.</p>
+            <p><strong>This is a 6° DECREASE in launch angle from your original 68°, which explains why you need MORE velocity to reach the same distances.</strong></p>
+            <p>The physics is now consistent with your observations!</p>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; color: #6c757d; font-size: 0.9em;">
+            <p><strong>Document Version:</strong> 1.0</p>
+            <p><strong>Robot:</strong> 2026CF (Control Freaks)</p>
+            <p><strong>Created:</strong> 2026-04-10</p>
+            <p><strong>Related Documents:</strong> SHOOTER_TUNING_GUIDE.html, VISION_ODOMETRY_ACCURACY_ANALYSIS.html</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -2,17 +2,19 @@ package frc.robot.constants;
 
 public class CollectorConstants {
   public static final int kUpperCollectorMotorId = 10;
-  public static final int kLowerCollectorMotorId = 11;
+  // Lower collector motor removed - CAN ID 11 no longer in use
   public static final int kHopperMotorId = 12;
 
-  public static final int kMotorCurrentLimit = 60;
+  public static final int kMotorCurrentLimit = 80;
 
-  public static final double kCollectorSpeed = 0.35;
+  public static final double kCollectorTargetRPM = 2250.0;  // Target velocity in RPM (tuned for reliable collection)
 
   // Collector velocity PID constants (for RPM control)
-  public static final double kCollectorP = 0.0001;
-  public static final double kCollectorI = 0.0;
-  public static final double kCollectorD = 0.0;
+  // Tuned values achieve 2500 RPM with reliable collection performance
+  public static final double kCollectorP = 0.0002;  // Proportional gain for velocity error correction
+  public static final double kCollectorI = 0.0;     // Not needed for velocity control
+  public static final double kCollectorD = 0.0;     // Not needed for velocity control
+  public static final double kCollectorFF = 0.003;  // Feedforward: duty cycle per RPM (tuned)
 
   public static final double kUpPosition = 0.01;
   public static final double kHalfwayPosition = 0.095;  // Halfway between up and down

@@ -49,7 +49,8 @@
         "top": 118,
         "width": 16.54119300842285,
         "window": {
-          "name": "2026"
+          "name": "2026",
+          "visible": true
         }
       }
     }

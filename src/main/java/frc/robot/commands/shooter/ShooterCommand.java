@@ -167,10 +167,9 @@ public class ShooterCommand extends Command {
     boolean shouldFeed = isAligned && isAtRPM;
 
     if (shouldFeed && !m_feedingStarted) {
-      // Start feeding and run lower collector to help feed balls
+      // Start feeding - lower collector removed, only run indexer and floor
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
-      m_collector.runLowerCollectorRPM(1000);  // 1000 RPM in collection direction
       m_feedingStarted = true;
     }
     // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations

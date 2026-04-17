@@ -11,15 +11,26 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.ResetMode;
 import com.revrobotics.PersistMode;
 
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.configs.ShooterConfig;
+import frc.robot.constants.AutoConstants;
 import frc.robot.constants.ShooterConstants;
 import frc.robot.constants.TelemetryConstants;
+import frc.robot.constants.TrajectoryTestConstants;
+import frc.robot.subsystems.drive.DriveSubsystem;
 import frc.robot.subsystems.vision.PhotonVisionSubsystem;
 
 public class ShooterSubsystem extends SubsystemBase {
@@ -31,33 +42,20 @@ public class ShooterSubsystem extends SubsystemBase {
   private final SparkFlex m_leftShooterMotor;
   private final SparkFlex m_middleShooterMotor;
 
-  private int m_telemetryCounter = 0;
+  // State machine for staggered startup and current limit management
+  public enum ShooterStartupState {
+    STOPPED,           // Motors not running
+    STARTUP_LEFT,      // Left motor spinning up
+    STARTUP_RIGHT,     // Right motor spinning up
+    STARTUP_MIDDLE,    // Middle motor spinning up
+    READY,            // All motors at speed, idling
+    SHOOTING          // Actively feeding balls
+  }
 
-  private final NetworkTable m_telemetryTable;
-  private final DoublePublisher m_rightShooterSpeedPub;
-  private final DoublePublisher m_floorMotorSpeedPub;
-  private final DoublePublisher m_leftIndexerSpeedPub;
-  private final DoublePublisher m_rightIndexerSpeedPub;
-  private final DoublePublisher m_middleIndexerSpeedPub;
-  private final DoublePublisher m_leftShooterSpeedPub;
-  private final DoublePublisher m_middleShooterSpeedPub;
-  private final DoublePublisher m_rightShooterCurrentPub;
-  private final DoublePublisher m_floorMotorCurrentPub;
-  private final DoublePublisher m_leftIndexerCurrentPub;
-  private final DoublePublisher m_rightIndexerCurrentPub;
-  private final DoublePublisher m_middleIndexerCurrentPub;
-  private final DoublePublisher m_leftShooterCurrentPub;
-  private final DoublePublisher m_middleShooterCurrentPub;
-  private final DoublePublisher m_rightShooterVelocityPub;
-  private final DoublePublisher m_floorMotorVelocityPub;
-  private final DoublePublisher m_leftIndexerVelocityPub;
-  private final DoublePublisher m_rightIndexerVelocityPub;
-  private final DoublePublisher m_middleIndexerVelocityPub;
-  private final DoublePublisher m_leftShooterVelocityPub;
-  private final DoublePublisher m_middleShooterVelocityPub;
-  private final DoublePublisher m_targetRPMPub;
-  private final DoublePublisher m_distanceToTargetPub;
-  private final StringPublisher m_debugMessagePub;
+  private ShooterStartupState m_startupState = ShooterStartupState.STOPPED;
+  private int m_lastShooterCurrentLimit = ShooterConstants.kMotorIdleCurrentLimit;
+
+  private int m_telemetryCounter = 0;
 
   private double m_currentTargetRPM = ShooterConstants.kShooterTargetRPM;
   private double m_calculatedTargetRPM = ShooterConstants.kShooterTargetRPM; // Always reflects linear regression calculation
@@ -65,7 +63,8 @@ public class ShooterSubsystem extends SubsystemBase {
   private boolean m_isShooterActive = false; // Track if shooter is actively running
   private boolean m_useRPMCap = true; // Cap RPM at kPreSpinRPMCap until trigger pulled
   private final PhotonVisionSubsystem m_visionSubsystem;
-  private frc.robot.RobotContainer m_container;  // For accessing PID tuning entries
+  private final DriveSubsystem m_driveSubsystem;
+  private final frc.robot.dashboard.ShooterDashboard m_dashboard;
 
   // Cache last applied PID values to avoid reconfiguring every cycle
   private double m_lastShooterP = ShooterConstants.kShooterP;
@@ -76,6 +75,11 @@ public class ShooterSubsystem extends SubsystemBase {
   private double m_lastIndexerI = ShooterConstants.kIndexerI;
   private double m_lastIndexerD = ShooterConstants.kIndexerD;
   private double m_lastIndexerFF = ShooterConstants.kIndexerFF;
+  private double m_lastFloorMotorP = ShooterConstants.kFloorMotorP;
+  private double m_lastFloorMotorI = ShooterConstants.kFloorMotorI;
+  private double m_lastFloorMotorD = ShooterConstants.kFloorMotorD;
+  private double m_lastFloorMotorFF = ShooterConstants.kFloorMotorFF;
+  private int m_lastFloorMotorCurrentLimit = ShooterConstants.kFloorMotorCurrentLimit;
 
   // Velocity capture system for graphing during shooting
   private static final int CAPTURE_BUFFER_SIZE = 15; // 15 samples at 20ms = 300ms
@@ -96,43 +100,44 @@ public class ShooterSubsystem extends SubsystemBase {
   private final DoublePublisher[] m_capturedTimestampPubs = new DoublePublisher[CAPTURE_BUFFER_SIZE];
   private final DoublePublisher m_captureCountPub;
 
-  // Configurable constants (via NetworkTables)
-  private int m_motorCurrentLimit = ShooterConstants.kMotorCurrentLimit;
-  private double m_shooterP = ShooterConstants.kShooterP;
-  private double m_shooterI = ShooterConstants.kShooterI;
-  private double m_shooterD = ShooterConstants.kShooterD;
-  private double m_shooterFF = ShooterConstants.kShooterFF;
-  private double m_indexerP = ShooterConstants.kIndexerP;
-  private double m_indexerI = ShooterConstants.kIndexerI;
-  private double m_indexerD = ShooterConstants.kIndexerD;
-  private double m_indexerFF = ShooterConstants.kIndexerFF;
-  private double m_shooterTargetRPM = ShooterConstants.kShooterTargetRPM;
-  private double m_floorMotorTargetRPM = ShooterConstants.kFloorMotorTargetRPM;
-  private double m_indexerMotorTargetRPM = ShooterConstants.kIndexerMotorTargetRPM;
+  // Live-tunable shooter velocity table (updated from dashboard)
   private double[][] m_shooterVelocityTable = ShooterConstants.kShooterVelocityTable;
-  private int m_telemetryUpdatePeriod = TelemetryConstants.kTelemetryUpdatePeriod;
 
-  // NetworkTables subscribers for configurable constants
-  private final DoubleSubscriber m_motorCurrentLimitSub;
-  private final DoubleSubscriber m_shooterPSub;
-  private final DoubleSubscriber m_shooterISub;
-  private final DoubleSubscriber m_shooterDSub;
-  private final DoubleSubscriber m_shooterFFSub;
-  private final DoubleSubscriber m_indexerPSub;
-  private final DoubleSubscriber m_indexerISub;
-  private final DoubleSubscriber m_indexerDSub;
-  private final DoubleSubscriber m_indexerFFSub;
-  private final DoubleSubscriber m_shooterTargetRPMSub;
-  private final DoubleSubscriber m_floorMotorTargetRPMSub;
-  private final DoubleSubscriber m_indexerMotorTargetRPMSub;
-  private final DoubleSubscriber m_telemetryUpdatePeriodSub;
+  // Velocity compensation parameters
+  private boolean m_velocityCompensationEnabled = ShooterConstants.kVelocityCompensationEnabled;
+  private double m_angleCompensationFactor = ShooterConstants.kAngleCompensationFactor;
+  private double m_averageShotVelocity = ShooterConstants.kAverageShotVelocity;
+
+  // Trajectory test parameters
+  private double m_trajectoryAngle = TrajectoryTestConstants.kBaselineTrajectoryAngle;
+  private double m_testRPM = TrajectoryTestConstants.kTestRPMDefault;
+  private boolean m_testModeEnabled = false;
+
+  // Live-tunable pre-spin RPM cap (updated from dashboard)
+  private double m_preSpinRPMCap = ShooterConstants.kPreSpinRPMCap;
+
+  // RPM rate limiting to prevent regenerative braking spikes
+  private double m_lastCommandedRPM = 0.0;
+
+  // Floor motor jam detection and auto-recovery state machine
+  private enum FloorMotorState { NORMAL, JAM_DETECTED, REVERSING, RECOVERY }
+  private FloorMotorState m_floorMotorState = FloorMotorState.NORMAL;
+  private double m_jamReverseStartTime = 0.0;
+  private double m_savedFloorMotorRPM = 0.0;
+  private boolean m_floorMotorWasRunning = false;
+  private boolean m_floorMotorCommandedToRun = false;  // Track if we commanded motor to run
+  private double m_lastJamRecoveryTime = 0.0;  // Timestamp of last recovery to prevent rapid re-triggering
+  private static final double JAM_RECOVERY_COOLDOWN = 2.0;  // Wait 2 seconds after recovery before detecting again
 
   //private static double kTargetRPM = 3000; // 40% of max velocity
   // max rpm 6784
 
-  public ShooterSubsystem(PhotonVisionSubsystem visionSubsystem) {
+  public ShooterSubsystem(PhotonVisionSubsystem visionSubsystem, DriveSubsystem driveSubsystem) {
     m_visionSubsystem = visionSubsystem;
-    m_container = null;  // Will be set later via setContainer()
+    m_driveSubsystem = driveSubsystem;
+
+    // Get dashboard instance from DashboardManager
+    m_dashboard = frc.robot.dashboard.DashboardManager.getInstance().getShooterDashboard();
     m_floorMotor = new SparkFlex(ShooterConstants.kFloorMotorId, MotorType.kBrushless);
     m_leftShooterMotor = new SparkFlex(ShooterConstants.kLeftShooterId, MotorType.kBrushless);
     m_rightShooterMotor = new SparkFlex(ShooterConstants.kRightShooterId, MotorType.kBrushless);
@@ -142,92 +147,224 @@ public class ShooterSubsystem extends SubsystemBase {
     m_middleIndexerMotor = new SparkFlex(ShooterConstants.kMIndexerMotorId, MotorType.kBrushless);
 
 
-    m_leftShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_middleShooterMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_floorMotor.configure(ShooterConfig.shooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_leftIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_middleIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    // Configure floor motor for velocity control with PID
+    // Uses higher current limit (80A) than shooter wheels to handle mechanical load
+    SparkFlexConfig floorMotorConfig = new SparkFlexConfig();
+    floorMotorConfig
+        .inverted(false)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kFloorMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kFloorMotorP, ShooterConstants.kFloorMotorI, ShooterConstants.kFloorMotorD)
+          .velocityFF(ShooterConstants.kFloorMotorFF);
+    m_floorMotor.configure(floorMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    
+    // Configure left shooter with inverted direction
+    SparkFlexConfig leftShooterConfig = new SparkFlexConfig();
+    leftShooterConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
+    m_leftShooterMotor.configure(leftShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure right shooter with inverted direction
+    SparkFlexConfig rightShooterConfig = new SparkFlexConfig();
+    rightShooterConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
+    m_rightShooterMotor.configure(rightShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure middle shooter with inverted direction
+    SparkFlexConfig middleShooterConfig = new SparkFlexConfig();
+    middleShooterConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kShooterP, ShooterConstants.kShooterI, ShooterConstants.kShooterD)
+          .velocityFF(ShooterConstants.kShooterFF);
+    m_middleShooterMotor.configure(middleShooterConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure left indexer (not inverted)
+    m_leftIndexerMotor.configure(ShooterConfig.indexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure right indexer with inverted direction
+    SparkFlexConfig rightIndexerConfig = new SparkFlexConfig();
+    rightIndexerConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kIndexerP, ShooterConstants.kIndexerI, ShooterConstants.kIndexerD)
+          .velocityFF(ShooterConstants.kIndexerFF);
+    m_rightIndexerMotor.configure(rightIndexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Configure middle indexer with inverted direction
+    SparkFlexConfig middleIndexerConfig = new SparkFlexConfig();
+    middleIndexerConfig
+        .inverted(true)
+        .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+        .smartCurrentLimit(ShooterConstants.kMotorCurrentLimit)
+        .closedLoop
+          .pid(ShooterConstants.kIndexerP, ShooterConstants.kIndexerI, ShooterConstants.kIndexerD)
+          .velocityFF(ShooterConstants.kIndexerFF);
+    m_middleIndexerMotor.configure(middleIndexerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+
     m_leftIndexerMotor.set(0);
     m_rightIndexerMotor.set(0);
     m_middleIndexerMotor.set(0);
     m_floorMotor.set(0);
 
-    m_telemetryTable = NetworkTableInstance.getDefault().getTable("Shooter");
-    m_rightShooterSpeedPub   = m_telemetryTable.getDoubleTopic("Right Shooter Speed").publish();
-    m_floorMotorSpeedPub     = m_telemetryTable.getDoubleTopic("Floor Motor Speed").publish();
-    m_leftIndexerSpeedPub    = m_telemetryTable.getDoubleTopic("Left Indexer Speed").publish();
-    m_rightIndexerSpeedPub   = m_telemetryTable.getDoubleTopic("Right Indexer Speed").publish();
-    m_middleIndexerSpeedPub  = m_telemetryTable.getDoubleTopic("Middle Indexer Speed").publish();
-    m_leftShooterSpeedPub    = m_telemetryTable.getDoubleTopic("Left Shooter Speed").publish();
-    m_middleShooterSpeedPub  = m_telemetryTable.getDoubleTopic("Middle Shooter Speed").publish();
-    m_rightShooterCurrentPub = m_telemetryTable.getDoubleTopic("Right Shooter Current").publish();
-    m_floorMotorCurrentPub   = m_telemetryTable.getDoubleTopic("Floor Motor Current").publish();
-    m_leftIndexerCurrentPub  = m_telemetryTable.getDoubleTopic("Left Indexer Current").publish();
-    m_rightIndexerCurrentPub = m_telemetryTable.getDoubleTopic("Right Indexer Current").publish();
-    m_middleIndexerCurrentPub = m_telemetryTable.getDoubleTopic("Middle Indexer Current").publish();
-    m_leftShooterCurrentPub  = m_telemetryTable.getDoubleTopic("Left Shooter Current").publish();
-    m_middleShooterCurrentPub = m_telemetryTable.getDoubleTopic("Middle Shooter Current").publish();
-    m_rightShooterVelocityPub  = m_telemetryTable.getDoubleTopic("Right Shooter Velocity").publish();
-    m_floorMotorVelocityPub    = m_telemetryTable.getDoubleTopic("Floor Motor Velocity").publish();
-    m_leftIndexerVelocityPub   = m_telemetryTable.getDoubleTopic("Left Indexer Velocity").publish();
-    m_rightIndexerVelocityPub  = m_telemetryTable.getDoubleTopic("Right Indexer Velocity").publish();
-    m_middleIndexerVelocityPub = m_telemetryTable.getDoubleTopic("Middle Indexer Velocity").publish();
-    m_leftShooterVelocityPub   = m_telemetryTable.getDoubleTopic("Left Shooter Velocity").publish();
-    m_middleShooterVelocityPub = m_telemetryTable.getDoubleTopic("Middle Shooter Velocity").publish();
-    m_targetRPMPub             = m_telemetryTable.getDoubleTopic("Target RPM").publish();
-    m_distanceToTargetPub      = m_telemetryTable.getDoubleTopic("Distance to Target").publish();
-    m_debugMessagePub          = m_telemetryTable.getStringTopic("Debug Message").publish();
-
-    // Initialize velocity capture publishers
+    // Initialize velocity capture publishers for debugging shooting performance
+    NetworkTable captureTable = NetworkTableInstance.getDefault().getTable("Shooter/Capture");
     for (int i = 0; i < CAPTURE_BUFFER_SIZE; i++) {
-      m_capturedLeftVelocityPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Left Velocity/" + i).publish();
-      m_capturedRightVelocityPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Right Velocity/" + i).publish();
-      m_capturedMiddleVelocityPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Middle Velocity/" + i).publish();
-      m_capturedTimestampPubs[i] = m_telemetryTable.getDoubleTopic("Capture/Timestamp/" + i).publish();
+      m_capturedLeftVelocityPubs[i] = captureTable.getDoubleTopic("Left Velocity/" + i).publish();
+      m_capturedRightVelocityPubs[i] = captureTable.getDoubleTopic("Right Velocity/" + i).publish();
+      m_capturedMiddleVelocityPubs[i] = captureTable.getDoubleTopic("Middle Velocity/" + i).publish();
+      m_capturedTimestampPubs[i] = captureTable.getDoubleTopic("Timestamp/" + i).publish();
     }
-    m_captureCountPub = m_telemetryTable.getDoubleTopic("Capture/Count").publish();
-
-    // Initialize NetworkTables subscribers for configurable constants
-    NetworkTable configTable = NetworkTableInstance.getDefault().getTable("Shooter/Config");
-    m_motorCurrentLimitSub = configTable.getDoubleTopic("Motor Current Limit").subscribe(m_motorCurrentLimit);
-    m_shooterPSub = configTable.getDoubleTopic("Shooter P").subscribe(m_shooterP);
-    m_shooterISub = configTable.getDoubleTopic("Shooter I").subscribe(m_shooterI);
-    m_shooterDSub = configTable.getDoubleTopic("Shooter D").subscribe(m_shooterD);
-    m_shooterFFSub = configTable.getDoubleTopic("Shooter FF").subscribe(m_shooterFF);
-    m_indexerPSub = configTable.getDoubleTopic("Indexer P").subscribe(m_indexerP);
-    m_indexerISub = configTable.getDoubleTopic("Indexer I").subscribe(m_indexerI);
-    m_indexerDSub = configTable.getDoubleTopic("Indexer D").subscribe(m_indexerD);
-    m_indexerFFSub = configTable.getDoubleTopic("Indexer FF").subscribe(m_indexerFF);
-    m_shooterTargetRPMSub = configTable.getDoubleTopic("Shooter Target RPM").subscribe(m_shooterTargetRPM);
-    m_floorMotorTargetRPMSub = configTable.getDoubleTopic("Floor Motor Target RPM").subscribe(m_floorMotorTargetRPM);
-    m_indexerMotorTargetRPMSub = configTable.getDoubleTopic("Indexer Motor Target RPM").subscribe(m_indexerMotorTargetRPM);
-    m_telemetryUpdatePeriodSub = configTable.getDoubleTopic("Telemetry Update Period").subscribe(m_telemetryUpdatePeriod);
+    m_captureCountPub = captureTable.getDoubleTopic("Count").publish();
   }
 
   public void runFloor(boolean reversed) {
-    double targetRPM = getFloorMotorTargetRPM();
+    // Run floor motor with velocity control at target RPM
+    double rpm = ShooterConstants.kFloorMotorTargetRPM;
     if (reversed) {
-      targetRPM = -targetRPM;
+      rpm = -rpm;
     }
+    m_floorMotor.getClosedLoopController().setSetpoint(rpm, ControlType.kVelocity);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
+  }
 
-    m_floorMotor.getClosedLoopController().setSetpoint(
-      targetRPM,
-      ControlType.kVelocity
-    );
+  public void runFloorSlow(boolean reversed) {
+    // Run floor motor at reduced velocity for slow feeding during collection
+    double rpm = ShooterConstants.kFloorMotorTargetRPM * 0.3; // 30% of target RPM
+    if (!reversed) {  // Note: reversed logic - slow mode runs opposite direction
+      rpm = -rpm;
+    }
+    m_floorMotor.getClosedLoopController().setSetpoint(rpm, ControlType.kVelocity);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
+  }
+
+  /**
+   * Run floor motor at a specific RPM using velocity control
+   * @param rpm Target velocity in RPM (positive = forward, negative = reverse)
+   */
+  public void runFloorRPM(double rpm) {
+    m_floorMotor.getClosedLoopController().setSetpoint(rpm, ControlType.kVelocity);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
+  }
+
+  /**
+   * Run floor motor at a specific duty cycle percentage
+   * @param percent Duty cycle percentage (0.0 to 1.0, positive = forward, negative = reverse)
+   */
+  public void runFloorDutyCycle(double percent) {
+    m_floorMotor.set(percent);
+    m_floorMotorCommandedToRun = true;  // Track that we commanded the motor to run
   }
 
   public void StopFloor() {
     m_floorMotor.set(0);
+    m_floorMotorCommandedToRun = false;  // Track that we stopped the motor
   }
 
   public void StopIndexer() {
     m_leftIndexerMotor.set(0);
     m_rightIndexerMotor.set(0);
     m_middleIndexerMotor.set(0);
+  }
+
+  /**
+   * Handle floor motor jam detection and automatic recovery.
+   *
+   * State machine:
+   * - NORMAL: Monitor for jam conditions (low velocity + high current)
+   * - JAM_DETECTED: Save current state and transition to reversing
+   * - REVERSING: Run motor in reverse for kFloorJamReverseTime seconds
+   * - RECOVERY: Return to previous state (running or stopped)
+   *
+   * This prevents game pieces from getting stuck by automatically clearing jams.
+   */
+  private void handleFloorMotorJamDetection() {
+    // Get current floor motor velocity for jam detection
+    double floorVelocity = Math.abs(m_floorMotor.getEncoder().getVelocity());
+
+    switch (m_floorMotorState) {
+      case NORMAL:
+        // Check for jam: low velocity indicates motor is stalled
+        // Use our command tracking instead of SparkFlex setpoint (which may be cleared by controller)
+        // Apply cooldown period after recovery to prevent rapid re-triggering
+        double timeSinceLastRecovery = Timer.getFPGATimestamp() - m_lastJamRecoveryTime;
+        boolean cooldownExpired = timeSinceLastRecovery > JAM_RECOVERY_COOLDOWN;
+
+        // Only enable jam detection when running at high speed (shooting, not collection)
+        // Collection runs at 1500 RPM, shooting at 2500 RPM - only detect jams during shooting
+        double currentSetpoint = m_floorMotor.getClosedLoopController().getSetpoint();
+        boolean runningAtShootingSpeed = Math.abs(currentSetpoint) > 2000; // High speed (shooting mode)
+
+        if (m_floorMotorCommandedToRun &&
+            runningAtShootingSpeed &&
+            floorVelocity < ShooterConstants.kFloorJamVelocityThreshold &&
+            cooldownExpired) {
+
+          // Jam detected! Save current state
+          m_savedFloorMotorRPM = currentSetpoint;
+          m_floorMotorWasRunning = true;
+          m_floorMotorState = FloorMotorState.JAM_DETECTED;
+
+          System.out.println("FLOOR JAM DETECTED! Velocity: " + floorVelocity + " RPM (target: " + ShooterConstants.kFloorMotorTargetRPM + " RPM, current setpoint: " + currentSetpoint + " RPM)");
+        }
+        break;
+
+      case JAM_DETECTED:
+        // Transition immediately to reversing
+        // Use duty cycle control (percent output) instead of velocity control
+        // This applies full reverse power even when jammed, unlike velocity control which backs off
+        m_jamReverseStartTime = Timer.getFPGATimestamp();
+        m_floorMotor.set(-0.5);  // 50% reverse power (negative = reverse direction)
+        m_floorMotorState = FloorMotorState.REVERSING;
+        System.out.println("Starting jam reversal at 50% reverse power");
+        break;
+
+      case REVERSING:
+        // Check if reverse time has elapsed
+        double reverseElapsed = Timer.getFPGATimestamp() - m_jamReverseStartTime;
+        if (reverseElapsed >= ShooterConstants.kFloorJamReverseTime) {
+          m_floorMotorState = FloorMotorState.RECOVERY;
+          System.out.println("Jam reversal complete, returning to previous state");
+        }
+        break;
+
+      case RECOVERY:
+        // Return to previous state
+        if (m_floorMotorWasRunning) {
+          // Restore previous setpoint
+          m_floorMotor.getClosedLoopController().setSetpoint(
+            m_savedFloorMotorRPM,
+            ControlType.kVelocity
+          );
+          System.out.println("Restored floor motor to " + m_savedFloorMotorRPM + " RPM");
+        } else {
+          // Motor was stopped
+          StopFloor();
+          System.out.println("Stopped floor motor (was not running before jam)");
+        }
+
+        // Record recovery time and reset to normal state
+        m_lastJamRecoveryTime = Timer.getFPGATimestamp();
+        m_floorMotorState = FloorMotorState.NORMAL;
+        System.out.println("Jam recovery complete. Cooldown active for " + JAM_RECOVERY_COOLDOWN + " seconds.");
+        break;
+    }
   }
 
   /**
@@ -341,10 +478,118 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public void stopShooter() {
     m_isShooterActive = false;
+    m_startupState = ShooterStartupState.STOPPED;
 
     m_leftShooterMotor.set(0);
     m_rightShooterMotor.set(0);
     m_middleShooterMotor.set(0);
+
+    setShooterCurrentLimit(ShooterConstants.kMotorIdleCurrentLimit);
+  }
+
+  /**
+   * Set current limit for all three shooter motors dynamically
+   * @param amps Current limit in amps
+   */
+  private void setShooterCurrentLimit(int amps) {
+    if (amps == m_lastShooterCurrentLimit) {
+      return; // No change needed
+    }
+
+    SparkFlexConfig config = new SparkFlexConfig();
+    config.smartCurrentLimit(amps);
+
+    m_leftShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_middleShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+    m_lastShooterCurrentLimit = amps;
+    System.out.println("Updated shooter current limit to " + amps + "A");
+  }
+
+  /**
+   * Get current startup state
+   */
+  public ShooterStartupState getStartupState() {
+    return m_startupState;
+  }
+
+  /**
+   * Check if startup sequence is complete and shooter is ready
+   */
+  public boolean isStartupComplete() {
+    return m_startupState == ShooterStartupState.READY ||
+           m_startupState == ShooterStartupState.SHOOTING;
+  }
+
+  /**
+   * Transition to shooting state (increases current limit)
+   */
+  public void enterShootingState() {
+    m_startupState = ShooterStartupState.SHOOTING;
+    setShooterCurrentLimit(ShooterConstants.kMotorShootingCurrentLimit);
+  }
+
+  /**
+   * Transition to ready/idle state (reduces current limit)
+   */
+  public void enterReadyState() {
+    if (m_startupState == ShooterStartupState.SHOOTING) {
+      m_startupState = ShooterStartupState.READY;
+      setShooterCurrentLimit(ShooterConstants.kMotorIdleCurrentLimit);
+    }
+  }
+
+  /**
+   * Begin staggered shooter startup sequence
+   * Called by StaggeredShooterStartupCommand to initiate sequence
+   */
+  public void beginStaggeredStartup() {
+    m_isShooterActive = true;
+    m_startupState = ShooterStartupState.STARTUP_LEFT;
+    setShooterCurrentLimit(ShooterConstants.kMotorStartupCurrentLimit);
+  }
+
+  /**
+   * Start left shooter motor (first in sequence)
+   */
+  public void startLeftShooter() {
+    m_currentTargetRPM = m_calculatedTargetRPM;
+    m_leftShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+    m_startupState = ShooterStartupState.STARTUP_LEFT;
+  }
+
+  /**
+   * Start right shooter motor (second in sequence)
+   */
+  public void startRightShooter() {
+    m_rightShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+    m_startupState = ShooterStartupState.STARTUP_RIGHT;
+  }
+
+  /**
+   * Start middle shooter motor (third in sequence)
+   */
+  public void startMiddleShooter() {
+    m_middleShooterMotor.getClosedLoopController().setSetpoint(
+      m_currentTargetRPM,
+      ControlType.kVelocity
+    );
+    m_startupState = ShooterStartupState.STARTUP_MIDDLE;
+  }
+
+  /**
+   * Complete startup sequence - transition to ready state with idle current
+   */
+  public void completeStartup() {
+    m_startupState = ShooterStartupState.READY;
+    setShooterCurrentLimit(ShooterConstants.kMotorIdleCurrentLimit);
   }
 
   /**
@@ -389,18 +634,20 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void runIndexer(boolean reversed) {
-    double rpm = getIndexerMotorTargetRPM();
+    double rpm = ShooterConstants.kIndexerMotorTargetRPM;
     if (reversed) {
       rpm = -rpm;
     }
 
+    // Left indexer runs in one direction
     m_leftIndexerMotor.getClosedLoopController().setSetpoint(
       rpm,
       ControlType.kVelocity
     );
 
+    // Right and middle indexers run in opposite direction (reversed)
     m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,
+      -rpm,
       ControlType.kVelocity
     );
 
@@ -417,20 +664,21 @@ public class ShooterSubsystem extends SubsystemBase {
   public void runIndexerMiddleReversed() {
     double rpm = ShooterConstants.kIndexerMotorTargetRPM;
 
-    // Run left and right indexers forward
+    // Run left indexer forward
     m_leftIndexerMotor.getClosedLoopController().setSetpoint(
       rpm,
       ControlType.kVelocity
     );
 
+    // Run right indexer in reverse (opposite of left)
     m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,
+      -rpm,
       ControlType.kVelocity
     );
 
-    // Run middle indexer in reverse
+    // Run middle indexer in extra reverse (same direction as right)
     m_middleIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,  // Positive RPM for reverse (opposite of normal)
+      rpm,
       ControlType.kVelocity
     );
   }
@@ -445,13 +693,15 @@ public class ShooterSubsystem extends SubsystemBase {
       rpm = -rpm;
     }
 
+    // Left indexer runs in one direction
     m_leftIndexerMotor.getClosedLoopController().setSetpoint(
       rpm,
       ControlType.kVelocity
     );
 
+    // Right and middle indexers run in opposite direction (reversed)
     m_rightIndexerMotor.getClosedLoopController().setSetpoint(
-      rpm,
+      -rpm,
       ControlType.kVelocity
     );
 
@@ -473,195 +723,38 @@ public class ShooterSubsystem extends SubsystemBase {
            m_middleShooterMotor.getOutputCurrent() > threshold;
   }
 
-  // Getters and setters for configurable constants
-  public int getMotorCurrentLimit() {
-    return m_motorCurrentLimit;
-  }
-
-  public void setMotorCurrentLimit(int limit) {
-    m_motorCurrentLimit = limit;
-  }
-
-  public double getShooterP() {
-    return m_shooterP;
-  }
-
-  public void setShooterP(double p) {
-    m_shooterP = p;
-    updateShooterPID();
-  }
-
-  public double getShooterI() {
-    return m_shooterI;
-  }
-
-  public void setShooterI(double i) {
-    m_shooterI = i;
-    updateShooterPID();
-  }
-
-  public double getShooterD() {
-    return m_shooterD;
-  }
-
-  public void setShooterD(double d) {
-    m_shooterD = d;
-    updateShooterPID();
-  }
-
-  public double getShooterFF() {
-    return m_shooterFF;
-  }
-
-  public void setShooterFF(double ff) {
-    m_shooterFF = ff;
-    updateShooterPID();
-  }
-
-  public double getIndexerP() {
-    return m_indexerP;
-  }
-
-  public void setIndexerP(double p) {
-    m_indexerP = p;
-    updateIndexerPID();
-  }
-
-  public double getIndexerI() {
-    return m_indexerI;
-  }
-
-  public void setIndexerI(double i) {
-    m_indexerI = i;
-    updateIndexerPID();
-  }
-
-  public double getIndexerD() {
-    return m_indexerD;
-  }
-
-  public void setIndexerD(double d) {
-    m_indexerD = d;
-    updateIndexerPID();
-  }
-
-  public double getIndexerFF() {
-    return m_indexerFF;
-  }
-
-  public void setIndexerFF(double ff) {
-    m_indexerFF = ff;
-    updateIndexerPID();
-  }
-
-  public double getShooterTargetRPM() {
-    return m_shooterTargetRPM;
-  }
-
-  public void setShooterTargetRPM(double rpm) {
-    m_shooterTargetRPM = rpm;
-  }
-
-  public double getFloorMotorTargetRPM() {
-    return m_floorMotorTargetRPM;
-  }
-
-  public void setFloorMotorTargetRPM(double rpm) {
-    m_floorMotorTargetRPM = rpm;
-  }
-
-  public double getIndexerMotorTargetRPM() {
-    return m_indexerMotorTargetRPM;
-  }
-
-  public void setIndexerMotorTargetRPM(double rpm) {
-    m_indexerMotorTargetRPM = rpm;
-  }
-
+  // Getter for velocity table (used by getRPMForDistance)
   public double[][] getShooterVelocityTable() {
     return m_shooterVelocityTable;
   }
 
-  public void setShooterVelocityTable(double[][] table) {
-    m_shooterVelocityTable = table;
-  }
-
-  public int getTelemetryUpdatePeriod() {
-    return m_telemetryUpdatePeriod;
-  }
-
-  public void setTelemetryUpdatePeriod(int period) {
-    m_telemetryUpdatePeriod = period;
-  }
-
-  /**
-   * Update shooter motor PID values by reconfiguring motors
-   */
-  private void updateShooterPID() {
-    com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
-    config.closedLoop
-      .pid(m_shooterP, m_shooterI, m_shooterD)
-      .velocityFF(m_shooterFF)
-      .outputRange(-1, 1);
-
-    m_leftShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    m_rightShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    m_middleShooterMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-  }
-
-  /**
-   * Update indexer motor PID values by reconfiguring motors
-   */
-  private void updateIndexerPID() {
-    com.revrobotics.spark.config.SparkFlexConfig config = new com.revrobotics.spark.config.SparkFlexConfig();
-    config.closedLoop
-      .pid(m_indexerP, m_indexerI, m_indexerD)
-      .velocityFF(m_indexerFF)
-      .outputRange(-1, 1);
-
-    m_leftIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    m_rightIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    m_middleIndexerMotor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+  // Getter for target RPM (used as fallback when distance unavailable)
+  public double getShooterTargetRPM() {
+    return ShooterConstants.kShooterTargetRPM;
   }
 
   @Override
   public void periodic() {
-    // Read configurable values from NetworkTables
-    double newMotorCurrentLimit = m_motorCurrentLimitSub.get();
-    if (newMotorCurrentLimit != m_motorCurrentLimit) {
-      m_motorCurrentLimit = (int) newMotorCurrentLimit;
+    // BEST PRACTICE: Read all configuration from dashboard in one place
+    // This is cleaner than scattered NetworkTables.get() calls throughout the method
+    var config = m_dashboard.readConfiguration();
+
+    // Update PID values if changed (handled by updateMotorPIDFromDashboard)
+    updateMotorPIDFromDashboard();
+
+    // Update velocity table if changed
+    if (!java.util.Arrays.deepEquals(config.velocityTable, m_shooterVelocityTable)) {
+      m_shooterVelocityTable = config.velocityTable;
     }
 
-    double newShooterP = m_shooterPSub.get();
-    double newShooterI = m_shooterISub.get();
-    double newShooterD = m_shooterDSub.get();
-    double newShooterFF = m_shooterFFSub.get();
-    if (newShooterP != m_shooterP || newShooterI != m_shooterI ||
-        newShooterD != m_shooterD || newShooterFF != m_shooterFF) {
-      m_shooterP = newShooterP;
-      m_shooterI = newShooterI;
-      m_shooterD = newShooterD;
-      m_shooterFF = newShooterFF;
-      updateShooterPID();
-    }
-
-    double newIndexerP = m_indexerPSub.get();
-    double newIndexerI = m_indexerISub.get();
-    double newIndexerD = m_indexerDSub.get();
-    double newIndexerFF = m_indexerFFSub.get();
-    if (newIndexerP != m_indexerP || newIndexerI != m_indexerI ||
-        newIndexerD != m_indexerD || newIndexerFF != m_indexerFF) {
-      m_indexerP = newIndexerP;
-      m_indexerI = newIndexerI;
-      m_indexerD = newIndexerD;
-      m_indexerFF = newIndexerFF;
-      updateIndexerPID();
-    }
-
-    m_shooterTargetRPM = m_shooterTargetRPMSub.get();
-    m_floorMotorTargetRPM = m_floorMotorTargetRPMSub.get();
-    m_indexerMotorTargetRPM = m_indexerMotorTargetRPMSub.get();
-    m_telemetryUpdatePeriod = (int) m_telemetryUpdatePeriodSub.get();
+    // Update other configuration values
+    m_preSpinRPMCap = config.preSpinRPMCap;
+    m_velocityCompensationEnabled = config.velocityCompensationEnabled;
+    m_angleCompensationFactor = config.angleCompensationFactor;
+    m_averageShotVelocity = config.averageShotVelocity;
+    m_testModeEnabled = config.testModeEnabled;
+    m_testRPM = config.testRPM;
+    m_trajectoryAngle = config.trajectoryAngle;
 
     // DYNAMIC RPM ENABLED - Calculate RPM based on vision distance
     // ALWAYS calculate target RPM based on vision distance (continuously runs linear regression)
@@ -671,7 +764,7 @@ public class ShooterSubsystem extends SubsystemBase {
       m_lastDistanceToTarget = distance;
 
       if (distance > 0) {
-        m_calculatedTargetRPM = getRPMForDistance(distance);
+        m_calculatedTargetRPM = getVelocityCompensatedRPM(distance);
       } else {
         // Fall back to default RPM if distance calculation fails
         m_calculatedTargetRPM = getShooterTargetRPM();
@@ -681,18 +774,31 @@ public class ShooterSubsystem extends SubsystemBase {
       m_calculatedTargetRPM = getShooterTargetRPM();
     }
 
-    // ALWAYS publish Target RPM and Distance (no throttling) so Elastic updates in real-time
-    m_targetRPMPub.set(m_calculatedTargetRPM);
-    m_distanceToTargetPub.set(m_lastDistanceToTarget);
-
     // If shooter is active, continuously update motor commands with calculated RPM
     if (m_isShooterActive) {
-      // Apply pre-spin RPM cap if enabled (until trigger is pulled)
-      if (m_useRPMCap) {
-        m_currentTargetRPM = Math.min(m_calculatedTargetRPM, ShooterConstants.kPreSpinRPMCap);
+      // Determine target RPM: test mode overrides distance-based calculation
+      if (m_testModeEnabled) {
+        m_currentTargetRPM = m_testRPM;
+        System.out.println("TEST MODE: Using test RPM = " + m_testRPM);
       } else {
-        m_currentTargetRPM = m_calculatedTargetRPM;
+        // Apply pre-spin RPM cap if enabled (until trigger is pulled)
+        if (m_useRPMCap) {
+          m_currentTargetRPM = Math.min(m_calculatedTargetRPM, m_preSpinRPMCap);
+        } else {
+          m_currentTargetRPM = m_calculatedTargetRPM;
+        }
       }
+
+      // Apply RPM rate limiting to prevent regenerative braking current spikes
+      // Limits how quickly RPM can change per cycle (prevents 4300->2000 in 0.4s = 149A spike)
+      double rpmDelta = m_currentTargetRPM - m_lastCommandedRPM;
+      if (Math.abs(rpmDelta) > ShooterConstants.kMaxRPMChangePerCycle) {
+        // Limit the change rate to prevent dangerous current spikes
+        m_currentTargetRPM = m_lastCommandedRPM + Math.signum(rpmDelta) * ShooterConstants.kMaxRPMChangePerCycle;
+      }
+      m_lastCommandedRPM = m_currentTargetRPM;
+
+      // Note: Target RPM and distance telemetry now published by dashboard
 
       m_leftShooterMotor.getClosedLoopController().setSetpoint(
         m_currentTargetRPM,
@@ -705,41 +811,24 @@ public class ShooterSubsystem extends SubsystemBase {
       );
 
       m_middleShooterMotor.getClosedLoopController().setSetpoint(
-        -m_currentTargetRPM,
+        m_currentTargetRPM,
         ControlType.kVelocity
       );
     }
 
+    // Floor motor jam detection and auto-recovery
+    handleFloorMotorJamDetection();
+
     // Velocity capture system - capture data when velocity dips (ball contact)
     captureVelocityData();
 
+    // BEST PRACTICE: Throttle telemetry updates to avoid excessive NetworkTables traffic
     m_telemetryCounter++;
-    if (m_telemetryCounter >= getTelemetryUpdatePeriod()) {
+    if (m_telemetryCounter >= TelemetryConstants.kTelemetryUpdatePeriod) {
       m_telemetryCounter = 0;
 
-      m_floorMotorSpeedPub.set(m_floorMotor.get());
-      m_leftIndexerSpeedPub.set(m_leftIndexerMotor.get());
-      m_rightIndexerSpeedPub.set(m_rightIndexerMotor.get());
-      m_middleIndexerSpeedPub.set(m_middleIndexerMotor.get());
-      m_leftShooterSpeedPub.set(m_leftShooterMotor.get());
-      m_rightShooterSpeedPub.set(m_rightShooterMotor.get());
-      m_middleShooterSpeedPub.set(m_middleShooterMotor.get());
-
-      m_rightShooterCurrentPub.set(m_rightShooterMotor.getOutputCurrent());
-      m_floorMotorCurrentPub.set(m_floorMotor.getOutputCurrent());
-      m_leftIndexerCurrentPub.set(m_leftIndexerMotor.getOutputCurrent());
-      m_rightIndexerCurrentPub.set(m_rightIndexerMotor.getOutputCurrent());
-      m_middleIndexerCurrentPub.set(m_middleIndexerMotor.getOutputCurrent());
-      m_leftShooterCurrentPub.set(m_leftShooterMotor.getOutputCurrent());
-      m_middleShooterCurrentPub.set(m_middleShooterMotor.getOutputCurrent());
-
-      m_rightShooterVelocityPub.set(m_rightShooterMotor.getEncoder().getVelocity());
-      m_floorMotorVelocityPub.set(m_floorMotor.getEncoder().getVelocity());
-      m_leftIndexerVelocityPub.set(m_leftIndexerMotor.getEncoder().getVelocity());
-      m_rightIndexerVelocityPub.set(m_rightIndexerMotor.getEncoder().getVelocity());
-      m_middleIndexerVelocityPub.set(m_middleIndexerMotor.getEncoder().getVelocity());
-      m_leftShooterVelocityPub.set(m_leftShooterMotor.getEncoder().getVelocity());
-      m_middleShooterVelocityPub.set(m_middleShooterMotor.getEncoder().getVelocity());
+      // Update dashboard telemetry (all motor velocities, currents, and status)
+      m_dashboard.updateTelemetry(this);
     }
   }
 
@@ -793,6 +882,128 @@ public class ShooterSubsystem extends SubsystemBase {
     return (leftCurrent + rightCurrent + middleCurrent) / 3.0;
   }
 
+  // ========== Individual Motor Telemetry Getters (for Dashboard) ==========
+
+  /**
+   * Get left shooter motor velocity
+   * @return Velocity in RPM
+   */
+  public double getLeftShooterVelocity() {
+    return m_leftShooterMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get right shooter motor velocity
+   * @return Velocity in RPM
+   */
+  public double getRightShooterVelocity() {
+    return m_rightShooterMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get middle shooter motor velocity
+   * @return Velocity in RPM
+   */
+  public double getMiddleShooterVelocity() {
+    return m_middleShooterMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get left shooter motor current
+   * @return Current in amps
+   */
+  public double getLeftShooterCurrent() {
+    return m_leftShooterMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get right shooter motor current
+   * @return Current in amps
+   */
+  public double getRightShooterCurrent() {
+    return m_rightShooterMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get middle shooter motor current
+   * @return Current in amps
+   */
+  public double getMiddleShooterCurrent() {
+    return m_middleShooterMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get floor motor velocity
+   * @return Velocity in RPM
+   */
+  public double getFloorMotorVelocity() {
+    return m_floorMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get floor motor current
+   * @return Current in amps
+   */
+  public double getFloorMotorCurrent() {
+    return m_floorMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get floor motor velocity setpoint
+   * @return Setpoint in RPM
+   */
+  public double getFloorMotorSetpoint() {
+    return m_floorMotor.getClosedLoopController().getSetpoint();
+  }
+
+  /**
+   * Get left indexer motor velocity
+   * @return Velocity in RPM
+   */
+  public double getLeftIndexerVelocity() {
+    return m_leftIndexerMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get right indexer motor velocity
+   * @return Velocity in RPM
+   */
+  public double getRightIndexerVelocity() {
+    return m_rightIndexerMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get middle indexer motor velocity
+   * @return Velocity in RPM
+   */
+  public double getMiddleIndexerVelocity() {
+    return m_middleIndexerMotor.getEncoder().getVelocity();
+  }
+
+  /**
+   * Get left indexer motor current
+   * @return Current in amps
+   */
+  public double getLeftIndexerCurrent() {
+    return m_leftIndexerMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get right indexer motor current
+   * @return Current in amps
+   */
+  public double getRightIndexerCurrent() {
+    return m_rightIndexerMotor.getOutputCurrent();
+  }
+
+  /**
+   * Get middle indexer motor current
+   * @return Current in amps
+   */
+  public double getMiddleIndexerCurrent() {
+    return m_middleIndexerMotor.getOutputCurrent();
+  }
+
   /**
    * Get distance to speaker from vision subsystem
    * @return Distance in meters, or -1 if unavailable
@@ -810,15 +1021,160 @@ public class ShooterSubsystem extends SubsystemBase {
    * @return True if shooter velocity is within tolerance
    */
   public boolean isReadyToFeed() {
-    return isShooterActive() && isAtTargetVelocity(100.0);
+    return isStartupComplete() && isShooterActive() && isAtTargetVelocity(100.0);
   }
 
   /**
-   * Set the RobotContainer reference for accessing PID tuning entries
-   * @param container RobotContainer instance
+   * Get the current trajectory angle for testing.
+   * This is the physical hardware angle (baseline 22 degrees, adjustable in 2-degree increments).
+   * @return Trajectory angle in degrees
    */
-  public void setContainer(frc.robot.RobotContainer container) {
-    m_container = container;
+  public double getTrajectoryAngle() {
+    return m_trajectoryAngle;
+  }
+
+  /**
+   * Get the test RPM for manual trajectory testing.
+   * @return Test RPM value
+   */
+  public double getTestRPM() {
+    return m_testRPM;
+  }
+
+  /**
+   * Check if test mode is enabled.
+   * When enabled, uses test RPM instead of distance-based calculation.
+   * @return True if test mode is enabled
+   */
+  public boolean isTestModeEnabled() {
+    return m_testModeEnabled;
+  }
+
+  /**
+   * NOTE: setContainer() removed - PID tuning now handled by ShooterDashboard
+   * Configuration is read directly from dashboard via m_dashboard.readConfiguration()
+   */
+
+  /**
+   * Calculate angle offset for velocity compensation when shooting while moving.
+   * This compensates for the robot's lateral velocity component.
+   *
+   * @return Angle offset in radians to add to target angle (positive = lead target)
+   */
+  public double getVelocityCompensatedAngleOffset() {
+    if (!m_velocityCompensationEnabled || m_driveSubsystem == null || m_visionSubsystem == null) {
+      return 0.0;
+    }
+
+    // Convert robot-relative speeds to field-relative, then clamp to reject bump spikes
+    ChassisSpeeds robotSpeeds = m_driveSubsystem.getChassisSpeeds();
+    Rotation2d heading = m_driveSubsystem.getPose().getRotation();
+    double vxField = robotSpeeds.vxMetersPerSecond * heading.getCos() - robotSpeeds.vyMetersPerSecond * heading.getSin();
+    double vyField = robotSpeeds.vxMetersPerSecond * heading.getSin() + robotSpeeds.vyMetersPerSecond * heading.getCos();
+    double maxCompVelocity = 3.0;
+    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vxField));
+    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vyField));
+    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, robotSpeeds.omegaRadiansPerSecond);
+
+    // Get speaker position based on alliance
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      return 0.0;
+    }
+
+    Translation2d speakerPosition = alliance.get() == DriverStation.Alliance.Red
+        ? AutoConstants.redTarget
+        : AutoConstants.blueTarget;
+
+    // Get robot position
+    Translation2d robotPosition = m_driveSubsystem.getPose().getTranslation();
+
+    // Calculate vector from robot to speaker
+    double dx = speakerPosition.getX() - robotPosition.getX();
+    double dy = speakerPosition.getY() - robotPosition.getY();
+    double distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < 0.1) {
+      return 0.0; // Too close or invalid
+    }
+
+    // Estimate time of flight
+    double timeOfFlight = distance / m_averageShotVelocity;
+
+    // Calculate where robot will be when ball reaches speaker
+    double futureX = robotPosition.getX() + chassisSpeeds.vxMetersPerSecond * timeOfFlight;
+    double futureY = robotPosition.getY() + chassisSpeeds.vyMetersPerSecond * timeOfFlight;
+
+    // Calculate angle from future position to speaker
+    double futureDx = speakerPosition.getX() - futureX;
+    double futureDy = speakerPosition.getY() - futureY;
+    double futureAngle = Math.atan2(futureDy, futureDx);
+
+    // Calculate angle from current position to speaker
+    double currentAngle = Math.atan2(dy, dx);
+
+    // Angular offset is the difference
+    double angleOffset = futureAngle - currentAngle;
+
+    return angleOffset * m_angleCompensationFactor;
+  }
+
+  /**
+   * Calculate RPM for the predicted distance when the ball arrives at the speaker.
+   * Uses the radial component of robot velocity (toward/away from speaker) to predict
+   * where the robot will be after the ball's flight time, then looks up RPM for that distance.
+   *
+   * @param currentDistance Current vision-measured distance to speaker (meters)
+   * @return RPM for the predicted arrival distance
+   */
+  public double getVelocityCompensatedRPM(double currentDistance) {
+    if (!m_velocityCompensationEnabled || m_driveSubsystem == null) {
+      return getRPMForDistance(currentDistance);
+    }
+
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      return getRPMForDistance(currentDistance);
+    }
+
+    Translation2d speakerPosition = alliance.get() == DriverStation.Alliance.Red
+        ? AutoConstants.redTarget
+        : AutoConstants.blueTarget;
+
+    Translation2d robotPosition = m_driveSubsystem.getPose().getTranslation();
+    // Convert robot-relative speeds to field-relative, then clamp to reject bump spikes
+    ChassisSpeeds robotSpeeds = m_driveSubsystem.getChassisSpeeds();
+    Rotation2d heading = m_driveSubsystem.getPose().getRotation();
+    double vxField = robotSpeeds.vxMetersPerSecond * heading.getCos() - robotSpeeds.vyMetersPerSecond * heading.getSin();
+    double vyField = robotSpeeds.vxMetersPerSecond * heading.getSin() + robotSpeeds.vyMetersPerSecond * heading.getCos();
+    double maxCompVelocity = 3.0;
+    double vx = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vxField));
+    double vy = Math.max(-maxCompVelocity, Math.min(maxCompVelocity, vyField));
+    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(vx, vy, robotSpeeds.omegaRadiansPerSecond);
+
+    // Unit vector from robot toward speaker (used to extract radial velocity)
+    double dx = speakerPosition.getX() - robotPosition.getX();
+    double dy = speakerPosition.getY() - robotPosition.getY();
+    double poseDistance = Math.sqrt(dx * dx + dy * dy);
+
+    if (poseDistance < 0.1) {
+      return getRPMForDistance(currentDistance);
+    }
+
+    // Radial velocity: positive = moving toward speaker, negative = moving away
+    double radialVelocity = (chassisSpeeds.vxMetersPerSecond * dx +
+                             chassisSpeeds.vyMetersPerSecond * dy) / poseDistance;
+
+    // Predict distance at ball arrival
+    double flightTime = currentDistance / m_averageShotVelocity;
+    double predictedDistance = currentDistance - radialVelocity * flightTime;
+
+    // Clamp to the bounds of the velocity table
+    double minDist = m_shooterVelocityTable[0][0];
+    double maxDist = m_shooterVelocityTable[m_shooterVelocityTable.length - 1][0];
+    predictedDistance = Math.max(minDist, Math.min(maxDist, predictedDistance));
+
+    return getRPMForDistance(predictedDistance);
   }
 
   /**
@@ -900,68 +1256,102 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   /**
-   * Update motor PID gains from NetworkTables (for real-time tuning)
+   * Update motor PID gains from dashboard configuration
    * Only reconfigures motors when values actually change to avoid disrupting control loop
+   *
+   * BEST PRACTICE: Centralize configuration reading in one place (dashboard) rather than
+   * accessing NetworkTables entries directly from multiple locations.
    */
-  private void updateMotorPIDFromNetworkTables() {
-    if (m_container == null) {
-      return;  // Container not set yet, use default values
-    }
-
-    // Read shooter motor PID values
-    double shooterP = m_container.m_shooterPEntry.get();
-    double shooterI = m_container.m_shooterIEntry.get();
-    double shooterD = m_container.m_shooterDEntry.get();
-    double shooterFF = m_container.m_shooterFFEntry.get();
-
-    // Read indexer motor PID values
-    double indexerP = m_container.m_indexerPEntry.get();
-    double indexerI = m_container.m_indexerIEntry.get();
-    double indexerD = m_container.m_indexerDEntry.get();
-    double indexerFF = m_container.m_indexerFFEntry.get();
+  private void updateMotorPIDFromDashboard() {
+    // Read all configuration from dashboard
+    var config = m_dashboard.readConfiguration();
 
     // Only update shooter motors if values changed
-    if (shooterP != m_lastShooterP || shooterI != m_lastShooterI ||
-        shooterD != m_lastShooterD || shooterFF != m_lastShooterFF) {
+    if (config.shooterP != m_lastShooterP || config.shooterI != m_lastShooterI ||
+        config.shooterD != m_lastShooterD || config.shooterFF != m_lastShooterFF) {
 
+      // Configure all three shooter motors with inverted direction
       SparkFlexConfig shooterConfig = new SparkFlexConfig();
-      shooterConfig.closedLoop
-        .pid(shooterP, shooterI, shooterD)
-        .velocityFF(shooterFF);
+      shooterConfig
+        .inverted(true)
+        .closedLoop
+          .pid(config.shooterP, config.shooterI, config.shooterD)
+          .velocityFF(config.shooterFF);
 
       m_leftShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
       m_rightShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
       m_middleShooterMotor.configure(shooterConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
       // Update cached values
-      m_lastShooterP = shooterP;
-      m_lastShooterI = shooterI;
-      m_lastShooterD = shooterD;
-      m_lastShooterFF = shooterFF;
+      m_lastShooterP = config.shooterP;
+      m_lastShooterI = config.shooterI;
+      m_lastShooterD = config.shooterD;
+      m_lastShooterFF = config.shooterFF;
 
-      System.out.println("Updated shooter PID: P=" + shooterP + " I=" + shooterI + " D=" + shooterD + " FF=" + shooterFF);
+      System.out.println("Updated shooter PID: P=" + config.shooterP + " I=" + config.shooterI + " D=" + config.shooterD + " FF=" + config.shooterFF);
     }
 
     // Only update indexer motors if values changed
-    if (indexerP != m_lastIndexerP || indexerI != m_lastIndexerI ||
-        indexerD != m_lastIndexerD || indexerFF != m_lastIndexerFF) {
+    if (config.indexerP != m_lastIndexerP || config.indexerI != m_lastIndexerI ||
+        config.indexerD != m_lastIndexerD || config.indexerFF != m_lastIndexerFF) {
 
-      SparkFlexConfig indexerConfig = new SparkFlexConfig();
-      indexerConfig.closedLoop
-        .pid(indexerP, indexerI, indexerD)
-        .velocityFF(indexerFF);
+      // Configure left indexer (not inverted)
+      SparkFlexConfig leftIndexerConfig = new SparkFlexConfig();
+      leftIndexerConfig.closedLoop
+        .pid(config.indexerP, config.indexerI, config.indexerD)
+        .velocityFF(config.indexerFF);
+      m_leftIndexerMotor.configure(leftIndexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
-      m_leftIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-      m_rightIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-      m_middleIndexerMotor.configure(indexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      // Configure right and middle indexers with inverted direction
+      SparkFlexConfig invertedIndexerConfig = new SparkFlexConfig();
+      invertedIndexerConfig
+        .inverted(true)
+        .closedLoop
+          .pid(config.indexerP, config.indexerI, config.indexerD)
+          .velocityFF(config.indexerFF);
+      m_rightIndexerMotor.configure(invertedIndexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      m_middleIndexerMotor.configure(invertedIndexerConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
       // Update cached values
-      m_lastIndexerP = indexerP;
-      m_lastIndexerI = indexerI;
-      m_lastIndexerD = indexerD;
-      m_lastIndexerFF = indexerFF;
+      m_lastIndexerP = config.indexerP;
+      m_lastIndexerI = config.indexerI;
+      m_lastIndexerD = config.indexerD;
+      m_lastIndexerFF = config.indexerFF;
 
-      System.out.println("Updated indexer PID: P=" + indexerP + " I=" + indexerI + " D=" + indexerD + " FF=" + indexerFF);
+      System.out.println("Updated indexer PID: P=" + config.indexerP + " I=" + config.indexerI + " D=" + config.indexerD + " FF=" + config.indexerFF);
+    }
+
+    // Only update floor motor if PID or current limit changed
+    boolean floorPIDChanged = config.floorMotorP != m_lastFloorMotorP ||
+                              config.floorMotorI != m_lastFloorMotorI ||
+                              config.floorMotorD != m_lastFloorMotorD ||
+                              config.floorMotorFF != m_lastFloorMotorFF;
+    boolean floorCurrentLimitChanged = config.floorMotorCurrentLimit != m_lastFloorMotorCurrentLimit;
+
+    if (floorPIDChanged || floorCurrentLimitChanged) {
+      SparkFlexConfig floorConfig = new SparkFlexConfig();
+      floorConfig
+          .inverted(false)
+          .idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kCoast)
+          .smartCurrentLimit(config.floorMotorCurrentLimit)
+          .closedLoop
+            .pid(config.floorMotorP, config.floorMotorI, config.floorMotorD)
+            .velocityFF(config.floorMotorFF);
+      m_floorMotor.configure(floorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+      // Update cached values
+      m_lastFloorMotorP = config.floorMotorP;
+      m_lastFloorMotorI = config.floorMotorI;
+      m_lastFloorMotorD = config.floorMotorD;
+      m_lastFloorMotorFF = config.floorMotorFF;
+      m_lastFloorMotorCurrentLimit = config.floorMotorCurrentLimit;
+
+      if (floorPIDChanged) {
+        System.out.println("Updated floor motor PID: P=" + config.floorMotorP + " I=" + config.floorMotorI + " D=" + config.floorMotorD + " FF=" + config.floorMotorFF);
+      }
+      if (floorCurrentLimitChanged) {
+        System.out.println("Updated floor motor current limit: " + config.floorMotorCurrentLimit + "A");
+      }
     }
   }
 }

@@ -32,13 +32,13 @@ public class PhotonVisionConstants {
   );
 
   public static final Transform3d kRobotToLeftCamera = new Transform3d(
-    new Translation3d(Units.inchesToMeters(3.35), Units.inchesToMeters(13.75), Units.inchesToMeters(20.28)),
-    new Rotation3d(0, Math.toRadians(0), Math.toRadians(90)) // roll: 0°, pitch: 0°, yaw: 90° (left)
+    new Translation3d(Units.inchesToMeters(-5.35), Units.inchesToMeters(13.75), Units.inchesToMeters(20.28)),
+    new Rotation3d(0, Math.toRadians(12), Math.toRadians(90)) // roll: 0°, pitch: 0°, yaw: 90° (left)
   );
 
   public static final Transform3d kRobotToRightCamera = new Transform3d(
-    new Translation3d(Units.inchesToMeters(3.35), Units.inchesToMeters(-13.75), Units.inchesToMeters(20.28)),
-    new Rotation3d(0, Math.toRadians(0), Math.toRadians(-90)) // roll: 0°, pitch: 0°, yaw: -90° (right)
+    new Translation3d(Units.inchesToMeters(5.35), Units.inchesToMeters(-13.75), Units.inchesToMeters(20.28)),
+    new Rotation3d(0, Math.toRadians(12), Math.toRadians(-90)) // roll: 0°, pitch: 0°, yaw: -90° (right)
   );
 
   public static final double[] kSingleTagStdDevs = {1.5, 1.5, 20.0}; // high rotation stdDev to resist single-tag flip ambiguity

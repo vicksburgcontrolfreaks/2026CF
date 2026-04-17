@@ -46,10 +46,15 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     public final PhotonCamera camera;
     public final PhotonPoseEstimator poseEstimator;
     public final String name;
+    public final Transform3d robotToCamera;
     public PhotonPipelineResult lastResult;
+    public boolean isConnected;
+    public double lastConnectionCheckTime;
+    public int consecutiveFailures;
 
     public CameraData(String cameraName, Transform3d robotToCamera, AprilTagFieldLayout fieldLayout) {
       this.name = cameraName;
+      this.robotToCamera = robotToCamera;
       this.camera = new PhotonCamera(cameraName);
       this.poseEstimator = new PhotonPoseEstimator(
         fieldLayout,
@@ -58,6 +63,9 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       );
       this.poseEstimator.setMultiTagFallbackStrategy(PoseStrategy.LOWEST_AMBIGUITY);
       this.lastResult = null;
+      this.isConnected = false;
+      this.lastConnectionCheckTime = 0.0;
+      this.consecutiveFailures = 0;
     }
   }
 
@@ -82,6 +90,7 @@ public class PhotonVisionSubsystem extends SubsystemBase {
   // Per-camera publishers
   private final List<BooleanPublisher> m_cameraHasTargetPubs = new ArrayList<>();
   private final List<DoublePublisher> m_cameraTagCountPubs = new ArrayList<>();
+  private final List<BooleanPublisher> m_cameraConnectedPubs = new ArrayList<>();
 
   // Configurable constants (via NetworkTables)
   private double m_maxAmbiguity = PhotonVisionConstants.kMaxAmbiguity;
@@ -149,6 +158,9 @@ public class PhotonVisionSubsystem extends SubsystemBase {
       m_cameraTagCountPubs.add(
         m_telemetryTable.getDoubleTopic(camData.name + "/Tag Count").publish()
       );
+      m_cameraConnectedPubs.add(
+        m_telemetryTable.getBooleanTopic(camData.name + "/Connected").publish()
+      );
     }
 
     // Initialize NetworkTables subscribers for configurable constants
@@ -175,6 +187,48 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     }
   }
 
+  /**
+   * Check camera connection health and attempt reconnection if needed.
+   * PhotonVision cameras can lose connection after power cycles and need to be re-initialized.
+   * This method checks connection status every 2 seconds and recreates the camera object if needed.
+   */
+  private void checkCameraConnection(CameraData camData) {
+    double currentTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+
+    // Only check connection every 2 seconds to avoid performance impact
+    if (currentTime - camData.lastConnectionCheckTime < 2.0) {
+      return;
+    }
+
+    camData.lastConnectionCheckTime = currentTime;
+
+    // Check if camera is connected by verifying it's receiving data
+    boolean isReceivingData = camData.camera.isConnected();
+
+    // If camera is not connected and we've had failures, try to reconnect
+    if (!isReceivingData && camData.consecutiveFailures > 25) {
+      System.out.println("PhotonVision camera '" + camData.name + "' appears disconnected. Attempting reconnection...");
+
+      try {
+        // Create new camera instance (this forces a fresh connection attempt)
+        PhotonCamera newCamera = new PhotonCamera(camData.name);
+
+        // If we got here without exception, replace the old camera
+        java.lang.reflect.Field cameraField = CameraData.class.getDeclaredField("camera");
+        cameraField.setAccessible(true);
+        cameraField.set(camData, newCamera);
+
+        System.out.println("Successfully reconnected to camera: " + camData.name);
+        m_cameraInitStatusPub.set("Reconnected to camera: " + camData.name);
+        camData.consecutiveFailures = 0;
+        camData.isConnected = true;
+      } catch (Exception e) {
+        System.out.println("Failed to reconnect to camera '" + camData.name + "': " + e.getMessage());
+        m_cameraInitStatusPub.set("Failed to reconnect: " + camData.name);
+      }
+    }
+  }
+
   @Override
   public void periodic() {
     // Read configurable values from NetworkTables
@@ -196,12 +250,22 @@ public class PhotonVisionSubsystem extends SubsystemBase {
     for (int i = 0; i < m_cameras.size(); i++) {
       CameraData camData = m_cameras.get(i);
 
+      // Check camera connection health and retry if needed
+      checkCameraConnection(camData);
+
       // Get latest result (using newer getAllUnreadResults and taking the last one)
       var results = camData.camera.getAllUnreadResults();
       if (!results.isEmpty()) {
         camData.lastResult = results.get(results.size() - 1);
+        camData.isConnected = true;
+        camData.consecutiveFailures = 0;
       } else {
-        // No new results, keep using the last result
+        // No new results - could be no targets or connection issue
+        // Don't mark as disconnected immediately, wait for repeated failures
+        camData.consecutiveFailures++;
+        if (camData.consecutiveFailures > 50) { // ~1 second at 50Hz
+          camData.isConnected = false;
+        }
         continue;
       }
 
@@ -294,6 +358,8 @@ public class PhotonVisionSubsystem extends SubsystemBase {
           m_cameraHasTargetPubs.get(i).set(hasTarget);
           m_cameraTagCountPubs.get(i).set(tagCount);
         }
+        // Always publish connection status
+        m_cameraConnectedPubs.get(i).set(camData.isConnected);
       }
     }
   }

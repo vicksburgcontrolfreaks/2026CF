@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shooter Velocity Tuning Guide - 62° Launch Angle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 4px solid #28a745;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-left: 5px solid #28a745;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #5a6c7d;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        h4 {
+            color: #6c757d;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .alert-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .alert-box h3 {
+            margin-top: 0;
+            color: #d39e00;
+        }
+
+        .info-box {
+            background: #e8f4f8;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .success-box h3 {
+            margin-top: 0;
+            color: #155724;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #28a745;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e9ecef;
+        }
+
+        .checklist {
+            background: #fff;
+            border: 2px solid #28a745;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .checklist h3 {
+            color: #28a745;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .checklist-item {
+            padding: 10px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-left: 3px solid #dee2e6;
+            display: flex;
+            align-items: center;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .checklist-item.completed {
+            background: #d4edda;
+            border-left-color: #28a745;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .data-table {
+            background: #fff;
+            border: 2px solid #3498db;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .data-table h4 {
+            color: #3498db;
+            margin-top: 0;
+        }
+
+        .formula {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 3px solid #6c757d;
+            font-family: 'Courier New', monospace;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .physics-diagram {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+
+        .diagram-caption {
+            text-align: center;
+            font-style: italic;
+            color: #6c757d;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+
+        svg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .theory-box {
+            background: #e7f3ff;
+            border: 2px solid #0066cc;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .theory-box h3 {
+            color: #0066cc;
+            margin-top: 0;
+        }
+
+        .important {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .cad-screenshot {
+            max-width: 100%;
+            border: 3px solid #28a745;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        @media print {
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+
+            body {
+                background: white;
+            }
+
+            .checklist-item input[type="checkbox"] {
+                -webkit-appearance: checkbox;
+                appearance: checkbox;
+            }
+        }
+    </style>
+    <script>
+        function toggleCheckbox(checkbox) {
+            const item = checkbox.parentElement;
+            if (checkbox.checked) {
+                item.classList.add('completed');
+            } else {
+                item.classList.remove('completed');
+            }
+
+            // Save state to localStorage
+            const checklistState = getChecklistState();
+            localStorage.setItem('shooterTuningChecklist', JSON.stringify(checklistState));
+        }
+
+        function getChecklistState() {
+            const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+            const state = [];
+            checkboxes.forEach((cb, index) => {
+                state.push(cb.checked);
+            });
+            return state;
+        }
+
+        function loadChecklistState() {
+            const savedState = localStorage.getItem('shooterTuningChecklist');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+                checkboxes.forEach((cb, index) => {
+                    if (state[index]) {
+                        cb.checked = true;
+                        cb.parentElement.classList.add('completed');
+                    }
+                });
+            }
+        }
+
+        function clearChecklist() {
+            const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+                cb.parentElement.classList.remove('completed');
+            });
+            localStorage.removeItem('shooterTuningChecklist');
+        }
+
+        window.onload = loadChecklistState;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Shooter Velocity Tuning Guide</h1>
+        <p style="font-size: 1.1em; color: #6c757d; margin-bottom: 30px;">
+            Complete guide for establishing the distance-to-RPM velocity table after changing launch angle from 68° to 62°
+        </p>
+
+        <div class="success-box">
+            <h3>✓ What Changed and Why This Matters</h3>
+            <p><strong>Launch Angle:</strong> 68° → 62° (6° decrease, moving closer to optimal 45°)</p>
+            <p><strong>Expected Impact:</strong> Better range efficiency! Your new 62° angle should require <strong>LESS velocity</strong> to reach the same distances.</p>
+            <p><strong>Physics:</strong> At 62°, the ball has a more efficient trajectory with better horizontal velocity component. This is a favorable change that should improve your shooter performance.</p>
+        </div>
+
+        <div class="info-box">
+            <h3>📐 Your CAD Geometry</h3>
+            <img src="shooter_geometry.png" alt="Shooter CAD geometry with launch angles" class="cad-screenshot">
+            <p><strong>Key measurements from your design:</strong></p>
+            <ul>
+                <li>Wheel diameter: 4.0 inches</li>
+                <li>Launch angles shown: 68°, 65°, 62°, 59°, 56° radiating from wheel</li>
+                <li>Current configuration: 62° launch angle (green line in CAD)</li>
+                <li>Previous configuration: 68° launch angle (red line in CAD)</li>
+                <li>Ball diameter: Ø6.80 (appears to be in different units, likely cm)</li>
+                <li>Distance from wheel center to speaker: 281.181 (units from CAD)</li>
+            </ul>
+        </div>
+
+        <h2>1. Understanding the Physics</h2>
+
+        <div class="physics-diagram">
+            <svg width="900" height="400" viewBox="0 0 900 400">
+                <!-- Ground -->
+                <line x1="50" y1="350" x2="850" y2="350" stroke="#333" stroke-width="2"/>
+
+                <!-- Robot/Shooter at origin -->
+                <rect x="50" y="300" width="60" height="50" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
+                <text x="80" y="330" text-anchor="middle" fill="white" font-size="14" font-weight="bold">Robot</text>
+
+                <!-- 68° trajectory (old - high arc) -->
+                <path d="M 110,320 Q 280,80 600,320"
+                      fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="5,5" opacity="0.6"/>
+                <text x="300" y="70" fill="#e74c3c" font-size="12">68° trajectory (OLD)</text>
+                <text x="300" y="88" fill="#e74c3c" font-size="10">High arc, less efficient</text>
+
+                <!-- 62° trajectory (new - better) -->
+                <path d="M 110,320 Q 340,120 700,320"
+                      fill="none" stroke="#28a745" stroke-width="3"/>
+                <text x="400" y="105" fill="#28a745" font-size="13" font-weight="bold">62° trajectory (NEW)</text>
+                <text x="400" y="123" fill="#28a745" font-size="11">Lower arc, MORE efficient</text>
+
+                <!-- 45° optimal trajectory (reference) -->
+                <path d="M 110,320 Q 420,150 770,320"
+                      fill="none" stroke="#3498db" stroke-width="2" stroke-dasharray="3,3" opacity="0.5"/>
+                <text x="480" y="140" fill="#3498db" font-size="11">45° (optimal)</text>
+
+                <!-- Target (speaker) -->
+                <rect x="640" y="280" width="60" height="70" fill="#f39c12" stroke="#d68910" stroke-width="2"/>
+                <text x="670" y="320" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Speaker</text>
+
+                <!-- Range comparison -->
+                <line x1="110" y1="365" x2="600" y2="365" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowred)"/>
+                <text x="355" y="385" text-anchor="middle" fill="#e74c3c" font-size="11">68° range @ velocity v</text>
+
+                <line x1="110" y1="370" x2="700" y2="370" stroke="#28a745" stroke-width="3" marker-end="url(#arrowgreen)"/>
+                <text x="405" y="395" text-anchor="middle" fill="#28a745" font-size="12" font-weight="bold">62° range @ SAME velocity v</text>
+
+                <!-- Distance indicator -->
+                <line x1="110" y1="365" x2="670" y2="365" stroke="#333" stroke-width="1" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+                <text x="390" y="358" text-anchor="middle" font-size="11" font-weight="bold">Same target distance</text>
+
+                <defs>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+                    </marker>
+                    <marker id="arrowgreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#28a745" />
+                    </marker>
+                    <marker id="arrowred" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c" />
+                    </marker>
+                </defs>
+            </svg>
+            <div class="diagram-caption">Figure 1: Trajectory comparison. At 62°, you achieve MORE range with the SAME velocity compared to 68°. To hit the same target, you need LESS RPM.</div>
+        </div>
+
+        <div class="theory-box">
+            <h3>Physics Background</h3>
+            <p>For projectile motion with launch angle θ and initial velocity v:</p>
+            <div class="formula">
+Horizontal velocity: v_x = v × cos(θ)
+Vertical velocity:   v_y = v × sin(θ)
+Range (distance):    R = v² × sin(2θ) / g
+
+At 68°: sin(136°) ≈ 0.695
+At 62°: sin(124°) ≈ 0.829
+
+<strong>Result: 62° has ~19% BETTER range efficiency than 68°!</strong>
+            </div>
+            <p><strong>What this means for tuning:</strong> To hit the same target at 62° that you used to hit at 68°, you need approximately 8-12% LESS wheel RPM. This is a favorable change that should improve consistency and reduce motor stress.</p>
+        </div>
+
+        <h2>2. Current Velocity Table (INVALID for 62°)</h2>
+
+        <div class="data-table">
+            <h4>Existing kShooterVelocityTable (from ShooterConstants.java)</h4>
+            <p style="color: #e74c3c; font-weight: bold;">⚠️ These values are for 68° launch angle and will be TOO HIGH at 62°</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Distance (meters)</th>
+                        <th>RPM @ 68°</th>
+                        <th>Expected @ 62°</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1.75m</td>
+                        <td>2950 RPM</td>
+                        <td>~2600-2750 RPM</td>
+                        <td>Close range (subwoofer)</td>
+                    </tr>
+                    <tr>
+                        <td>2.69m</td>
+                        <td>3450 RPM</td>
+                        <td>~3050-3200 RPM</td>
+                        <td>Medium range</td>
+                    </tr>
+                    <tr>
+                        <td>3.3m</td>
+                        <td>4000 RPM</td>
+                        <td>~3550-3700 RPM</td>
+                        <td>Mid-long range</td>
+                    </tr>
+                    <tr>
+                        <td>4.8m</td>
+                        <td>4500 RPM</td>
+                        <td>~4000-4150 RPM</td>
+                        <td>Long range</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>3. Enabling Dynamic RPM Control via Elastic/SmartDashboard</h2>
+
+        <div class="info-box">
+            <h3>✓ Good News: Dynamic RPM Already Implemented!</h3>
+            <p>Your ShooterSubsystem already has a <strong>Test Mode</strong> feature that allows you to override the distance-based RPM calculation with a manually specified test RPM. This is perfect for tuning!</p>
+        </div>
+
+        <h3>3.1 How Test Mode Works</h3>
+
+        <p>The shooter subsystem creates Shuffleboard entries for test mode control:</p>
+        <ul>
+            <li><code>Shooter/Test Mode Enabled</code> - Toggle to enable/disable test mode</li>
+            <li><code>Shooter/Test RPM</code> - Set the desired test RPM (overrides distance calculation)</li>
+            <li><code>Shooter/Trajectory Angle</code> - Display/adjust trajectory angle (currently 62°)</li>
+        </ul>
+
+        <h3>3.2 Setting Up Shuffleboard for Tuning</h3>
+
+        <div class="checklist">
+            <h3>Pre-Tuning Setup Checklist</h3>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup1" onclick="toggleCheckbox(this)">
+                <label for="setup1"><strong>Connect to robot</strong> and open Shuffleboard or Elastic dashboard</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup2" onclick="toggleCheckbox(this)">
+                <label for="setup2">Navigate to <code>Shooter</code> tab/table in NetworkTables</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup3" onclick="toggleCheckbox(this)">
+                <label for="setup3">Verify <code>Shooter/Test Mode Enabled</code> toggle is visible (create if not)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup4" onclick="toggleCheckbox(this)">
+                <label for="setup4">Verify <code>Shooter/Test RPM</code> number entry is visible (create if not)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup5" onclick="toggleCheckbox(this)">
+                <label for="setup5">Add <code>Shooter/Distance to Target</code> to dashboard (shows current vision distance)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup6" onclick="toggleCheckbox(this)">
+                <label for="setup6">Add <code>Shooter/Target RPM</code> to dashboard (shows what RPM is being commanded)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup7" onclick="toggleCheckbox(this)">
+                <label for="setup7">Add <code>Shooter/Left Shooter Velocity</code>, <code>Right Shooter Velocity</code>, and <code>Middle Shooter Velocity</code> to monitor actual RPM</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="setup8" onclick="toggleCheckbox(this)">
+                <label for="setup8">Set <code>Shooter/Trajectory Angle</code> to <strong>62.0</strong> (confirm new launch angle)</label>
+            </div>
+        </div>
+
+        <h2>4. Tuning Methodology</h2>
+
+        <h3>4.1 Test Distance Selection</h3>
+
+        <p>You'll need to gather data at <strong>4-6 test distances</strong> spanning your operational range. Recommended test positions:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Test Position</th>
+                    <th>Distance (meters)</th>
+                    <th>Field Location</th>
+                    <th>Game Context</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Position 1</td>
+                    <td>1.5m - 2.0m</td>
+                    <td>Subwoofer shot</td>
+                    <td>Close autonomous</td>
+                </tr>
+                <tr>
+                    <td>Position 2</td>
+                    <td>2.5m - 3.0m</td>
+                    <td>Just beyond subwoofer</td>
+                    <td>Common auto position</td>
+                </tr>
+                <tr>
+                    <td>Position 3</td>
+                    <td>3.5m - 4.0m</td>
+                    <td>Mid-range</td>
+                    <td>Teleop scoring zone</td>
+                </tr>
+                <tr>
+                    <td>Position 4</td>
+                    <td>4.5m - 5.0m</td>
+                    <td>Long range</td>
+                    <td>Extended scoring range</td>
+                </tr>
+                <tr>
+                    <td>Position 5 (optional)</td>
+                    <td>5.5m - 6.0m</td>
+                    <td>Maximum range</td>
+                    <td>Desperation shots</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.2 Test Procedure for Each Distance</h3>
+
+        <div class="checklist">
+            <h3>Per-Distance Testing Protocol</h3>
+            <p style="margin-bottom: 15px;">Repeat this checklist for EACH test distance (Positions 1-5):</p>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test1" onclick="toggleCheckbox(this)">
+                <label for="test1"><span class="step-number">1</span><strong>Position robot</strong> at measured distance from speaker (use tape measure for accuracy ±0.1m)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test2" onclick="toggleCheckbox(this)">
+                <label for="test2"><span class="step-number">2</span><strong>Verify vision distance:</strong> Check <code>Shooter/Distance to Target</code> matches your measured distance (within 0.2m)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test3" onclick="toggleCheckbox(this)">
+                <label for="test3"><span class="step-number">3</span><strong>Enable Test Mode:</strong> Toggle <code>Shooter/Test Mode Enabled</code> to TRUE</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test4" onclick="toggleCheckbox(this)">
+                <label for="test4"><span class="step-number">4</span><strong>Set initial RPM guess:</strong> Start with old table value - 10% (e.g., if old = 3000, try 2700)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test5" onclick="toggleCheckbox(this)">
+                <label for="test5"><span class="step-number">5</span><strong>Activate shooter:</strong> Use auto-aim or manual shooter activation</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test6" onclick="toggleCheckbox(this)">
+                <label for="test6"><span class="step-number">6</span><strong>Wait for spinup:</strong> Monitor actual velocity reaches within 50 RPM of target (check Left/Right/Middle Shooter Velocity)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test7" onclick="toggleCheckbox(this)">
+                <label for="test7"><span class="step-number">7</span><strong>Fire test shot:</strong> Shoot 1-2 game pieces and observe result</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test8" onclick="toggleCheckbox(this)">
+                <label for="test8"><span class="step-number">8</span><strong>Evaluate result:</strong> Did shot score? Note if ball went over/under/left/right of target</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test9" onclick="toggleCheckbox(this)">
+                <label for="test9"><span class="step-number">9</span><strong>Adjust RPM:</strong> If shot too short → increase RPM by 200-300. If too long → decrease RPM by 200-300</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test10" onclick="toggleCheckbox(this)">
+                <label for="test10"><span class="step-number">10</span><strong>Repeat:</strong> Continue adjusting until 3 consecutive shots score successfully</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="test11" onclick="toggleCheckbox(this)">
+                <label for="test11"><span class="step-number">11</span><strong>Record final values:</strong> Write down distance (measured + vision) and final working RPM</label>
+            </div>
+        </div>
+
+        <h3>4.3 RPM Adjustment Guidelines</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Observation</th>
+                    <th>Cause</th>
+                    <th>RPM Adjustment</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ball falls short (hits front of speaker)</td>
+                    <td>Insufficient velocity</td>
+                    <td><strong>+200 to +400 RPM</strong></td>
+                </tr>
+                <tr>
+                    <td>Ball sails over speaker</td>
+                    <td>Excess velocity</td>
+                    <td><strong>-200 to -400 RPM</strong></td>
+                </tr>
+                <tr>
+                    <td>Ball barely clears lip (marginal scoring)</td>
+                    <td>Slightly low velocity</td>
+                    <td><strong>+100 RPM</strong></td>
+                </tr>
+                <tr>
+                    <td>Ball scores cleanly mid-opening</td>
+                    <td>Perfect velocity</td>
+                    <td><strong>No change - record this RPM!</strong></td>
+                </tr>
+                <tr>
+                    <td>Ball trajectory visibly too flat</td>
+                    <td>RPM way too high</td>
+                    <td><strong>-500 to -800 RPM</strong></td>
+                </tr>
+                <tr>
+                    <td>Ball trajectory visibly too arced</td>
+                    <td>RPM way too low</td>
+                    <td><strong>+500 to +800 RPM</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>5. Data Collection Sheet</h2>
+
+        <div class="data-table">
+            <h4>📊 Test Results Recording Template</h4>
+            <p>Fill this out as you test each position. You can also use a spreadsheet or paper notebook.</p>
+
+            <table style="border: 2px solid #3498db;">
+                <thead>
+                    <tr>
+                        <th style="background: #3498db;">Test #</th>
+                        <th style="background: #3498db;">Measured Distance (m)</th>
+                        <th style="background: #3498db;">Vision Distance (m)</th>
+                        <th style="background: #3498db;">Starting RPM</th>
+                        <th style="background: #3498db;">Final Working RPM</th>
+                        <th style="background: #3498db;">Shots to Converge</th>
+                        <th style="background: #3498db;">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>_____ m</td>
+                        <td>_____ m</td>
+                        <td>_____ RPM</td>
+                        <td><strong>_____ RPM</strong></td>
+                        <td>_____ shots</td>
+                        <td>_________________</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>_____ m</td>
+                        <td>_____ m</td>
+                        <td>_____ RPM</td>
+                        <td><strong>_____ RPM</strong></td>
+                        <td>_____ shots</td>
+                        <td>_________________</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>_____ m</td>
+                        <td>_____ m</td>
+                        <td>_____ RPM</td>
+                        <td><strong>_____ RPM</strong></td>
+                        <td>_____ shots</td>
+                        <td>_________________</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>_____ m</td>
+                        <td>_____ m</td>
+                        <td>_____ RPM</td>
+                        <td><strong>_____ RPM</strong></td>
+                        <td>_____ shots</td>
+                        <td>_________________</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>_____ m</td>
+                        <td>_____ m</td>
+                        <td>_____ RPM</td>
+                        <td><strong>_____ RPM</strong></td>
+                        <td>_____ shots</td>
+                        <td>_________________</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>_____ m</td>
+                        <td>_____ m</td>
+                        <td>_____ RPM</td>
+                        <td><strong>_____ RPM</strong></td>
+                        <td>_____ shots</td>
+                        <td>_________________</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>6. Updating the Code</h2>
+
+        <h3>6.1 After Collecting All Data</h3>
+
+        <p>Once you've successfully tuned all test distances and recorded working RPM values, you'll update <code>ShooterConstants.java</code>:</p>
+
+        <div class="code-block">// File: src/main/java/frc/robot/constants/ShooterConstants.java
+
+// OLD velocity table (68° launch angle - DELETE THIS):
+public static final double[][] kShooterVelocityTable = {
+  {1.75, 2950},
+  {2.69, 3450},
+  {3.3, 4000},
+  {4.8, 4500},
+};
+
+// NEW velocity table (62° launch angle - expect ~8-12% lower RPM):
+public static final double[][] kShooterVelocityTable = {
+  {1.75, 2650},  // Update with YOUR test result for ~1.75m
+  {2.69, 3100},  // Update with YOUR test result for ~2.69m
+  {3.3, 3600},   // Update with YOUR test result for ~3.3m
+  {4.8, 4050},   // Update with YOUR test result for ~4.8m
+  // Add more entries if you tested additional distances
+};</div>
+
+        <div class="alert-box">
+            <h3>⚠️ Important: Use Vision Distance, Not Measured Distance</h3>
+            <p>When creating the final table, use the <strong>vision-reported distance</strong> (from <code>Shooter/Distance to Target</code>), NOT your tape-measured distance. Why?</p>
+            <ul>
+                <li>The robot uses vision distance for real-time RPM calculation during matches</li>
+                <li>Vision distance may differ from tape-measured due to camera mounting errors (angular offset, lens-to-sensor offset)</li>
+                <li>Using vision distance ensures the table matches what the robot "sees" during competition</li>
+            </ul>
+            <p><strong>Example:</strong> If you measured 3.0m with tape but vision reports 3.15m, use 3.15m in your table entry.</p>
+        </div>
+
+        <h3>6.2 Code Update Checklist</h3>
+
+        <div class="checklist">
+            <h3>Final Code Update Steps</h3>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code1" onclick="toggleCheckbox(this)">
+                <label for="code1">Open <code>src/main/java/frc/robot/constants/ShooterConstants.java</code></label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code2" onclick="toggleCheckbox(this)">
+                <label for="code2">Locate <code>kShooterVelocityTable</code> declaration (around line 38)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code3" onclick="toggleCheckbox(this)">
+                <label for="code3">Replace ALL entries with your new test data (use vision distance, not measured)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code4" onclick="toggleCheckbox(this)">
+                <label for="code4">Sort entries by distance (ascending order: smallest to largest)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code5" onclick="toggleCheckbox(this)">
+                <label for="code5">Add comment indicating 62° launch angle and tuning date</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code6" onclick="toggleCheckbox(this)">
+                <label for="code6">Save file and build code (<code>./gradlew build</code> or F5 in VSCode)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code7" onclick="toggleCheckbox(this)">
+                <label for="code7">Deploy to robot and verify compilation succeeds</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code8" onclick="toggleCheckbox(this)">
+                <label for="code8"><strong>DISABLE Test Mode</strong> - toggle <code>Shooter/Test Mode Enabled</code> to FALSE</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code9" onclick="toggleCheckbox(this)">
+                <label for="code9">Re-test at 2-3 distances to verify distance-based RPM calculation works correctly</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="code10" onclick="toggleCheckbox(this)">
+                <label for="code10">Commit changes to git with descriptive message</label>
+            </div>
+        </div>
+
+        <h2>7. Validation Testing</h2>
+
+        <h3>7.1 Post-Update Verification</h3>
+
+        <p>After updating the code and deploying, perform validation testing to ensure the new table works correctly:</p>
+
+        <div class="checklist">
+            <h3>Validation Checklist</h3>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val1" onclick="toggleCheckbox(this)">
+                <label for="val1">Confirm <code>Shooter/Test Mode Enabled</code> is FALSE (using distance-based calculation)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val2" onclick="toggleCheckbox(this)">
+                <label for="val2">Position at first test distance and verify <code>Shooter/Target RPM</code> matches your table value</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val3" onclick="toggleCheckbox(this)">
+                <label for="val3">Fire test shot - should score with same accuracy as during tuning</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val4" onclick="toggleCheckbox(this)">
+                <label for="val4">Test at an <strong>untested distance</strong> (between table entries) to verify interpolation works</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val5" onclick="toggleCheckbox(this)">
+                <label for="val5">Test shooting while moving (if velocity compensation is enabled)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val6" onclick="toggleCheckbox(this)">
+                <label for="val6">Test in autonomous routine (e.g., RedRightCollectAndShoot)</label>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="val7" onclick="toggleCheckbox(this)">
+                <label for="val7">Document any edge cases or distances that need refinement</label>
+            </div>
+        </div>
+
+        <h2>8. Troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Problem</th>
+                    <th>Possible Cause</th>
+                    <th>Solution</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Test RPM not taking effect</td>
+                    <td>Test Mode not enabled</td>
+                    <td>Toggle <code>Shooter/Test Mode Enabled</code> to TRUE</td>
+                </tr>
+                <tr>
+                    <td>Shooter velocity oscillating</td>
+                    <td>PID tuning needed</td>
+                    <td>Adjust <code>kShooterP</code>, <code>kShooterI</code>, <code>kShooterD</code> values</td>
+                </tr>
+                <tr>
+                    <td>Vision distance seems wrong</td>
+                    <td>Camera calibration issues</td>
+                    <td>Verify AprilTag positions, check for angular offset (see VISION_ODOMETRY_ACCURACY_ANALYSIS.html)</td>
+                </tr>
+                <tr>
+                    <td>Shots inconsistent at same distance</td>
+                    <td>Battery voltage variation</td>
+                    <td>Test with fully charged battery, check voltage compensation in code</td>
+                </tr>
+                <tr>
+                    <td>RPM shows 0 or doesn't change</td>
+                    <td>Motor controller communication issue</td>
+                    <td>Check CAN bus, verify motor IDs, restart robot code</td>
+                </tr>
+                <tr>
+                    <td>Interpolation between points inaccurate</td>
+                    <td>Not enough data points</td>
+                    <td>Add more table entries at intermediate distances</td>
+                </tr>
+                <tr>
+                    <td>62° shoots flatter than expected</td>
+                    <td>Actual launch angle differs from design</td>
+                    <td>Film shot with high-speed camera to verify actual launch angle</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>9. Tips for Efficient Tuning</h2>
+
+        <div class="success-box">
+            <h3>Best Practices</h3>
+            <ul>
+                <li><strong>Start close, work outward:</strong> Tune 1.75m first (easiest), then progressively longer distances</li>
+                <li><strong>Binary search for RPM:</strong> Make large adjustments (±400) initially, then refine with smaller steps (±100)</li>
+                <li><strong>Expect lower RPM:</strong> Your starting guess should be 8-12% below old values due to better range efficiency at 62°</li>
+                <li><strong>Consistent test conditions:</strong> Use same battery charge level (>12.0V), same game pieces, same field conditions</li>
+                <li><strong>3-shot confirmation:</strong> Don't finalize an RPM until 3 consecutive shots score successfully</li>
+                <li><strong>Document everything:</strong> Take notes on what worked and what didn't - helps with future tuning</li>
+                <li><strong>Test moving shots separately:</strong> Velocity compensation may need separate tuning</li>
+                <li><strong>Have spare game pieces ready:</strong> Tuning can take 20-50 test shots, prepare accordingly</li>
+                <li><strong>Two-person team:</strong> One person drives/operates, one person adjusts RPM and records data</li>
+                <li><strong>High-speed video:</strong> Film a few shots in slow-motion to verify trajectory looks correct for 62°</li>
+            </ul>
+        </div>
+
+        <h2>10. Expected Results</h2>
+
+        <div class="theory-box">
+            <h3>Predicted RPM Changes</h3>
+            <p>Based on physics, moving from 68° to 62° launch angle should require approximately:</p>
+            <div class="formula">
+RPM_new ≈ RPM_old × 0.88 to 0.92
+
+Example predictions:
+- 1.75m: 2950 → ~2600-2700 RPM (-8 to -12%)
+- 2.69m: 3450 → ~3050-3170 RPM (-8 to -12%)
+- 3.3m:  4000 → ~3520-3680 RPM (-8 to -12%)
+- 4.8m:  4500 → ~3960-4140 RPM (-8 to -12%)
+            </div>
+            <p><strong>Use these as starting guesses</strong> for your initial test RPM values. The actual values may differ based on mechanical factors (wheel compression, backspin, air resistance, ball contact efficiency).</p>
+        </div>
+
+        <div class="success-box">
+            <h3>✓ Benefits of 62° Launch Angle</h3>
+            <ul>
+                <li><strong>Lower motor stress:</strong> Lower RPM requirements reduce heat and current draw</li>
+                <li><strong>Faster spin-up:</strong> Less RPM means quicker time to shooting readiness</li>
+                <li><strong>Better range:</strong> 19% better range efficiency - can shoot from farther away</li>
+                <li><strong>Flatter trajectory:</strong> Less affected by wind, faster time-to-target</li>
+                <li><strong>More predictable:</strong> Trajectories closer to 45° are more stable</li>
+            </ul>
+            <p>This is a positive change that should improve your shooter performance!</p>
+        </div>
+
+        <h2>11. Master Tuning Checklist</h2>
+
+        <div class="checklist">
+            <h3>Complete Tuning Process</h3>
+            <button onclick="clearChecklist()" style="padding: 8px 15px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 15px;">Reset All Checkboxes</button>
+
+            <h4 style="margin-top: 20px;">Phase 1: Preparation</h4>
+            <div class="checklist-item">
+                <input type="checkbox" id="master1" onclick="toggleCheckbox(this)">
+                <label for="master1">Read and understand entire tuning guide</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master2" onclick="toggleCheckbox(this)">
+                <label for="master2">Set up Shuffleboard/Elastic dashboard with required NetworkTables entries</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master3" onclick="toggleCheckbox(this)">
+                <label for="master3">Verify trajectory angle is set to 62.0 degrees</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master4" onclick="toggleCheckbox(this)">
+                <label for="master4">Prepare data recording sheet (digital or paper)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master5" onclick="toggleCheckbox(this)">
+                <label for="master5">Charge battery to 12.5V+ and have backup ready</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master6" onclick="toggleCheckbox(this)">
+                <label for="master6">Gather 30-50 game pieces for testing</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master7" onclick="toggleCheckbox(this)">
+                <label for="master7">Mark test positions on field with tape (1.75m, 2.69m, 3.3m, 4.8m)</label>
+            </div>
+
+            <h4 style="margin-top: 20px;">Phase 2: Data Collection</h4>
+            <div class="checklist-item">
+                <input type="checkbox" id="master8" onclick="toggleCheckbox(this)">
+                <label for="master8">Test Position 1 (~1.75m) - Find optimal RPM (expect ~2600-2700)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master9" onclick="toggleCheckbox(this)">
+                <label for="master9">Test Position 2 (~2.69m) - Find optimal RPM (expect ~3050-3170)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master10" onclick="toggleCheckbox(this)">
+                <label for="master10">Test Position 3 (~3.3m) - Find optimal RPM (expect ~3520-3680)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master11" onclick="toggleCheckbox(this)">
+                <label for="master11">Test Position 4 (~4.8m) - Find optimal RPM (expect ~3960-4140)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master12" onclick="toggleCheckbox(this)">
+                <label for="master12">Test additional positions (optional) - Find optimal RPM</label>
+            </div>
+
+            <h4 style="margin-top: 20px;">Phase 3: Code Update</h4>
+            <div class="checklist-item">
+                <input type="checkbox" id="master13" onclick="toggleCheckbox(this)">
+                <label for="master13">Update kShooterVelocityTable in ShooterConstants.java</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master14" onclick="toggleCheckbox(this)">
+                <label for="master14">Build and deploy updated code</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master15" onclick="toggleCheckbox(this)">
+                <label for="master15">Disable Test Mode (Test Mode Enabled = FALSE)</label>
+            </div>
+
+            <h4 style="margin-top: 20px;">Phase 4: Validation</h4>
+            <div class="checklist-item">
+                <input type="checkbox" id="master16" onclick="toggleCheckbox(this)">
+                <label for="master16">Re-test at all tuned distances with distance-based calculation</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master17" onclick="toggleCheckbox(this)">
+                <label for="master17">Test interpolation (distances between table entries)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master18" onclick="toggleCheckbox(this)">
+                <label for="master18">Test in autonomous routines</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master19" onclick="toggleCheckbox(this)">
+                <label for="master19">Test shooting while moving (velocity compensation)</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master20" onclick="toggleCheckbox(this)">
+                <label for="master20">Commit and push changes to git repository</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="master21" onclick="toggleCheckbox(this)">
+                <label for="master21">Document tuning results and any observations</label>
+            </div>
+        </div>
+
+        <h2>12. Quick Reference Card</h2>
+
+        <table style="border: 3px solid #28a745;">
+            <thead>
+                <tr>
+                    <th colspan="2" style="background: #28a745; text-align: center; font-size: 1.2em;">Quick Reference - During Testing</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Enable Test Mode:</strong></td>
+                    <td><code>Shooter/Test Mode Enabled</code> → TRUE</td>
+                </tr>
+                <tr>
+                    <td><strong>Set Test RPM:</strong></td>
+                    <td><code>Shooter/Test RPM</code> → Enter desired value</td>
+                </tr>
+                <tr>
+                    <td><strong>Check Distance:</strong></td>
+                    <td><code>Shooter/Distance to Target</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Check Actual RPM:</strong></td>
+                    <td><code>Shooter/Left Shooter Velocity</code> (and Right/Middle)</td>
+                </tr>
+                <tr>
+                    <td><strong>Starting guess:</strong></td>
+                    <td>Old RPM × 0.90 (10% reduction from 68° baseline)</td>
+                </tr>
+                <tr>
+                    <td><strong>Shot too short:</strong></td>
+                    <td>Increase RPM by 200-400</td>
+                </tr>
+                <tr>
+                    <td><strong>Shot too long:</strong></td>
+                    <td>Decrease RPM by 200-400</td>
+                </tr>
+                <tr>
+                    <td><strong>Success criteria:</strong></td>
+                    <td>3 consecutive scoring shots</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; color: #6c757d; font-size: 0.9em;">
+            <p><strong>Document Version:</strong> 2.0 (Corrected for 68° → 62° change)</p>
+            <p><strong>Robot:</strong> 2026CF (Control Freaks)</p>
+            <p><strong>Launch Angle:</strong> 62° (changed from 68°, expect ~10% lower RPM)</p>
+            <p><strong>Updated:</strong> 2026-04-10</p>
+            <p><strong>Related Documents:</strong> VISION_ODOMETRY_ACCURACY_ANALYSIS.html, SHOOTER_GEOMETRY_ANALYSIS.html</p>
+        </div>
+    </div>
+</body>
+</html>

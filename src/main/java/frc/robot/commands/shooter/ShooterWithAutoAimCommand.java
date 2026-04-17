@@ -5,6 +5,7 @@
 package frc.robot.commands.shooter;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -37,9 +38,8 @@ public class ShooterWithAutoAimCommand extends Command {
   private final DoubleSupplier m_xSpeedSupplier;
   private final DoubleSupplier m_ySpeedSupplier;
   private final PIDController m_rotationController;
+  private final LinearFilter m_angleOffsetFilter;
   private boolean m_feedingStarted = false;
-  private boolean m_hopperPopHigh = false;
-  private double m_lastPopTime = 0.0;
 
   /**
    * Creates a new ShooterWithAutoAimCommand.
@@ -71,18 +71,25 @@ public class ShooterWithAutoAimCommand extends Command {
     m_rotationController.enableContinuousInput(-180, 180);
     m_rotationController.setTolerance(AutoConstants.kRotateToTargetTolerance);
 
+    // Low-pass filter for angle compensation offset (0.30s time constant at 50Hz)
+    // Smooths velocity spikes from carpet bumps so the PID setpoint changes gradually
+    m_angleOffsetFilter = LinearFilter.singlePoleIIR(0.30, 0.02);
+
     addRequirements(shooter, swerveDrive, collector);
   }
 
   @Override
   public void initialize() {
-    // Reset the rotation PID controller
+    // Reset the rotation PID controller and angle filter
     m_rotationController.reset();
+    m_angleOffsetFilter.reset();
 
     // Reset feeding state
     m_feedingStarted = false;
-    m_hopperPopHigh = false;
-    m_lastPopTime = 0.0;
+
+    // Disable RPM cap so shooter can ramp up to full calculated RPM
+    // This allows the shooter to go from pre-spin (2000 RPM) to full power (e.g. 4300 RPM)
+    m_shooter.enableFullRPM();
 
     // Shooter wheels are already spinning from teleopInit()
     // Don't start feeding yet - wait for alignment in execute()
@@ -105,7 +112,14 @@ public class ShooterWithAutoAimCommand extends Command {
     // Calculate the angle to the target
     double deltaX = targetPosition.getX() - currentPose.getX();
     double deltaY = targetPosition.getY() - currentPose.getY();
-    double targetAngleDegrees = Math.toDegrees(Math.atan2(deltaY, deltaX));
+    double targetAngleRadians = Math.atan2(deltaY, deltaX);
+
+    // Apply velocity compensation — filter smooths rapid velocity fluctuations
+    double rawOffset = m_shooter.getVelocityCompensatedAngleOffset();
+    targetAngleRadians += m_angleOffsetFilter.calculate(rawOffset);
+
+    // Convert to degrees
+    double targetAngleDegrees = Math.toDegrees(targetAngleRadians);
 
     // Add 180 degrees to point the BACK of the robot at the target (shooter is at the back)
     targetAngleDegrees = (targetAngleDegrees + 180) % 360;
@@ -123,7 +137,8 @@ public class ShooterWithAutoAimCommand extends Command {
     rotationSpeed = Math.max(-AutoConstants.kRotateToTargetMaxVelocity,
                              Math.min(AutoConstants.kRotateToTargetMaxVelocity, rotationSpeed));
 
-    // Apply drive command with driver's translational input and automatic rotation
+    // Drive with translational input and rotation PID
+    // X lock removed - now only activated by driver X button
     m_swerveDrive.drive(
         m_xSpeedSupplier.getAsDouble(),
         m_ySpeedSupplier.getAsDouble(),
@@ -139,22 +154,10 @@ public class ShooterWithAutoAimCommand extends Command {
       m_shooter.runIndexer(false);
       m_shooter.runFloor(false);
       m_collector.runCollector(false);
-      m_collector.setHopperPosition(0.02);
-      m_hopperPopHigh = false;
-      m_lastPopTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
       m_feedingStarted = true;
     }
     // Note: Once feeding starts, DON'T stop it due to minor alignment fluctuations
     // The feeding will continue until the command ends (trigger released)
-
-    if (m_feedingStarted) {
-      double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
-      if (now - m_lastPopTime >= 0.25) {
-        m_hopperPopHigh = !m_hopperPopHigh;
-        m_collector.setHopperPosition(m_hopperPopHigh ? 0.19 : 0.02);
-        m_lastPopTime = now;
-      }
-    }
   }
 
   @Override
@@ -164,6 +167,14 @@ public class ShooterWithAutoAimCommand extends Command {
     m_shooter.StopFloor();
     m_shooter.StopIndexer();
     m_collector.stopCollector();
+
+    // Re-enable RPM cap to drop back to pre-spin RPM (energy saving)
+    // Rate limiting will prevent the 149A regenerative braking spike
+    m_shooter.enableRPMCap();
+
+    // IMPORTANT: Reset rotation PID to prevent residual commands
+    m_rotationController.reset();
+    m_angleOffsetFilter.reset();
 
     // Stop the drive subsystem
     m_swerveDrive.stop();
